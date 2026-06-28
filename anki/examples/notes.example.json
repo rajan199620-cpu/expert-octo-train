@@ -1,0 +1,22 @@
+[
+  {
+    "deck": "Spanish::Vocab",
+    "model": "Basic",
+    "front": "el perro",
+    "back": "the dog",
+    "tags": ["spanish", "animals"]
+  },
+  {
+    "deck": "Spanish::Vocab",
+    "model": "Basic",
+    "fields": { "Front": "el gato", "Back": "the cat" },
+    "tags": ["spanish", "animals"]
+  },
+  {
+    "deck": "Capitals",
+    "model": "Basic",
+    "front": "Capital of Japan?",
+    "back": "Tokyo",
+    "tags": ["geography"]
+  }
+]
