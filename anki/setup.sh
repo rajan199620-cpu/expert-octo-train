@@ -58,23 +58,21 @@ if command -v claude >/dev/null 2>&1; then
       || warn "Could not auto-register; add it manually (see below)."
   fi
 else
-  warn "The 'claude' CLI was not found, so I can't auto-register."
-  cat <<EOF
-
-  To use the integration from Claude Desktop, add this to your
-  claude_desktop_config.json (Settings > Developer > Edit Config):
+  warn "The 'claude' CLI was not found — registering with the Claude Desktop app instead."
+  if node register-desktop.mjs; then
+    ok "Claude Desktop config updated."
+  else
+    warn "Auto-registration failed. Add this to your claude_desktop_config.json"
+    warn "(Settings > Developer > Edit Config) by hand, then restart Claude Desktop:"
+    cat <<EOF
 
   {
     "mcpServers": {
-      "anki": {
-        "command": "node",
-        "args": ["$MCP_PATH"]
-      }
+      "anki": { "command": "node", "args": ["$MCP_PATH"] }
     }
   }
-
-  …then fully restart Claude Desktop.
 EOF
+  fi
 fi
 
 cat <<EOF
