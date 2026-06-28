@@ -1,0 +1,8 @@
+# Keep shell scripts LF even when checked out on Windows, so bash/Git Bash can
+# run them (CRLF breaks the shebang and causes "$'\r': command not found").
+*.sh text eol=lf
+
+# Node ES modules: normalize to LF too.
+*.mjs text eol=lf
+*.js  text eol=lf
+*.json text eol=lf
