@@ -69,6 +69,21 @@ into Anki.
 This lets Claude call Anki tools directly (`anki_add_notes`, `anki_find_notes`,
 `anki_suspend`, …, plus `anki_invoke` for the entire API).
 
+### Quick path — one command
+
+On the computer where Anki runs (Anki open), from the repo root:
+
+```bash
+bash anki/setup.sh
+```
+
+It installs deps, verifies the Anki connection, and registers the MCP server
+with Claude Code automatically (or prints the Claude Desktop config if the
+`claude` CLI isn't found). Re-running is safe. Then restart Claude. The manual
+steps below are the same thing done by hand.
+
+### Manual path
+
 ```bash
 cd anki
 npm install        # @modelcontextprotocol/sdk + zod
