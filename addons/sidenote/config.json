@@ -1,0 +1,8 @@
+{
+  "label": "why",
+  "shortcut": "Ctrl+Shift+D",
+  "cycle_shortcut": "Ctrl+Shift+Alt+D",
+  "default_target": "nearest",
+  "button": true,
+  "debug": false
+}

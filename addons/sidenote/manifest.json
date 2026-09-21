@@ -1,0 +1,11 @@
+{
+  "package": "sidenote",
+  "name": "SideNote - explanations kept in the note, off the card",
+  "ankiweb_id": null,
+  "author": "built for Rajan",
+  "homepage": "",
+  "conflicts": [],
+  "min_point_version": 250200,
+  "mod": 0,
+  "human_version": "1.4 (asides survive Enhanced Cloze re-rendering)"
+}

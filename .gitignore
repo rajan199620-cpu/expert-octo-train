@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+addons/*/sn_css.txt
+addons/*/sn_js.txt
