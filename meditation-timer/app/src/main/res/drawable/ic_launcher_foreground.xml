@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Singing bowl -->
+    <path
+        android:fillColor="#FFB9CBA8"
+        android:pathData="M34,54h40a20,20 0,0 1,-40 0z" />
+    <!-- Sound rings -->
+    <path
+        android:strokeColor="#FFE6E1D6"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M44,46a10,10 0,0 1,20 0" />
+    <path
+        android:strokeColor="#99E6E1D6"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M38,44a16,16 0,0 1,32 0" />
+</vector>

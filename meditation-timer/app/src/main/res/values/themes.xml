@@ -1,0 +1,10 @@
+<resources>
+    <color name="background">#FF111416</color>
+    <color name="ic_launcher_background">#FF1E2620</color>
+
+    <style name="Theme.MeditationTimer" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
