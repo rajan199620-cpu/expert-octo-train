@@ -64,4 +64,23 @@ class BellScheduleTest {
         assertEquals("1:05", formatClock(64_001))
         assertEquals("1:00:00", formatClock(3_600_000))
     }
+
+    @Test
+    fun intervalBellsFillTheGapsInOrder() {
+        val cues = BellSchedule.cues(SessionConfig(20 * 60, 5, 10, bellAtEnd = false, intervalMin = 5))
+        assertEquals(
+            listOf(5_000L to Cue.OPENING, 300_000L to Cue.INTERVAL, 600_000L to Cue.INTERVAL, 900_000L to Cue.INTERVAL, 1_190_000L to Cue.CLOSING),
+            cues.map { it.atMs to it.cue },
+        )
+    }
+
+    @Test
+    fun intervalBellTooCloseToClosingBellIsDropped() {
+        // 10 min session, closing 1 min before end (9:00); interval every 3 min -> 3:00, 6:00, but 9:00 collides.
+        val cues = BellSchedule.cues(SessionConfig(10 * 60, 5, 60, bellAtEnd = true, intervalMin = 3))
+        assertEquals(
+            listOf(5_000L to Cue.OPENING, 180_000L to Cue.INTERVAL, 360_000L to Cue.INTERVAL, 540_000L to Cue.CLOSING, 600_000L to Cue.END),
+            cues.map { it.atMs to it.cue },
+        )
+    }
 }

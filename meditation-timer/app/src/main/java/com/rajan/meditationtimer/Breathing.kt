@@ -1,0 +1,66 @@
+package com.rajan.meditationtimer
+
+enum class BreathPhase(val label: String) { INHALE("Breathe in"), HOLD_IN("Hold"), EXHALE("Breathe out"), HOLD_OUT("Hold") }
+
+/** A breathing rhythm; phases with 0 seconds are skipped. */
+data class BreathPattern(
+    val name: String,
+    val description: String,
+    val inhaleSec: Double,
+    val holdInSec: Double,
+    val exhaleSec: Double,
+    val holdOutSec: Double,
+) {
+    val cycleMs: Long get() = ((inhaleSec + holdInSec + exhaleSec + holdOutSec) * 1000).toLong()
+
+    private val phases: List<Pair<BreathPhase, Long>>
+        get() = listOf(
+            BreathPhase.INHALE to inhaleSec,
+            BreathPhase.HOLD_IN to holdInSec,
+            BreathPhase.EXHALE to exhaleSec,
+            BreathPhase.HOLD_OUT to holdOutSec,
+        ).filter { it.second > 0 }.map { it.first to (it.second * 1000).toLong() }
+
+    fun at(elapsedMs: Long): BreathState {
+        var t = elapsedMs.coerceAtLeast(0) % cycleMs
+        for ((phase, length) in phases) {
+            if (t < length) return BreathState(phase, t.toFloat() / length, length - t, elapsedMs / cycleMs)
+            t -= length
+        }
+        error("unreachable: t is always < cycleMs")
+    }
+
+    companion object {
+        val ALL = listOf(
+            BreathPattern("Coherent", "5.5 s in, 5.5 s out: about 5.5 breaths a minute, calming", 5.5, 0.0, 5.5, 0.0),
+            BreathPattern("Box", "4 in, 4 hold, 4 out, 4 hold: steadying", 4.0, 4.0, 4.0, 4.0),
+            BreathPattern("4-7-8", "4 in, 7 hold, 8 out: winding down for sleep", 4.0, 7.0, 8.0, 0.0),
+        )
+    }
+}
+
+data class BreathState(
+    val phase: BreathPhase,
+    /** 0..1 through the current phase. */
+    val progress: Float,
+    val msLeftInPhase: Long,
+    val completedCycles: Long,
+) {
+    /** Circle size 0..1: grows on the in-breath, full while holding in, shrinks on the out-breath. */
+    val expansion: Float
+        get() = when (phase) {
+            BreathPhase.INHALE -> easeInOut(progress)
+            BreathPhase.HOLD_IN -> 1f
+            BreathPhase.EXHALE -> 1f - easeInOut(progress)
+            BreathPhase.HOLD_OUT -> 0f
+        }
+
+    private fun easeInOut(x: Float) = (0.5 - 0.5 * kotlin.math.cos(Math.PI * x)).toFloat()
+}
+
+/** Japa mala counting: [target] beads make a round; a bell marks each finished round. */
+data class MalaCount(val beads: Int = 0, val rounds: Int = 0, val target: Int = 108) {
+    /** Returns the new count and whether this bead completed a round. */
+    fun tap(): Pair<MalaCount, Boolean> =
+        if (beads + 1 >= target) copy(beads = 0, rounds = rounds + 1) to true else copy(beads = beads + 1) to false
+}

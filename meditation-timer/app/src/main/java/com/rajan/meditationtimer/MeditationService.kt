@@ -24,20 +24,27 @@ import androidx.core.content.ContextCompat
  */
 class MeditationService : Service() {
     private val handler = Handler(Looper.getMainLooper())
-    private lateinit var bell: BellPlayer
+    private lateinit var chime: Chime
+    private lateinit var dnd: Dnd
     private var wakeLock: PowerManager.WakeLock? = null
     private var startedAtWallMs = 0L
 
     override fun onCreate() {
         super.onCreate()
-        bell = BellPlayer(this)
+        chime = Chime(this)
+        dnd = Dnd(this)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> begin(intent.toConfig(), intent.getFloatExtra(EXTRA_VOLUME, 0.6f))
+            ACTION_START -> begin(
+                intent.toConfig(),
+                intent.getFloatExtra(EXTRA_VOLUME, 0.6f),
+                AlertMode.entries.getOrElse(intent.getIntExtra(EXTRA_ALERT, 0)) { AlertMode.BELL },
+                intent.getBooleanExtra(EXTRA_DND, false),
+            )
             ACTION_STOP -> {
                 logEarlyEnd()
                 SessionRepository.reset()
@@ -49,11 +56,11 @@ class MeditationService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun begin(config: SessionConfig, volume: Float) {
+    private fun begin(config: SessionConfig, volume: Float, alertMode: AlertMode, autoDnd: Boolean) {
         handler.removeCallbacksAndMessages(null)
         // A previous session's final bell may still be fading; its teardown must not kill this one.
-        bell.onAllFinished = null
-        bell.release()
+        chime.bell.onAllFinished = null
+        chime.release()
 
         val start = SystemClock.elapsedRealtime()
         startedAtWallMs = System.currentTimeMillis()
@@ -64,10 +71,11 @@ class MeditationService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
         acquireWakeLock(config.durationMs + WAKE_LOCK_SLACK_MS)
+        if (autoDnd) dnd.engage()
         SessionRepository.started(start, config)
 
         for (cue in BellSchedule.cues(config)) {
-            handler.postDelayed({ bell.play(volume) }, cue.atMs)
+            handler.postDelayed({ chime.ring(volume, alertMode) }, cue.atMs)
         }
         // Posted after the END bell (same delay, FIFO) so that bell is already ringing here.
         handler.postDelayed({ complete(config) }, config.durationMs)
@@ -75,10 +83,11 @@ class MeditationService : Service() {
 
     private fun complete(config: SessionConfig) {
         SessionLog.get(this).add(SessionRecord(startedAtWallMs, config.durationSec, config.durationSec))
-        SessionRepository.finished(config)
+        SessionRepository.finished(config, startedAtWallMs)
+        dnd.restore()
         stopForeground(STOP_FOREGROUND_REMOVE)
         // Let a ringing bell fade out naturally before tearing down.
-        if (bell.isPlaying) bell.onAllFinished = { shutdown() } else shutdown()
+        if (chime.isPlaying) chime.bell.onAllFinished = { shutdown() } else shutdown()
     }
 
     /** Ending early still counts: log the time actually sat, unless it was just a mis-tap. */
@@ -93,7 +102,8 @@ class MeditationService : Service() {
 
     private fun shutdown() {
         handler.removeCallbacksAndMessages(null)
-        bell.release()
+        chime.release()
+        dnd.restore()
         releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -101,7 +111,8 @@ class MeditationService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        bell.release()
+        chime.release()
+        dnd.restore()
         releaseWakeLock()
         if (SessionRepository.state.value is SessionState.Running) SessionRepository.reset()
         super.onDestroy()
@@ -170,11 +181,14 @@ class MeditationService : Service() {
         private const val EXTRA_CLOSING = "closing"
         private const val EXTRA_END = "end"
         private const val EXTRA_VOLUME = "volume"
+        private const val EXTRA_INTERVAL = "interval"
+        private const val EXTRA_ALERT = "alert"
+        private const val EXTRA_DND = "dnd"
         private const val CHANNEL_ID = "session"
         private const val NOTIFICATION_ID = 1
         private const val WAKE_LOCK_SLACK_MS = 60_000L
 
-        fun start(context: Context, config: SessionConfig, volume: Float) {
+        fun start(context: Context, config: SessionConfig, volume: Float, alertMode: AlertMode, autoDnd: Boolean) {
             val intent = Intent(context, MeditationService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_DURATION, config.durationSec)
@@ -182,6 +196,9 @@ class MeditationService : Service() {
                 .putExtra(EXTRA_CLOSING, config.closingBellSec)
                 .putExtra(EXTRA_END, config.bellAtEnd)
                 .putExtra(EXTRA_VOLUME, volume)
+                .putExtra(EXTRA_INTERVAL, config.intervalMin)
+                .putExtra(EXTRA_ALERT, alertMode.ordinal)
+                .putExtra(EXTRA_DND, autoDnd)
             ContextCompat.startForegroundService(context, intent)
         }
 
@@ -194,6 +211,7 @@ class MeditationService : Service() {
             openingBellSec = getIntExtra(EXTRA_OPENING, 5),
             closingBellSec = getIntExtra(EXTRA_CLOSING, 10),
             bellAtEnd = getBooleanExtra(EXTRA_END, false),
+            intervalMin = getIntExtra(EXTRA_INTERVAL, 0),
         )
     }
 }

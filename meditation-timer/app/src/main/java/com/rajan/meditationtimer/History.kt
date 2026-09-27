@@ -1,8 +1,13 @@
 package com.rajan.meditationtimer
 
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 
 /** Sessions shorter than this (e.g. a mis-tap followed by End) are not logged. */
 const val MIN_LOGGED_SEC = 60
@@ -13,22 +18,31 @@ data class SessionRecord(
     val plannedSec: Int,
     /** Time actually sat; less than [plannedSec] when the session was ended early. */
     val actualSec: Int,
+    /** Post-sit reflection: 1 (restless) .. 5 (deeply settled); 0 = not rated. */
+    val rating: Int = 0,
+    val note: String = "",
 ) {
     val completed: Boolean get() = actualSec >= plannedSec
 
     fun day(zone: ZoneId): LocalDate = Instant.ofEpochMilli(startedAtMs).atZone(zone).toLocalDate()
 
-    fun encode(): String = "$startedAtMs,$plannedSec,$actualSec"
+    // The note is URL-encoded so commas and newlines in it can't break the line format.
+    fun encode(): String = "$startedAtMs,$plannedSec,$actualSec,$rating,${URLEncoder.encode(note, "UTF-8")}"
 
     companion object {
-        /** Returns null for a corrupt line so one bad write never loses the whole history. */
+        /**
+         * Returns null for a corrupt line so one bad write never loses the whole history.
+         * Accepts the original 3-field lines (before reflections existed) as well as 5-field ones.
+         */
         fun decode(line: String): SessionRecord? {
             val parts = line.trim().split(',')
-            if (parts.size != 3) return null
+            if (parts.size != 3 && parts.size != 5) return null
             return SessionRecord(
                 startedAtMs = parts[0].toLongOrNull() ?: return null,
                 plannedSec = parts[1].toIntOrNull() ?: return null,
                 actualSec = parts[2].toIntOrNull() ?: return null,
+                rating = if (parts.size == 5) parts[3].toIntOrNull() ?: return null else 0,
+                note = if (parts.size == 5) runCatching { URLDecoder.decode(parts[4], "UTF-8") }.getOrNull() ?: return null else "",
             )
         }
     }
@@ -79,6 +93,41 @@ object History {
         }
         return streak
     }
+
+    /**
+     * Minutes sat per day for the last [weeks] weeks, as columns of Monday..Sunday.
+     * The last column is the current week; days after [today] are null.
+     */
+    fun heatmap(records: List<SessionRecord>, zone: ZoneId, today: LocalDate, weeks: Int = 12): List<List<Int?>> {
+        val minutesByDay = records.groupBy { it.day(zone) }.mapValues { (_, l) -> l.sumOf { it.actualSec } / 60 }
+        val firstMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(weeks - 1L)
+        return (0 until weeks).map { w ->
+            (0 until 7).map { d ->
+                val date = firstMonday.plusDays(w * 7L + d)
+                if (date.isAfter(today)) null else minutesByDay[date] ?: 0
+            }
+        }
+    }
+
+    /** Spreadsheet-friendly export, oldest first. */
+    fun toCsv(records: List<SessionRecord>, zone: ZoneId): String {
+        val time = DateTimeFormatter.ofPattern("HH:mm")
+        val rows = records.sortedBy { it.startedAtMs }.map { r ->
+            val start = Instant.ofEpochMilli(r.startedAtMs).atZone(zone)
+            listOf(
+                start.toLocalDate().toString(),
+                start.format(time),
+                "%.1f".format(java.util.Locale.ROOT, r.plannedSec / 60.0),
+                "%.1f".format(java.util.Locale.ROOT, r.actualSec / 60.0),
+                if (r.rating > 0) r.rating.toString() else "",
+                csvField(r.note),
+            ).joinToString(",")
+        }
+        return (listOf("date,start,planned_min,actual_min,rating,note") + rows).joinToString("\n", postfix = "\n")
+    }
+
+    private fun csvField(value: String): String =
+        if (value.any { it == ',' || it == '"' || it == '\n' || it == '\r' }) "\"" + value.replace("\"", "\"\"") + "\"" else value
 
     fun longestStreak(activeDays: Set<LocalDate>): Int {
         var longest = 0

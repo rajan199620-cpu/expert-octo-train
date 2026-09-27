@@ -1,17 +1,32 @@
 # Meditation Timer (Android)
 
-A quiet meditation timer that rings a synthesised singing bowl:
+A quiet meditation app built around a synthesised singing bowl. Everything beyond the core
+timer is opt-in, so the defaults behave exactly like the plain timer.
 
+**Sit** (the core)
 - **Opening bell** a few seconds after you tap Begin (default 5 s), so you know it is running
   without opening your eyes.
 - **Closing bell** a few seconds before the end (default 10 s), so you can come back gently.
-- Optional **final bell** at the exact end.
-- **History**: every sit is logged with its date, time of day and minutes actually sat
-  (sessions ended early count for the time sat, if at least 1 minute). Shows current and
-  longest streak, last-7-days and all-time totals, and a dot per day for the past week.
+- Optional **final bell** at the exact end, and optional **interval bells** every 5/10/15 min.
+- Cues as **bell, bell + vibration, or vibration only** (for sitting next to someone).
+- Optional **auto Do Not Disturb** for the sit (Priority mode, restored afterwards).
+- Optional one-tap **reflection** afterwards (Restless … Deep, plus a line of notes).
 
-A streak counts consecutive days with at least one logged session. It stays alive until a
-whole day is missed, so sitting yesterday but not yet today still shows your streak.
+**Breathe**: paced breathing (Coherent 5.5/5.5, Box 4-4-4-4, 4-7-8) with an expanding circle
+and a small vibration at each phase change, so you can follow it eyes-closed.
+
+**Mala**: japa counter (27/54/108) with a ring of beads. Tap the circle or press **either volume
+key** to count; a bell and a strong buzz mark each finished round. The count survives closing the app.
+
+**History**: every sit logged with its date, time, minutes actually sat (early-ended sessions
+count if at least 1 minute), rating and note. Current/longest streak, last-7-days and all-time
+totals, a 12-week heatmap, and **Export CSV** through the share sheet.
+
+**Shortcuts**: long-press the app icon for *Start my usual sit* (starts your last settings
+with no screens in between), *Breathe* or *Mala*.
+
+A streak counts consecutive days with at least one logged sit. It stays alive until a whole
+day is missed, so sitting yesterday but not yet today still shows your streak.
 
 ## Get the APK
 
@@ -32,7 +47,12 @@ Build locally with the Android SDK installed: `./gradlew assembleRelease`.
   and *Test* button to set a soft level (the volume keys adjust alarm volume while the app is open).
 - **The sound:** `tools/make_bell.py` synthesises `app/src/main/res/raw/bell.wav`
   (D4 bowl, inharmonic partials, ~8 s decay). There's nothing to license. Edit the script and re-run it to change the tone.
-- **History storage:** one CSV line per session in app-private storage (`sessions.csv`),
-  included in Android's automatic backup.
-- **Logic tests:** `BellSchedule` (when bells ring) and `History` (streaks, totals) are pure
-  Kotlin with JUnit tests: `./gradlew testReleaseUnitTest`.
+- **Do Not Disturb:** needs a one-time grant ("Do Not Disturb access" in system settings; the
+  app opens it for you). It never overrides a DND you turned on yourself, and if the app is killed
+  mid-sit, DND is restored the next time you open it.
+- **History storage:** one line per session in app-private storage (`sessions.csv`), included
+  in Android's automatic backup. Breathing and mala practice are not logged there: history is
+  sitting time.
+- **Logic tests:** `BellSchedule` (when bells ring), `History` (streaks, totals, heatmap, CSV)
+  and `Breathing` (breath phases, mala rounds) are pure Kotlin with JUnit tests:
+  `./gradlew testReleaseUnitTest`.

@@ -9,11 +9,13 @@ data class SessionConfig(
     val closingBellSec: Int,
     /** Also ring once more at the exact end. */
     val bellAtEnd: Boolean,
+    /** Soft reminder bell every N minutes to come back to the breath; 0 = off. */
+    val intervalMin: Int = 0,
 ) {
     val durationMs: Long get() = durationSec * 1000L
 }
 
-enum class Cue { OPENING, CLOSING, END }
+enum class Cue { OPENING, INTERVAL, CLOSING, END }
 
 data class TimedCue(val atMs: Long, val cue: Cue)
 
@@ -35,7 +37,18 @@ object BellSchedule {
         }
 
         if (config.bellAtEnd) cues += TimedCue(total, Cue.END)
-        return cues
+
+        // Interval bells fill the gaps, but never crowd the bells the user explicitly asked for.
+        if (config.intervalMin > 0) {
+            val step = config.intervalMin * 60_000L
+            val fixed = cues.map { it.atMs }
+            var t = step
+            while (t < total) {
+                if (fixed.none { kotlin.math.abs(it - t) < MIN_GAP_MS }) cues += TimedCue(t, Cue.INTERVAL)
+                t += step
+            }
+        }
+        return cues.sortedBy { it.atMs }
     }
 
     /** The next bell still to ring, or null once they have all rung. */

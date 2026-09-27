@@ -4,4 +4,8 @@
     <string name="notification_title">Meditating</string>
     <string name="notification_text">%1$d minute session</string>
     <string name="end_session">End session</string>
+    <string name="shortcut_sit_short">Start my sit</string>
+    <string name="shortcut_sit_long">Start my usual sit</string>
+    <string name="shortcut_breathe_short">Breathe</string>
+    <string name="shortcut_mala_short">Mala</string>
 </resources>

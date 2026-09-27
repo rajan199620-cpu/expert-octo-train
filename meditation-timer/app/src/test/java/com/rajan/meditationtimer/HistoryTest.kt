@@ -97,4 +97,41 @@ class HistoryTest {
         assertEquals("1h", formatDuration(3600))
         assertEquals("1h 20m", formatDuration(80 * 60))
     }
+
+    @Test
+    fun reflectionsRoundTripIncludingAwkwardNotes() {
+        val r = SessionRecord(1_790_000_000_000, 1200, 1200, rating = 4, note = "calm, then \"busy\"\nmind — 100% ok")
+        assertEquals(r, SessionRecord.decode(r.encode()))
+        assertEquals(1, r.encode().lines().size)
+        // Lines written before reflections existed still load.
+        assertEquals(SessionRecord(5, 60, 60), SessionRecord.decode("5,60,60"))
+        assertNull(SessionRecord.decode("5,60,60,x,"))
+    }
+
+    @Test
+    fun heatmapIsWeeksOfMondayToSunday() {
+        // 2026-09-27 is a Sunday, so the last column is a full week ending today.
+        val records = listOf(at(today, minutes = 20), at(today, hour = 20, minutes = 5), at(today.minusDays(6), minutes = 10))
+        val grid = History.heatmap(records, zone, today, weeks = 2)
+        assertEquals(2, grid.size)
+        assertEquals(listOf(10, 0, 0, 0, 0, 0, 25), grid[1])
+        assertEquals(List(7) { 0 }, grid[0])
+
+        val midweek = History.heatmap(records, zone, LocalDate.of(2026, 9, 23), weeks = 1) // Wednesday
+        assertEquals(listOf(10, 0, 0, null, null, null, null), midweek[0])
+    }
+
+    @Test
+    fun csvExportQuotesNotesAndSortsOldestFirst() {
+        val csv = History.toCsv(
+            listOf(at(today, minutes = 20).copy(rating = 5, note = "deep, still"), at(today.minusDays(1), minutes = 15, actualMin = 7)),
+            zone,
+        )
+        assertEquals(
+            "date,start,planned_min,actual_min,rating,note\n" +
+                "2026-09-26,07:00,15.0,7.0,,\n" +
+                "2026-09-27,07:00,20.0,20.0,5,\"deep, still\"\n",
+            csv,
+        )
+    }
 }

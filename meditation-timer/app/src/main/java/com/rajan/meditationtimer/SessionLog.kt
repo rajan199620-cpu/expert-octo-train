@@ -20,6 +20,22 @@ class SessionLog private constructor(private val file: File) {
         _records.value = _records.value + record
     }
 
+    /** Attaches the post-sit reflection to an already logged session. */
+    @Synchronized
+    fun annotate(startedAtMs: Long, rating: Int, note: String) {
+        val updated = _records.value.map {
+            if (it.startedAtMs == startedAtMs) it.copy(rating = rating, note = note.trim()) else it
+        }
+        // Write-then-rename so a crash mid-write can't truncate the history.
+        val tmp = File(file.path + ".tmp")
+        tmp.writeText(updated.joinToString("") { it.encode() + "\n" })
+        if (!tmp.renameTo(file)) {
+            file.writeText(tmp.readText())
+            tmp.delete()
+        }
+        _records.value = updated
+    }
+
     private fun load(): List<SessionRecord> =
         if (file.exists()) file.readLines().mapNotNull(SessionRecord::decode) else emptyList()
 
