@@ -28,7 +28,9 @@ object AutoBackup {
 
     fun write(context: Context, records: List<SessionRecord>) {
         if (!supported || records.isEmpty()) return
-        val csv = History.toCsv(records, ZoneId.systemDefault())
+        // Downloads is shared storage that other apps with file access can read, so the automatic
+        // copy leaves out journal notes. Back up (to a place you choose) keeps everything.
+        val csv = History.toCsv(records.map { it.copy(note = "") }, ZoneId.systemDefault())
         val prefs = context.getSharedPreferences("autobackup", Context.MODE_PRIVATE)
         // Keep rewriting the same file; if the user deleted it, quietly create a fresh one.
         val saved = prefs.getString(KEY_URI, null)?.let(Uri::parse)

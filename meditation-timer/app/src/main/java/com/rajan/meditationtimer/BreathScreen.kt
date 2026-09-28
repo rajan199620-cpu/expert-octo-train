@@ -1,6 +1,16 @@
 package com.rajan.meditationtimer
 
 import android.os.SystemClock
+import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.draw.clip
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +56,26 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
     var startedAt by rememberSaveable { mutableLongStateOf(0L) }
     var justFinished by rememberSaveable { mutableStateOf(false) }
     val pattern = BreathPattern.ALL.firstOrNull { it.name == patternName } ?: BreathPattern.ALL.first()
+    var checkStartedAt by rememberSaveable { mutableLongStateOf(0L) }
+    var checks by remember { mutableStateOf(prefs.breathChecks) }
+    var lastResult by remember { mutableStateOf<BreathCountResult?>(null) }
+
+    if (checkStartedAt != 0L) {
+        BreathCheckSession(
+            startedAt = checkStartedAt,
+            onStop = { checkStartedAt = 0L },
+            onFinished = { result ->
+                onDone()
+                checkStartedAt = 0L
+                lastResult = result
+                if (result.total > 0) {
+                    prefs.addBreathCheck(BreathCheck(System.currentTimeMillis(), result))
+                    checks = prefs.breathChecks
+                }
+            },
+        )
+        return
+    }
 
     if (startedAt != 0L) {
         BreathingSession(
@@ -91,6 +121,123 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
             justFinished = false
             startedAt = SystemClock.elapsedRealtime()
         })
+        AttentionCheckCard(checks, lastResult) {
+            lastResult = null
+            checkStartedAt = SystemClock.elapsedRealtime()
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+private const val CHECK_MINUTES = 5
+private val checkDate = DateTimeFormatter.ofPattern("d MMM")
+
+/** Skill, not mood: a repeatable breath-counting check whose accuracy you can track over weeks. */
+@Composable
+private fun AttentionCheckCard(checks: List<BreathCheck>, lastResult: BreathCountResult?, onStart: () -> Unit) {
+    GlassCard(Modifier.fillMaxWidth()) {
+        CardTitle("Attention check")
+        Text(
+            "Count your breaths from 1 to 9, again and again, for $CHECK_MINUTES minutes. Press volume-down on " +
+                "breaths 1–8 and volume-up on breath 9. Lost count? Just start again at 1. Your score is how " +
+                "many rounds of nine you counted exactly — a measure of how steady your attention is.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            "Adapted from a breath-counting task validated as a measure of mindfulness (Levinson et al., " +
+                "Frontiers in Psychology, 2014). This version is shorter, so compare your results with each " +
+                "other over weeks, not with the study.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        lastResult?.let {
+            val pct = it.accuracyPercent
+            Pill(if (pct == null) "No full round of nine counted — try again" else "$pct% · ${it.correct} of ${it.total} rounds exact")
+        }
+        if (checks.isNotEmpty()) {
+            val zone = ZoneId.systemDefault()
+            Text(
+                "Your checks: " + checks.takeLast(6).joinToString("  ·  ") {
+                    "${Instant.ofEpochMilli(it.atMs).atZone(zone).format(checkDate)} ${it.result.accuracyPercent}%"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (checks.size >= 2) {
+                Text(
+                    "First ${checks.first().result.accuracyPercent}% → latest ${checks.last().result.accuracyPercent}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        TextButton(onClick = onStart) { Text("Start a $CHECK_MINUTES-minute check") }
+    }
+}
+
+@Composable
+private fun BreathCheckSession(startedAt: Long, onStop: () -> Unit, onFinished: (BreathCountResult) -> Unit) {
+    val view = LocalView.current
+    val presses = remember { mutableStateListOf<Boolean>() }
+    fun press(nine: Boolean) {
+        presses += nine
+        view.performHapticFeedback(if (nine) HapticFeedbackConstants.LONG_PRESS else HapticFeedbackConstants.VIRTUAL_KEY)
+    }
+    // Volume keys only reach the app while the screen is on.
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        VolumeKeys.handler = { up -> press(nine = up) }
+        onDispose {
+            view.keepScreenOn = false
+            VolumeKeys.handler = null
+        }
+    }
+    var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(startedAt) {
+        while (true) {
+            now = SystemClock.elapsedRealtime()
+            kotlinx.coroutines.delay(250)
+        }
+    }
+    val totalMs = CHECK_MINUTES * 60_000L
+    val remaining = (totalMs - (now - startedAt)).coerceAtLeast(0)
+    val done = remaining == 0L
+    LaunchedEffect(done) { if (done) onFinished(BreathCount.score(presses.toList())) }
+
+    Column(
+        Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically),
+    ) {
+        Text("Count breaths 1 to 9", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "Volume-down on 1–8 · volume-up on 9 · eyes closed.\nNo count is shown — that’s the point.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Text(formatClock(remaining), style = MaterialTheme.typography.displayMedium)
+        // On-screen keys as a fallback for phones where the volume keys are awkward.
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CheckKey("1 – 8", Modifier.weight(1f)) { press(nine = false) }
+            CheckKey("9", Modifier.weight(1f)) { press(nine = true) }
+        }
+        TextButton(onClick = onStop) { Text("Stop without saving", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+@Composable
+private fun CheckKey(label: String, modifier: Modifier, onPress: () -> Unit) {
+    val shape = RoundedCornerShape(24.dp)
+    Box(
+        modifier
+            .height(120.dp)
+            .clip(shape)
+            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .clickable(onClick = onPress),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
     }
 }
 

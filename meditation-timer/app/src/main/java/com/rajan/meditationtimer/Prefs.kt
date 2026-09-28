@@ -40,6 +40,14 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_BREATH_MINUTES, 3)
         set(value) = sp.edit { putInt(KEY_BREATH_MINUTES, value) }
 
+    /** Breath-count attention checks, oldest first. */
+    val breathChecks: List<BreathCheck>
+        get() = sp.getString(KEY_BREATH_CHECKS, "")!!.lines().mapNotNull(BreathCheck::decode)
+
+    fun addBreathCheck(check: BreathCheck) {
+        sp.edit { putString(KEY_BREATH_CHECKS, (breathChecks + check).joinToString("\n") { it.encode() }) }
+    }
+
     var mala: MalaCount
         get() = MalaCount(sp.getInt(KEY_MALA_BEADS, 0), sp.getInt(KEY_MALA_ROUNDS, 0), sp.getInt(KEY_MALA_TARGET, 108))
         set(value) = sp.edit {
@@ -65,5 +73,6 @@ class Prefs(context: Context) {
         const val KEY_MALA_BEADS = "mala_beads"
         const val KEY_MALA_ROUNDS = "mala_rounds"
         const val KEY_MALA_TARGET = "mala_target"
+        const val KEY_BREATH_CHECKS = "breath_checks"
     }
 }

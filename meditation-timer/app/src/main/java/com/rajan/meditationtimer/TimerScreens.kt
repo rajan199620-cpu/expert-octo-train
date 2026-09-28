@@ -144,15 +144,14 @@ private fun SetupScreen(
     var autoDnd by rememberSaveable { mutableStateOf(prefs.autoDnd) }
     val dnd = remember { Dnd(context) }
     var dndAccess by remember { mutableStateOf(dnd.hasAccess) }
-    // Re-read on resume so the principle turns over at midnight even if the app stays open.
-    var today by remember { mutableStateOf(LocalDate.now()) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        dndAccess = dnd.hasAccess
-        today = LocalDate.now()
-    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { dndAccess = dnd.hasAccess }
 
+    val lesson = rememberLessonIndex()
+
+    // Begin stays pinned at the bottom; everything else scrolls above it.
+    Column(Modifier.widthIn(max = 480.dp).fillMaxSize()) {
     Column(
-        Modifier.widthIn(max = 480.dp).fillMaxSize().verticalScroll(rememberScrollState()),
+        Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -182,7 +181,7 @@ private fun SetupScreen(
             }
         }
 
-        PrincipleCard(today, onOpenAll = onPrinciples)
+        PrincipleCard(lesson, onOpenAll = onPrinciples)
 
         DurationDial(minutes, onMinus = { minutes = (minutes - 1).coerceAtLeast(1) }, onPlus = { minutes = (minutes + 1).coerceAtMost(180) })
         ChipRow(listOf(5, 10, 15, 20, 30, 45, 60), minutes, { "$it" }, center = true) { minutes = it }
@@ -218,12 +217,17 @@ private fun SetupScreen(
             }
         }
 
-        GradientButton("Begin", onClick = {
+        Spacer(Modifier.height(8.dp))
+    }
+    GradientButton(
+        "Begin  ·  $minutes min",
+        onClick = {
             val config = SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval)
             prefs.saveTimer(config, volume, alertMode, autoDnd)
             onBegin(config, volume, alertMode, autoDnd)
-        })
-        Spacer(Modifier.height(8.dp))
+        },
+        modifier = Modifier.padding(vertical = 8.dp),
+    )
     }
 }
 
@@ -343,7 +347,7 @@ private fun RunningScreen(session: SessionState.Running, onEnd: () -> Unit) {
             }
         }
         Text(
-            "Today’s focus: ${remember { Principles.forDate(LocalDate.now()).title }}",
+            "Today’s focus: ${Principles.forLesson(rememberLessonIndex()).title}",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,

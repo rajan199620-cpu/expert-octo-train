@@ -38,6 +38,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+/** Lets a screen take over the volume keys while it is showing (e.g. the breath-count check). */
+object VolumeKeys {
+    /** Called with true for volume-up, false for volume-down. */
+    var handler: ((up: Boolean) -> Unit)? = null
+}
+
 enum class Tab(val label: String) { SIT("Sit"), BREATHE("Breathe"), MALA("Mala"), HISTORY("History") }
 
 class MainActivity : ComponentActivity() {
@@ -109,6 +115,12 @@ class MainActivity : ComponentActivity() {
     /** On the Mala tab either volume key counts a bead, so you can count eyes-closed, phone in hand. */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         val volumeKey = keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP
+        VolumeKeys.handler?.let { handler ->
+            if (volumeKey) {
+                if (event.repeatCount == 0) handler(keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+                return true
+            }
+        }
         if (tab == Tab.MALA && volumeKey && SessionRepository.state.value !is SessionState.Running) {
             if (event.repeatCount == 0) malaBead()
             return true

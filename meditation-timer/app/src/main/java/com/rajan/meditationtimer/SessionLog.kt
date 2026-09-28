@@ -32,7 +32,8 @@ class SessionLog private constructor(private val context: Context, private val f
 
     /**
      * Restores sessions from a backup. Sessions already here (same start minute) are kept as
-     * they are, so restoring the same file twice changes nothing. Returns how many were added.
+     * they are, so restoring the same file twice changes nothing, and restoring the note-less
+     * automatic copy never erases notes already on the phone. Returns how many were added.
      */
     @Synchronized
     fun merge(imported: List<SessionRecord>): Int {

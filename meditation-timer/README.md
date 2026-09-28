@@ -22,14 +22,21 @@ key** to count; a bell and a strong buzz mark each finished round. The count sur
 count if at least 1 minute), rating and note. Current/longest streak, last-7-days and all-time
 totals, a 12-week heatmap, and **Back up / Restore** to a CSV file (for a new phone or a reinstall).
 
-**Daily principle**: a 64-day course in meditation technique, one principle per day in
-teaching order (why practise → habit → attention → posture → breath → thoughts → body →
-emotions → open awareness → kindness → daily life), shown at the top of the Sit screen with
-something to try in today's sit. Every principle cites the published study or review it rests
-on (authors · journal · year); findings were checked against the publisher/abstract pages, and
-instructions without research behind them were left out. Earlier principles are in the
-archive (tap *Earlier principles*); future ones stay hidden. The day comes from the calendar,
-so reinstalling never restarts the course; after day 64 it begins again.
+**Daily principle**: a 64-lesson course in meditation technique in teaching order (why
+practise → habit → attention → posture → breath → thoughts → body → emotions → open awareness →
+kindness → daily life). The Sit screen shows today's lesson compactly (title + what to try);
+tap *Why & research* for the explanation, the finding, the source (authors · journal · year)
+and an **evidence tag** (meta-analysis, randomised trial, lab experiment, observational, small
+study, theory). You move on **one lesson per day you sit**, so a missed day never skips a lesson;
+progress comes from the session history, so Restore after a reinstall resumes it. Earlier
+lessons are in the archive; later ones stay hidden. Findings were checked against
+publisher/abstract pages; unsupported instructions were left out, and one claim that failed to
+replicate (8-week grey-matter change) was replaced with the larger null result.
+
+**Attention check** (Breathe tab): count breaths 1–9 for five minutes, volume-down on 1–8 and
+volume-up on 9 (or the on-screen keys). The score is the share of rounds counted exactly — a
+measure of skill rather than mood, adapted from a breath-counting task validated as a measure of
+mindfulness (Levinson et al., 2014). Results are kept to compare over weeks.
 
 **Mood chart** (History): one dot per rated sit over the last 12 weeks, Restless → Deep, plus
 a line for the average of your last five ratings; tap to inspect a sit.
@@ -58,10 +65,11 @@ key kept in two **GitHub Actions secrets** (repo Settings → Secrets and variab
 Without them the build still works but uses a throwaway key (the run shows a warning).
 Every build also gets a higher version number, so it installs as an update.
 
-Safety net that needs no setup: after every change the app mirrors the history to
+Safety net that needs no setup: after every change the app mirrors the history — without
+journal notes, since Downloads is shared storage — to
 `Downloads/Meditation Timer/meditation-history.csv` (Android 10+). Downloads survive
 uninstalling, so after any reinstall: History → **Restore** → pick that file.
-**Back up** saves a copy anywhere else you like (e.g. Drive).
+**Back up** saves a full copy, notes included, anywhere you like (e.g. Drive).
 
 Build locally with the Android SDK installed: `./gradlew assembleRelease`.
 

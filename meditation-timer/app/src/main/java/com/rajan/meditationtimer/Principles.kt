@@ -1,9 +1,18 @@
 package com.rajan.meditationtimer
 
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
-/** One lesson of the daily course: a principle, something to try today, and the research behind it. */
+/** How strong the evidence behind a principle is, strongest first. */
+enum class Evidence(val label: String) {
+    REVIEW("Meta-analysis / systematic review"),
+    TRIAL("Randomised trial"),
+    EXPERIMENT("Lab experiment"),
+    OBSERVATIONAL("Observational study"),
+    SMALL("Small study — treat as preliminary"),
+    THEORY("Theory / narrative review"),
+}
+
+/** One lesson of the course: a principle, something to try today, and the research behind it. */
 data class Principle(
     val theme: String,
     val title: String,
@@ -13,39 +22,49 @@ data class Principle(
     val finding: String,
     /** Authors · journal · year, so it can be looked up. */
     val source: String,
-)
+) {
+    val evidence: Evidence get() = Principles.evidenceFor(source)
+}
 
 /**
- * A research-based course in meditation technique, one principle per calendar day, in teaching
- * order: why practise → building the habit → training attention → posture and alertness →
- * breath → thoughts → body → emotions → open awareness → kindness → daily life. At the end the
- * course starts again.
+ * A research-based course in meditation technique, in teaching order: why practise → building
+ * the habit → training attention → posture and alertness → breath → thoughts → body → emotions →
+ * open awareness → kindness → daily life. At the end the course starts again.
  *
  * Every principle rests on a published study or review whose findings were checked against the
- * publisher or abstract page (Sept 2026). Nothing here is a quotation, and instructions without
- * research behind them were left out rather than padded in.
+ * publisher or abstract page (Sept 2026), and is tagged with how strong that evidence is.
+ * Instructions without research behind them were left out rather than padded in.
  *
- * The day's principle comes from the calendar, anchored to [START] (the day the app was set up),
- * not from a counter in storage, so reinstalling or updating the app never restarts the course.
+ * The course advances one lesson per day you actually sit, so skipped days never skip lessons.
+ * Progress is derived from the session history (which Restore brings back), not stored
+ * separately, so a reinstall followed by Restore picks up exactly where you were.
  */
 object Principles {
-    val START: LocalDate = LocalDate.of(2026, 9, 28)
+    /** Lessons completed = distinct days with a logged sit before today. Stable all of today. */
+    fun lessonIndex(sitDays: Set<LocalDate>, today: LocalDate): Int = sitDays.count { it.isBefore(today) }
 
-    /** Days since [START]; 0 on the first day. */
-    fun dayIndex(date: LocalDate): Long = ChronoUnit.DAYS.between(START, date)
+    fun forLesson(index: Int): Principle = ALL[Math.floorMod(index, ALL.size)]
 
-    fun forDate(date: LocalDate): Principle = ALL[Math.floorMod(dayIndex(date), ALL.size.toLong()).toInt()]
-
-    /** "Day 12" of the course, counting on across cycles. */
-    fun dayNumber(date: LocalDate): Long = dayIndex(date).coerceAtLeast(0) + 1
+    /** "Lesson 12", counting on across repeats of the course. */
+    fun lessonNumber(index: Int): Int = index + 1
 
     /**
-     * Principles already reached, newest first: today back to [START]. Capped at one full cycle,
-     * so each principle appears once, and nothing after today is revealed.
+     * Lessons reached so far, newest first: the current one back to lesson 1, capped at one full
+     * course so each principle appears once. Lessons ahead stay hidden.
      */
-    fun archive(today: LocalDate): List<Pair<LocalDate, Principle>> {
-        val days = dayIndex(today).coerceIn(0, ALL.size - 1L)
-        return (0..days).map { back -> today.minusDays(back).let { it to forDate(it) } }
+    fun archive(currentIndex: Int): List<Pair<Int, Principle>> =
+        (currentIndex downTo maxOf(0, currentIndex - ALL.size + 1)).map { it to forLesson(it) }
+
+    /** Evidence strength by first author; every cited source is classified (enforced by a test). */
+    fun evidenceFor(source: String): Evidence = when (source.substringBefore(" ")) {
+        "Goyal", "Farias", "Parsons", "Gollwitzer", "Zaccaro", "Kirby", "Zeng", "Robinson", "Rusch" -> Evidence.REVIEW
+        "Kral", "Basso", "Mrazek", "Nair", "Balban", "Jain", "Bowen", "Fredrickson", "Neff", "Teut" -> Evidence.TRIAL
+        "Wegner", "Breines", "Hutcherson", "Colzato", "Emmons", "Bratman" -> Evidence.EXPERIMENT
+        "Killingsworth", "Lally", "Jose", "Levinson" -> Evidence.OBSERVATIONAL
+        "Hasenkamp", "Brewer", "Zeidan", "Lieberman" -> Evidence.SMALL
+        "Lindsay" -> if ("Clinical Psychology Review" in source) Evidence.THEORY else Evidence.TRIAL
+        "Lutz", "Britton", "Bernstein", "Farb", "Lehrer" -> Evidence.THEORY
+        else -> error("Unclassified source: " + source)
     }
 
     private class Section(val theme: String) {

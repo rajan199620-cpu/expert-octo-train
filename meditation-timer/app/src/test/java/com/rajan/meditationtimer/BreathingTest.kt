@@ -47,4 +47,27 @@ class BreathingTest {
         assertFalse(MalaCount(beads = 106).tap().second)
         assertTrue(MalaCount(beads = 107).tap().second)
     }
+
+    private fun cycle(counts: Int) = List(counts) { false } + true
+
+    @Test
+    fun breathCountScoresExactNines() {
+        val presses = cycle(8) + cycle(8) + cycle(7) + cycle(9) + List(3) { false } // last cycle unfinished
+        val r = BreathCount.score(presses)
+        assertEquals(BreathCountResult(2, 4), r)
+        assertEquals(50, r.accuracyPercent)
+    }
+
+    @Test
+    fun breathCountWithNoFinishedCycleHasNoAccuracy() {
+        assertEquals(null, BreathCount.score(List(5) { false }).accuracyPercent)
+        assertEquals(BreathCountResult(0, 1), BreathCount.score(listOf(true)))
+    }
+
+    @Test
+    fun breathChecksRoundTrip() {
+        val c = BreathCheck(1_790_000_000_000, BreathCountResult(7, 9))
+        assertEquals(c, BreathCheck.decode(c.encode()))
+        assertEquals(null, BreathCheck.decode("x,1,2"))
+    }
 }

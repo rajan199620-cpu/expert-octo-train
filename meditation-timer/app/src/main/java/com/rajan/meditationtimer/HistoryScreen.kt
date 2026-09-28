@@ -82,7 +82,8 @@ fun HistoryTab() {
                 }
                 if (AutoBackup.supported) {
                     Text(
-                        "A copy is saved automatically to ${AutoBackup.LOCATION}",
+                        "A copy without your journal notes is saved automatically to ${AutoBackup.LOCATION}. " +
+                            "Back up saves everything, notes included, wherever you choose.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -6,56 +6,51 @@ import org.junit.Test
 import java.time.LocalDate
 
 class PrinciplesTest {
-    private val start = Principles.START
+    private val today = LocalDate.of(2026, 10, 10)
+    private fun days(vararg back: Long) = back.map { today.minusDays(it) }.toSet()
 
     @Test
-    fun courseStartsAtLessonOneAndAdvancesDaily() {
-        assertEquals(Principles.ALL[0], Principles.forDate(start))
-        assertEquals(Principles.ALL[1], Principles.forDate(start.plusDays(1)))
-        assertEquals(1L, Principles.dayNumber(start))
-        assertEquals(31L, Principles.dayNumber(start.plusDays(30)))
+    fun lessonsAdvanceOnlyOnDaysYouSat() {
+        assertEquals(0, Principles.lessonIndex(emptySet(), today))
+        // Sat on 3 earlier days (with gaps): lesson 4 today; gaps don't skip lessons.
+        assertEquals(3, Principles.lessonIndex(days(1, 5, 9), today))
+        // Sitting today doesn't change today's lesson; it counts from tomorrow.
+        assertEquals(3, Principles.lessonIndex(days(0, 1, 5, 9), today))
+        assertEquals(4, Principles.lessonIndex(days(0, 1, 5, 9), today.plusDays(1)))
     }
 
     @Test
-    fun noRepeatWithinOneFullCourse() {
+    fun courseRepeatsAfterTheLastLesson() {
         val n = Principles.ALL.size
-        val window = (0 until n).map { Principles.forDate(start.plusDays(it.toLong() + 17)) }
-        assertEquals(n, window.toSet().size)
-        // The course then begins again.
-        assertEquals(Principles.forDate(start), Principles.forDate(start.plusDays(n.toLong())))
+        assertEquals(Principles.ALL[0], Principles.forLesson(0))
+        assertEquals(Principles.ALL[0], Principles.forLesson(n))
+        assertEquals(n, (0 until n).map { Principles.forLesson(it) }.toSet().size)
+        assertEquals(1, Principles.lessonNumber(0))
     }
 
     @Test
-    fun archiveIsNewestFirstAndNeverRevealsTheFuture() {
-        val today = start.plusDays(4)
-        val archive = Principles.archive(today)
-        assertEquals((0L..4L).map { today.minusDays(it) }, archive.map { it.first })
-        assertEquals(Principles.forDate(today), archive.first().second)
-        // Long after the start it holds exactly one full course, each principle once.
-        val later = Principles.archive(start.plusDays(500))
+    fun archiveIsNewestFirstAndNeverRevealsLaterLessons() {
+        assertEquals(listOf(4, 3, 2, 1, 0), Principles.archive(4).map { it.first })
+        assertEquals(listOf(0), Principles.archive(0).map { it.first })
+        val later = Principles.archive(500)
         assertEquals(Principles.ALL.size, later.size)
         assertEquals(Principles.ALL.toSet(), later.map { it.second }.toSet())
     }
 
     @Test
-    fun clockBeforeStartStillWorks() {
-        val before = start.minusDays(3)
-        assertEquals(1, Principles.archive(before).size)
-        assertEquals(1L, Principles.dayNumber(before))
-        Principles.forDate(before) // must not throw
-    }
-
-    @Test
-    fun everyPrincipleIsCompleteUniqueAndSourced() {
+    fun everyPrincipleIsCompleteUniqueSourcedAndGraded() {
         assertTrue("course should last at least two months", Principles.ALL.size >= 60)
         assertEquals(Principles.ALL.size, Principles.ALL.map { it.title }.toSet().size)
         for (p in Principles.ALL) {
             listOf(p.theme, p.title, p.body, p.practice, p.finding, p.source).forEach {
                 assertTrue("blank field in \"${p.title}\"", it.isNotBlank())
             }
-            // Source format: Authors · Journal · Year
             val year = p.source.substringAfterLast("· ").trim().toIntOrNull()
             assertTrue("bad source for \"${p.title}\": ${p.source}", year != null && year in 1980..2026)
+            p.evidence // throws for an unclassified source
         }
+        assertEquals(Evidence.THEORY, Principles.ALL.first { "Creswell" in it.source }.evidence)
+        assertEquals(Evidence.TRIAL, Principles.ALL.first { it.source.startsWith("Lindsay et al.") }.evidence)
+        assertEquals(Evidence.SMALL, Principles.ALL.first { it.source.startsWith("Zeidan") }.evidence)
     }
 }

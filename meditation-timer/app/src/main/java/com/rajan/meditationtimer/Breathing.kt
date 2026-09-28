@@ -64,3 +64,50 @@ data class MalaCount(val beads: Int = 0, val rounds: Int = 0, val target: Int = 
     fun tap(): Pair<MalaCount, Boolean> =
         if (beads + 1 >= target) copy(beads = 0, rounds = rounds + 1) to true else copy(beads = beads + 1) to false
 }
+
+/**
+ * Breath-counting attention check, adapted from the task validated as a behavioural measure of
+ * mindfulness (Levinson et al., 2014): count breaths 1–9, pressing one key on breaths 1–8 and the
+ * other key on breath 9, then start again. A cycle is correct when exactly eight "count" presses
+ * come before the "nine" press. Accuracy = correct cycles / all cycles. Shorter than the research
+ * version, so it is for comparing your own results over time, not with the study's numbers.
+ */
+object BreathCount {
+    /** [presses]: false = breaths 1–8 key, true = breath-9 key. A trailing unfinished cycle is ignored. */
+    fun score(presses: List<Boolean>): BreathCountResult {
+        var run = 0
+        var correct = 0
+        var total = 0
+        for (nine in presses) {
+            if (nine) {
+                total++
+                if (run == 8) correct++
+                run = 0
+            } else {
+                run++
+            }
+        }
+        return BreathCountResult(correct, total)
+    }
+}
+
+data class BreathCountResult(val correct: Int, val total: Int) {
+    /** 0..100, or null if no cycle was completed. */
+    val accuracyPercent: Int? get() = if (total == 0) null else Math.round(100.0 * correct / total).toInt()
+}
+
+/** One completed check, as stored: when it happened and its score. */
+data class BreathCheck(val atMs: Long, val result: BreathCountResult) {
+    fun encode() = "$atMs,${result.correct},${result.total}"
+
+    companion object {
+        fun decode(line: String): BreathCheck? {
+            val p = line.split(',')
+            if (p.size != 3) return null
+            return BreathCheck(
+                p[0].toLongOrNull() ?: return null,
+                BreathCountResult(p[1].toIntOrNull() ?: return null, p[2].toIntOrNull() ?: return null),
+            )
+        }
+    }
+}
