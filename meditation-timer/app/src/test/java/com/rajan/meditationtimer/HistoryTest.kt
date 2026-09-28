@@ -155,4 +155,30 @@ class HistoryTest {
         assertEquals(0, restored[1].rating) // out-of-range rating dropped, session kept
         assertEquals(LocalDate.of(2026, 9, 26), restored[1].day(zone))
     }
+
+    @Test
+    fun moodTrendKeepsRatedSitsInWindowWithRollingAverage() {
+        val records = listOf(
+            at(today.minusDays(100), minutes = 10).copy(rating = 1), // outside 84 days
+            at(today.minusDays(3), minutes = 10).copy(rating = 2),
+            at(today.minusDays(2), minutes = 10), // not rated
+            at(today.minusDays(2), hour = 20, minutes = 10).copy(rating = 4),
+            at(today, minutes = 10).copy(rating = 3),
+        )
+        val trend = History.moodTrend(records, zone, today, window = 2)
+        assertEquals(listOf(2, 4, 3), trend.map { it.rating })
+        assertEquals(listOf(2.0, 3.0, 3.5), trend.map { it.rollingAverage })
+        assertEquals(today, trend.last().date)
+    }
+
+    @Test
+    fun mostCommonRatingPrefersRecentOnTies() {
+        val points = History.moodTrend(
+            listOf(4, 4, 2, 2).mapIndexed { i, r -> at(today.minusDays(4L - i), minutes = 10).copy(rating = r) },
+            zone,
+            today,
+        )
+        assertEquals(2, History.mostCommonRating(points))
+        assertNull(History.mostCommonRating(emptyList()))
+    }
 }

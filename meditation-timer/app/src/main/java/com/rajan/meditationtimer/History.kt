@@ -49,6 +49,8 @@ data class SessionRecord(
     }
 }
 
+data class MoodPoint(val startedAtMs: Long, val date: LocalDate, val rating: Int, val rollingAverage: Double)
+
 data class DayEntry(val date: LocalDate, val totalSec: Int, val sessions: List<SessionRecord>)
 
 data class HistorySummary(
@@ -108,6 +110,34 @@ object History {
                 if (date.isAfter(today)) null else minutesByDay[date] ?: 0
             }
         }
+    }
+
+    /**
+     * Rated sits in the last [days] days, oldest first, each with a rolling average of the last
+     * [window] ratings. Single sits are noisy; the rolling line is what shows a trend.
+     */
+    fun moodTrend(
+        records: List<SessionRecord>,
+        zone: ZoneId,
+        today: LocalDate,
+        days: Long = 84,
+        window: Int = 5,
+    ): List<MoodPoint> {
+        val from = today.minusDays(days - 1)
+        val rated = records
+            .filter { it.rating in 1..5 && !it.day(zone).isBefore(from) && !it.day(zone).isAfter(today) }
+            .sortedBy { it.startedAtMs }
+        return rated.mapIndexed { i, r ->
+            val recent = rated.subList(maxOf(0, i - window + 1), i + 1)
+            MoodPoint(r.startedAtMs, r.day(zone), r.rating, recent.map { it.rating }.average())
+        }
+    }
+
+    /** The feeling rated most often; ties go to the more recent one. Null with no ratings. */
+    fun mostCommonRating(points: List<MoodPoint>): Int? {
+        val counts = points.groupingBy { it.rating }.eachCount()
+        val top = counts.values.maxOrNull() ?: return null
+        return points.last { counts[it.rating] == top }.rating
     }
 
     /** Spreadsheet-friendly export, oldest first. */

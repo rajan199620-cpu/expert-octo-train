@@ -2,10 +2,14 @@ package com.rajan.meditationtimer
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
+import android.provider.OpenableColumns
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.edit
 import java.time.ZoneId
 
@@ -33,6 +37,30 @@ object AutoBackup {
         if (writeTo(context, created, csv)) prefs.edit { putString(KEY_URI, created.toString()) }
     }
 
+    /**
+     * After a restore, keep backing up into the file that was restored from (if it is one of our
+     * backups) instead of creating "meditation-history (1).csv" next to it after every reinstall.
+     */
+    fun adopt(context: Context, uri: Uri) {
+        if (!supported) return
+        val name = runCatching {
+            context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { if (it.moveToFirst()) it.getString(0) else null }
+        }.getOrNull() ?: return
+        if (!name.startsWith("meditation-history")) return
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        }
+        context.getSharedPreferences("autobackup", Context.MODE_PRIVATE).edit { putString(KEY_URI, uri.toString()) }
+    }
+
+    /** The backup folder, so the file picker can open straight into it. */
+    val folderUri: Uri
+        get() = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:$FOLDER")
+
     private fun create(context: Context): Uri? = runCatching {
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, FILE_NAME)
@@ -47,4 +75,12 @@ object AutoBackup {
     }.isSuccess
 
     private const val KEY_URI = "uri"
+}
+
+/** File picker for a backup CSV that opens in Downloads/Meditation Timer. */
+class OpenBackup : ActivityResultContracts.OpenDocument() {
+    override fun createIntent(context: Context, input: Array<String>): Intent =
+        super.createIntent(context, input).apply {
+            if (AutoBackup.supported) putExtra(DocumentsContract.EXTRA_INITIAL_URI, AutoBackup.folderUri)
+        }
 }

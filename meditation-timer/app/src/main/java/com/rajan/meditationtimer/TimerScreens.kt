@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -53,6 +55,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -66,7 +71,13 @@ import java.time.ZoneId
 val RATING_LABELS = listOf("Restless", "Scattered", "Okay", "Calm", "Deep")
 
 @Composable
-fun TimerTab(session: SessionState, prefs: Prefs, onTestBell: (Float, AlertMode) -> Unit, onHistory: () -> Unit) {
+fun TimerTab(
+    session: SessionState,
+    prefs: Prefs,
+    onTestBell: (Float, AlertMode) -> Unit,
+    onHistory: () -> Unit,
+    onPrinciples: () -> Unit,
+) {
     val context = LocalContext.current
     val log = remember { SessionLog.get(context) }
     val records by log.records.collectAsStateWithLifecycle()
@@ -74,10 +85,13 @@ fun TimerTab(session: SessionState, prefs: Prefs, onTestBell: (Float, AlertMode)
         History.currentStreak(records.map { it.day(ZoneId.systemDefault()) }.toSet(), LocalDate.now())
     }
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val restore = rememberRestoreAction()
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when (session) {
-            SessionState.Idle -> SetupScreen(prefs, streak, onTestBell, onHistory) { config, volume, mode, dnd ->
+            SessionState.Idle -> SetupScreen(
+                prefs, streak, hasHistory = records.isNotEmpty(), onTestBell, onHistory, onRestore = restore, onPrinciples,
+            ) { config, volume, mode, dnd ->
                 // Only for the lock-screen countdown; the session runs either way.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -111,8 +125,11 @@ private fun greeting(): String = when (LocalTime.now().hour) {
 private fun SetupScreen(
     prefs: Prefs,
     streak: Int,
+    hasHistory: Boolean,
     onTestBell: (Float, AlertMode) -> Unit,
     onHistory: () -> Unit,
+    onRestore: () -> Unit,
+    onPrinciples: () -> Unit,
     onBegin: (SessionConfig, Float, AlertMode, Boolean) -> Unit,
 ) {
     val context = LocalContext.current
@@ -127,7 +144,12 @@ private fun SetupScreen(
     var autoDnd by rememberSaveable { mutableStateOf(prefs.autoDnd) }
     val dnd = remember { Dnd(context) }
     var dndAccess by remember { mutableStateOf(dnd.hasAccess) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { dndAccess = dnd.hasAccess }
+    // Re-read on resume so the principle turns over at midnight even if the app stays open.
+    var today by remember { mutableStateOf(LocalDate.now()) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        dndAccess = dnd.hasAccess
+        today = LocalDate.now()
+    }
 
     Column(
         Modifier.widthIn(max = 480.dp).fillMaxSize().verticalScroll(rememberScrollState()),
@@ -146,6 +168,21 @@ private fun SetupScreen(
             }
             TextButton(onClick = onHistory) { Text("History") }
         }
+
+        // After an update (which currently needs a reinstall), one tap brings the history back.
+        if (!hasHistory && AutoBackup.supported) {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Text("Updated or reinstalled the app?", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Bring back your sessions from the automatic backup in ${AutoBackup.LOCATION}.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = onRestore) { Text("Restore history") }
+            }
+        }
+
+        PrincipleCard(today, onOpenAll = onPrinciples)
 
         DurationDial(minutes, onMinus = { minutes = (minutes - 1).coerceAtLeast(1) }, onPlus = { minutes = (minutes + 1).coerceAtMost(180) })
         ChipRow(listOf(5, 10, 15, 20, 30, 45, 60), minutes, { "$it" }, center = true) { minutes = it }
@@ -306,6 +343,12 @@ private fun RunningScreen(session: SessionState.Running, onEnd: () -> Unit) {
             }
         }
         Text(
+            "Today’s focus: ${remember { Principles.forDate(LocalDate.now()).title }}",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center,
+        )
+        Text(
             "Close your eyes. The bell will call you back.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -321,6 +364,7 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
     var rating by rememberSaveable { mutableIntStateOf(0) }
     var note by rememberSaveable { mutableStateOf("") }
     val accent = LocalAccent.current
+    val focus = LocalFocusManager.current
 
     Column(
         Modifier.widthIn(max = 480.dp).verticalScroll(rememberScrollState()),
@@ -350,6 +394,9 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
                 onValueChange = { note = it.take(500) },
                 label = { Text("A line for your journal") },
                 modifier = Modifier.fillMaxWidth(),
+                // Capital first letter, and a Done key that closes the keyboard so Save is reachable.
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
             )
         }
         GradientButton(if (rating > 0 || note.isNotBlank()) "Save" else "Done", onClick = { onSave(rating, note) })

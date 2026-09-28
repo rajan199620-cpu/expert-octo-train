@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
@@ -108,7 +109,9 @@ private fun schemeFor(accent: Accent) = darkColorScheme(
 @Composable
 fun MeditationTheme(accent: Accent = Accents.SIT, content: @Composable () -> Unit) {
     val scheme = remember(accent) { schemeFor(accent) }
-    CompositionLocalProvider(LocalAccent provides accent) {
+    // There is no opaque Surface behind the content (the sky gradient shows through), so set the
+    // default text colour here; otherwise any Text without an explicit colour falls back to black.
+    CompositionLocalProvider(LocalAccent provides accent, LocalContentColor provides Ink) {
         MaterialTheme(colorScheme = scheme, typography = AppTypography, content = content)
     }
 }

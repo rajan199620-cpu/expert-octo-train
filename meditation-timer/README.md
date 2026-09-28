@@ -22,6 +22,18 @@ key** to count; a bell and a strong buzz mark each finished round. The count sur
 count if at least 1 minute), rating and note. Current/longest streak, last-7-days and all-time
 totals, a 12-week heatmap, and **Back up / Restore** to a CSV file (for a new phone or a reinstall).
 
+**Daily principle**: a 64-day course in meditation technique, one principle per day in
+teaching order (why practise → habit → attention → posture → breath → thoughts → body →
+emotions → open awareness → kindness → daily life), shown at the top of the Sit screen with
+something to try in today's sit. Every principle cites the published study or review it rests
+on (authors · journal · year); findings were checked against the publisher/abstract pages, and
+instructions without research behind them were left out. Earlier principles are in the
+archive (tap *Earlier principles*); future ones stay hidden. The day comes from the calendar,
+so reinstalling never restarts the course; after day 64 it begins again.
+
+**Mood chart** (History): one dot per rated sit over the last 12 weeks, Restless → Deep, plus
+a line for the average of your last five ratings; tap to inspect a sit.
+
 **Shortcuts**: long-press the app icon for *Start my usual sit* (starts your last settings
 with no screens in between), *Breathe* or *Mala*.
 

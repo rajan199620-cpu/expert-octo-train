@@ -53,6 +53,7 @@ fun HistoryTab() {
     val today = LocalDate.now()
     val summary = remember(records) { History.summarize(records, zone, today) }
     val heatmap = remember(records) { History.heatmap(records, zone, today) }
+    val mood = remember(records) { History.moodTrend(records, zone, today) }
 
     // Back up = save a CSV file you keep (Drive, Downloads...); Restore = read one back.
     // Together they carry your history to a new phone or across a reinstall.
@@ -63,15 +64,7 @@ fun HistoryTab() {
         }.isSuccess
         Toast.makeText(context, if (ok) "Saved ${records.size} sessions" else "Couldn't save the backup", Toast.LENGTH_SHORT).show()
     }
-    val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        val message = runCatching {
-            val text = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
-            val found = History.fromCsv(text, zone)
-            if (found.isEmpty()) "No sessions found in that file" else "Restored ${log.merge(found)} of ${found.size} sessions"
-        }.getOrElse { "Couldn't read that file" }
-        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-    }
+    val restore = rememberRestoreAction()
 
     LazyColumn(
         Modifier.widthIn(max = 480.dp).fillMaxSize(),
@@ -85,9 +78,7 @@ fun HistoryTab() {
                     if (records.isNotEmpty()) {
                         TextButton(onClick = { backup.launch("meditation-history-$today.csv") }) { Text("Back up") }
                     }
-                    TextButton(onClick = {
-                        restore.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/octet-stream"))
-                    }) { Text("Restore") }
+                    TextButton(onClick = restore) { Text("Restore") }
                 }
                 if (AutoBackup.supported) {
                     Text(
@@ -109,11 +100,12 @@ fun HistoryTab() {
                 StatCard("Last 7 days", formatDuration(summary.last7DaysSec), Modifier.weight(1f))
                 StatCard(
                     "All time",
-                    "${formatDuration(summary.totalSec)}\n${summary.sessionCount} sessions",
+                    "${formatDuration(summary.totalSec)}\n${summary.sessionCount} ${if (summary.sessionCount == 1) "session" else "sessions"}",
                     Modifier.weight(1f),
                 )
             }
         }
+        item { GlassCard(Modifier.fillMaxWidth()) { MoodChart(mood, zone) } }
         item { GlassCard(Modifier.fillMaxWidth()) { Heatmap(heatmap) } }
         if (summary.days.isEmpty()) {
             item {
@@ -221,4 +213,26 @@ private fun Heatmap(weeks: List<List<Int?>>) {
             Text("More", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+/** Picks a backup CSV (opening in the auto-backup folder) and merges it into the history. */
+@Composable
+fun rememberRestoreAction(): () -> Unit {
+    val context = LocalContext.current
+    val log = remember { SessionLog.get(context) }
+    val launcher = rememberLauncherForActivityResult(OpenBackup()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val message = runCatching {
+            val text = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
+            val found = History.fromCsv(text, ZoneId.systemDefault())
+            if (found.isEmpty()) {
+                "No sessions found in that file"
+            } else {
+                AutoBackup.adopt(context, uri)
+                "Restored ${log.merge(found)} of ${found.size} sessions"
+            }
+        }.getOrElse { "Couldn't read that file" }
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    }
+    return { launcher.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/octet-stream")) }
 }

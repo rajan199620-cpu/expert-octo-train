@@ -7,6 +7,7 @@ import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.animateColorAsState
@@ -28,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -165,6 +167,8 @@ private fun App(
     val main by animateColorAsState(target.main, tween(700), label = "accent")
     val second by animateColorAsState(target.second, tween(700), label = "accent2")
     val accent = Accent(main, second)
+    var showPrinciples by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = showPrinciples && !inSession) { showPrinciples = false }
 
     MeditationTheme(accent) {
         AmbientBackground(accent) {
@@ -174,13 +178,26 @@ private fun App(
                     contentAlignment = Alignment.TopCenter,
                 ) {
                     when {
-                        inSession || tab == Tab.SIT -> TimerTab(session, prefs, onTestBell, onHistory = { onTab(Tab.HISTORY) })
+                        inSession -> TimerTab(session, prefs, onTestBell, onHistory = { onTab(Tab.HISTORY) }, onPrinciples = {})
+                        showPrinciples -> PrinciplesScreen(onBack = { showPrinciples = false })
+                        tab == Tab.SIT -> TimerTab(
+                            session,
+                            prefs,
+                            onTestBell,
+                            onHistory = { onTab(Tab.HISTORY) },
+                            onPrinciples = { showPrinciples = true },
+                        )
                         tab == Tab.BREATHE -> BreathTab(prefs, onBreathDone)
                         tab == Tab.MALA -> MalaTab(mala, onMalaTap, onMalaChange)
                         else -> HistoryTab()
                     }
                 }
-                if (!inSession) TabBar(tab, onTab)
+                if (!inSession) {
+                    TabBar(tab) {
+                        showPrinciples = false
+                        onTab(it)
+                    }
+                }
             }
         }
     }
