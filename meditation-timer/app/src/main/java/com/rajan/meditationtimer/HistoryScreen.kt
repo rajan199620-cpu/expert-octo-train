@@ -60,7 +60,9 @@ fun HistoryTab() {
     val backup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         val ok = runCatching {
-            context.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { it.write(History.toCsv(records, zone)) }
+            context.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use {
+                it.write(History.toCsv(records, zone, Prefs(context).exportSettings()))
+            }
         }.isSuccess
         Toast.makeText(context, if (ok) "Saved ${records.size} sessions" else "Couldn't save the backup", Toast.LENGTH_SHORT).show()
     }
@@ -226,11 +228,13 @@ fun rememberRestoreAction(): () -> Unit {
         val message = runCatching {
             val text = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
             val found = History.fromCsv(text, ZoneId.systemDefault())
-            if (found.isEmpty()) {
+            val settings = History.settingsFrom(text)
+            if (found.isEmpty() && settings == null) {
                 "No sessions found in that file"
             } else {
                 AutoBackup.adopt(context, uri)
-                "Restored ${log.merge(found)} of ${found.size} sessions"
+                settings?.let { Prefs(context).importSettings(it) }
+                "Restored ${log.merge(found)} of ${found.size} sessions" + if (settings != null) " and your settings" else ""
             }
         }.getOrElse { "Couldn't read that file" }
         Toast.makeText(context, message, Toast.LENGTH_LONG).show()

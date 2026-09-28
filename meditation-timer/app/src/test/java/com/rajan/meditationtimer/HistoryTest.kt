@@ -181,4 +181,16 @@ class HistoryTest {
         assertEquals(2, History.mostCommonRating(points))
         assertNull(History.mostCommonRating(emptyList()))
     }
+
+    @Test
+    fun settingsTravelWithTheBackupAndSessionsStillParse() {
+        val settings = mapOf("duration_min" to "20", "auto_dnd" to "true", "alert_mode" to "BELL")
+        val records = listOf(at(today, minutes = 20).copy(rating = 4, note = "steady"))
+        val csv = History.toCsv(records, zone, settings)
+        assertTrue(csv.startsWith("#settings,"))
+        assertEquals(settings, History.settingsFrom(csv))
+        assertEquals(records, History.fromCsv(csv, zone))
+        // Old backups without the line still restore sessions, with no settings.
+        assertNull(History.settingsFrom(History.toCsv(records, zone)))
+    }
 }

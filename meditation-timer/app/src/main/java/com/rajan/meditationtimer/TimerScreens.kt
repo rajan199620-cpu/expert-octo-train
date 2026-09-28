@@ -40,6 +40,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -86,10 +87,12 @@ fun TimerTab(
     }
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val restore = rememberRestoreAction()
+    val settingsVersion by Prefs.version.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when (session) {
-            SessionState.Idle -> SetupScreen(
+            // Re-created when settings are restored, so the restored values show at once.
+            SessionState.Idle -> key(settingsVersion) { SetupScreen(
                 prefs, streak, hasHistory = records.isNotEmpty(), onTestBell, onHistory, onRestore = restore, onPrinciples,
             ) { config, volume, mode, dnd ->
                 // Only for the lock-screen countdown; the session runs either way.
@@ -100,7 +103,7 @@ fun TimerTab(
                     askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 MeditationService.start(context, config, volume, mode, dnd)
-            }
+            } }
             is SessionState.Running -> RunningScreen(session) { MeditationService.stop(context) }
             is SessionState.Finished -> FinishedScreen(
                 session,

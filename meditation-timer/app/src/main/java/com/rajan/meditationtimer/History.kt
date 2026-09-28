@@ -140,8 +140,23 @@ object History {
         return points.last { counts[it.rating] == top }.rating
     }
 
-    /** Spreadsheet-friendly export, oldest first. */
-    fun toCsv(records: List<SessionRecord>, zone: ZoneId): String {
+    private const val SETTINGS_PREFIX = "#settings,"
+
+    /**
+     * Settings ride along in the backup as one first line ("#settings,key=value;…") so a reinstall
+     * followed by Restore brings back your usual sit too. Older readers skip the line harmlessly.
+     */
+    fun settingsLine(settings: Map<String, String>): String =
+        SETTINGS_PREFIX + settings.entries.joinToString(";") { (k, v) -> "$k=$v" }
+
+    fun settingsFrom(text: String): Map<String, String>? =
+        text.lineSequence().firstOrNull { it.startsWith(SETTINGS_PREFIX) }
+            ?.removePrefix(SETTINGS_PREFIX)?.trim()
+            ?.split(';')?.mapNotNull { kv -> kv.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }
+            ?.toMap()?.takeIf { it.isNotEmpty() }
+
+    /** Spreadsheet-friendly export, oldest first; optional settings line first. */
+    fun toCsv(records: List<SessionRecord>, zone: ZoneId, settings: Map<String, String>? = null): String {
         val time = DateTimeFormatter.ofPattern("HH:mm")
         val rows = records.sortedBy { it.startedAtMs }.map { r ->
             val start = Instant.ofEpochMilli(r.startedAtMs).atZone(zone)
@@ -154,7 +169,8 @@ object History {
                 csvField(r.note),
             ).joinToString(",")
         }
-        return (listOf("date,start,planned_min,actual_min,rating,note") + rows).joinToString("\n", postfix = "\n")
+        val header = listOfNotNull(settings?.let(::settingsLine), "date,start,planned_min,actual_min,rating,note")
+        return (header + rows).joinToString("\n", postfix = "\n")
     }
 
     /**
