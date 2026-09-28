@@ -134,4 +134,25 @@ class HistoryTest {
             csv,
         )
     }
+
+    @Test
+    fun backupRestoresExactlyWhatWasExported() {
+        val records = listOf(
+            at(today.minusDays(3), minutes = 20).copy(rating = 4, note = "quiet, \"still\"\nand warm"),
+            at(today, hour = 21, minutes = 15, actualMin = 9),
+        )
+        assertEquals(records, History.fromCsv(History.toCsv(records, zone), zone))
+    }
+
+    @Test
+    fun restoreSkipsHeaderAndBrokenRowsAndAcceptsWindowsLineEndings() {
+        val csv = "date,start,planned_min,actual_min,rating,note\r\n" +
+            "2026-09-27,07:00,20.0,20.0,,\r\n" +
+            "not a date,07:00,20,20,,\r\n" +
+            "2026-09-26,06:30,10,10,9,\r\n"
+        val restored = History.fromCsv(csv, zone)
+        assertEquals(2, restored.size)
+        assertEquals(0, restored[1].rating) // out-of-range rating dropped, session kept
+        assertEquals(LocalDate.of(2026, 9, 26), restored[1].day(zone))
+    }
 }

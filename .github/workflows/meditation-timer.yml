@@ -25,7 +25,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Unit tests
         run: ./gradlew --no-daemon testReleaseUnitTest
+      - name: Decode signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No SIGNING_KEYSTORE_BASE64 secret: using a throwaway key, so this APK cannot update an installed one."
+          fi
       - name: Build APK
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease
       - uses: actions/upload-artifact@v4
         with:

@@ -12,15 +12,31 @@ android {
         applicationId = "com.rajan.meditationtimer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Every CI build gets a higher version so Android installs it as an update over the last one.
+        val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = build
+        versionName = "1.$build"
+    }
+
+    // One permanent key, so each update installs over the old app and keeps its history
+    // (a different key forces an uninstall, which wipes the app's data). CI decodes it from
+    // GitHub Actions secrets; without them the build falls back to a throwaway debug key.
+    val keystore = System.getenv("SIGNING_KEYSTORE_PATH")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = keystore
+                storePassword = System.getenv("SIGNING_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "meditation"
+                keyPassword = System.getenv("SIGNING_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Personal sideload build: sign with the debug key so the release APK installs directly.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (keystore != null) "release" else "debug")
         }
     }
 

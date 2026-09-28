@@ -26,14 +26,30 @@ class SessionLog private constructor(private val file: File) {
         val updated = _records.value.map {
             if (it.startedAtMs == startedAtMs) it.copy(rating = rating, note = note.trim()) else it
         }
+        rewrite(updated)
+    }
+
+    /**
+     * Restores sessions from a backup. Sessions already here (same start minute) are kept as
+     * they are, so restoring the same file twice changes nothing. Returns how many were added.
+     */
+    @Synchronized
+    fun merge(imported: List<SessionRecord>): Int {
+        val existing = _records.value.map { it.startedAtMs / 60_000 }.toMutableSet()
+        val added = imported.filter { existing.add(it.startedAtMs / 60_000) }
+        if (added.isNotEmpty()) rewrite((_records.value + added).sortedBy { it.startedAtMs })
+        return added.size
+    }
+
+    private fun rewrite(records: List<SessionRecord>) {
         // Write-then-rename so a crash mid-write can't truncate the history.
         val tmp = File(file.path + ".tmp")
-        tmp.writeText(updated.joinToString("") { it.encode() + "\n" })
+        tmp.writeText(records.joinToString("") { it.encode() + "\n" })
         if (!tmp.renameTo(file)) {
             file.writeText(tmp.readText())
             tmp.delete()
         }
-        _records.value = updated
+        _records.value = records
     }
 
     private fun load(): List<SessionRecord> =

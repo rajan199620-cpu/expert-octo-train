@@ -1,6 +1,8 @@
 package com.rajan.meditationtimer
 
-import android.content.Intent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,11 +47,31 @@ private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 @Composable
 fun HistoryTab() {
     val context = LocalContext.current
-    val records by remember { SessionLog.get(context).records }.collectAsStateWithLifecycle()
+    val log = remember { SessionLog.get(context) }
+    val records by log.records.collectAsStateWithLifecycle()
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now()
     val summary = remember(records) { History.summarize(records, zone, today) }
     val heatmap = remember(records) { History.heatmap(records, zone, today) }
+
+    // Back up = save a CSV file you keep (Drive, Downloads...); Restore = read one back.
+    // Together they carry your history to a new phone or across a reinstall.
+    val backup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val ok = runCatching {
+            context.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { it.write(History.toCsv(records, zone)) }
+        }.isSuccess
+        Toast.makeText(context, if (ok) "Saved ${records.size} sessions" else "Couldn't save the backup", Toast.LENGTH_SHORT).show()
+    }
+    val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val message = runCatching {
+            val text = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
+            val found = History.fromCsv(text, zone)
+            if (found.isEmpty()) "No sessions found in that file" else "Restored ${log.merge(found)} of ${found.size} sessions"
+        }.getOrElse { "Couldn't read that file" }
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    }
 
     LazyColumn(
         Modifier.widthIn(max = 480.dp).fillMaxSize(),
@@ -57,16 +79,15 @@ fun HistoryTab() {
     ) {
         item { Spacer(Modifier.height(8.dp)) }
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Your practice", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
-                if (records.isNotEmpty()) {
+            Column {
+                Text("Your practice", style = MaterialTheme.typography.headlineMedium)
+                Row {
+                    if (records.isNotEmpty()) {
+                        TextButton(onClick = { backup.launch("meditation-history-$today.csv") }) { Text("Back up") }
+                    }
                     TextButton(onClick = {
-                        val send = Intent(Intent.ACTION_SEND)
-                            .setType("text/csv")
-                            .putExtra(Intent.EXTRA_SUBJECT, "Meditation history")
-                            .putExtra(Intent.EXTRA_TEXT, History.toCsv(records, zone))
-                        context.startActivity(Intent.createChooser(send, "Export history"))
-                    }) { Text("Export CSV") }
+                        restore.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/octet-stream"))
+                    }) { Text("Restore") }
                 }
             }
         }

@@ -5,6 +5,7 @@ import java.net.URLEncoder
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
@@ -124,6 +125,52 @@ object History {
             ).joinToString(",")
         }
         return (listOf("date,start,planned_min,actual_min,rating,note") + rows).joinToString("\n", postfix = "\n")
+    }
+
+    /**
+     * Reads a file written by [toCsv] back into records (for restoring onto a new phone or after
+     * a reinstall). Rows that don't parse are skipped rather than failing the whole import.
+     * Precision is what the CSV holds: start to the minute, durations to 0.1 min.
+     */
+    fun fromCsv(text: String, zone: ZoneId): List<SessionRecord> = csvRows(text).mapNotNull { row ->
+        if (row.size < 4) return@mapNotNull null
+        val date = runCatching { LocalDate.parse(row[0].trim()) }.getOrNull() ?: return@mapNotNull null
+        val time = runCatching { LocalTime.parse(row[1].trim()) }.getOrNull() ?: return@mapNotNull null
+        val planned = row[2].trim().toDoubleOrNull() ?: return@mapNotNull null
+        val actual = row[3].trim().toDoubleOrNull() ?: return@mapNotNull null
+        SessionRecord(
+            startedAtMs = date.atTime(time).atZone(zone).toInstant().toEpochMilli(),
+            plannedSec = Math.round(planned * 60).toInt(),
+            actualSec = Math.round(actual * 60).toInt(),
+            rating = row.getOrNull(4)?.trim()?.toIntOrNull()?.takeIf { it in 1..5 } ?: 0,
+            note = row.getOrNull(5) ?: "",
+        )
+    }
+
+    /** Minimal RFC 4180 reader: quoted fields may contain commas, quotes ("") and newlines. */
+    private fun csvRows(text: String): List<List<String>> {
+        val rows = mutableListOf<List<String>>()
+        var row = mutableListOf<String>()
+        val field = StringBuilder()
+        var quoted = false
+        var i = 0
+        while (i < text.length) {
+            val ch = text[i]
+            when {
+                quoted && ch == '"' && text.getOrNull(i + 1) == '"' -> { field.append('"'); i++ }
+                ch == '"' -> quoted = !quoted
+                !quoted && ch == ',' -> { row += field.toString(); field.clear() }
+                !quoted && (ch == '\n' || ch == '\r') -> {
+                    if (ch == '\r' && text.getOrNull(i + 1) == '\n') i++
+                    row += field.toString(); field.clear()
+                    rows += row; row = mutableListOf()
+                }
+                else -> field.append(ch)
+            }
+            i++
+        }
+        if (field.isNotEmpty() || row.isNotEmpty()) { row += field.toString(); rows += row }
+        return rows
     }
 
     private fun csvField(value: String): String =

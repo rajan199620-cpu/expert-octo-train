@@ -20,7 +20,7 @@ key** to count; a bell and a strong buzz mark each finished round. The count sur
 
 **History**: every sit logged with its date, time, minutes actually sat (early-ended sessions
 count if at least 1 minute), rating and note. Current/longest streak, last-7-days and all-time
-totals, a 12-week heatmap, and **Export CSV** through the share sheet.
+totals, a 12-week heatmap, and **Back up / Restore** to a CSV file (for a new phone or a reinstall).
 
 **Shortcuts**: long-press the app icon for *Start my usual sit* (starts your last settings
 with no screens in between), *Breathe* or *Mala*.
@@ -33,7 +33,19 @@ day is missed, so sitting yesterday but not yet today still shows your streak.
 Every push that touches `meditation-timer/` builds an APK in GitHub Actions
 (**Actions → Meditation Timer APK → latest run → Artifacts → meditation-timer-apk**).
 Unzip it, copy `app-release.apk` to the phone and open it (allow "install unknown apps").
-It is signed with a debug key: fine for your own phone, not for the Play Store.
+
+### Keeping your history across updates
+
+Android only installs an update over the existing app if both are signed with the same key;
+otherwise you must uninstall first, which deletes the app's data. So CI signs with a permanent
+key kept in two **GitHub Actions secrets** (repo Settings → Secrets and variables → Actions):
+
+- `SIGNING_KEYSTORE_BASE64`: the keystore file, base64-encoded
+- `SIGNING_PASSWORD`: its password (key alias `meditation`)
+
+Without them the build still works but uses a throwaway key (the run shows a warning).
+Every build also gets a higher version number, so it installs as an update. As a second
+safety net, History → **Back up** saves a CSV you can **Restore** on any install.
 
 Build locally with the Android SDK installed: `./gradlew assembleRelease`.
 
