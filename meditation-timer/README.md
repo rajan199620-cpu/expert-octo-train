@@ -44,8 +44,12 @@ key kept in two **GitHub Actions secrets** (repo Settings → Secrets and variab
 - `SIGNING_PASSWORD`: its password (key alias `meditation`)
 
 Without them the build still works but uses a throwaway key (the run shows a warning).
-Every build also gets a higher version number, so it installs as an update. As a second
-safety net, History → **Back up** saves a CSV you can **Restore** on any install.
+Every build also gets a higher version number, so it installs as an update.
+
+Safety net that needs no setup: after every change the app mirrors the history to
+`Downloads/Meditation Timer/meditation-history.csv` (Android 10+). Downloads survive
+uninstalling, so after any reinstall: History → **Restore** → pick that file.
+**Back up** saves a copy anywhere else you like (e.g. Drive).
 
 Build locally with the Android SDK installed: `./gradlew assembleRelease`.
 

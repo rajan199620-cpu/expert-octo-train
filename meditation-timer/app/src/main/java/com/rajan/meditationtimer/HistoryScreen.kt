@@ -89,6 +89,13 @@ fun HistoryTab() {
                         restore.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/octet-stream"))
                     }) { Text("Restore") }
                 }
+                if (AutoBackup.supported) {
+                    Text(
+                        "A copy is saved automatically to ${AutoBackup.LOCATION}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
         item {
@@ -111,7 +118,11 @@ fun HistoryTab() {
         if (summary.days.isEmpty()) {
             item {
                 Text(
-                    "Your sessions will appear here.",
+                    if (AutoBackup.supported) {
+                        "Your sessions will appear here.\n\nReinstalled the app? Tap Restore and pick\n${AutoBackup.LOCATION}"
+                    } else {
+                        "Your sessions will appear here."
+                    },
                     Modifier.fillMaxWidth().padding(top = 24.dp),
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

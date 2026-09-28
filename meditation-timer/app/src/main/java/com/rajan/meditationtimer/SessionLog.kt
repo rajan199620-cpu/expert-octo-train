@@ -10,7 +10,7 @@ import java.io.File
  * Append-only log of finished sessions, one CSV line each, in app-private storage
  * (included in Android's automatic backup, so history follows the user to a new phone).
  */
-class SessionLog private constructor(private val file: File) {
+class SessionLog private constructor(private val context: Context, private val file: File) {
     private val _records = MutableStateFlow(load())
     val records: StateFlow<List<SessionRecord>> = _records.asStateFlow()
 
@@ -18,6 +18,7 @@ class SessionLog private constructor(private val file: File) {
     fun add(record: SessionRecord) {
         file.appendText(record.encode() + "\n")
         _records.value = _records.value + record
+        AutoBackup.write(context, _records.value)
     }
 
     /** Attaches the post-sit reflection to an already logged session. */
@@ -50,6 +51,7 @@ class SessionLog private constructor(private val file: File) {
             tmp.delete()
         }
         _records.value = records
+        AutoBackup.write(context, records)
     }
 
     private fun load(): List<SessionRecord> =
@@ -60,7 +62,9 @@ class SessionLog private constructor(private val file: File) {
         private var instance: SessionLog? = null
 
         fun get(context: Context): SessionLog = instance ?: synchronized(this) {
-            instance ?: SessionLog(File(context.applicationContext.filesDir, "sessions.csv")).also { instance = it }
+            instance ?: context.applicationContext.let { app ->
+                SessionLog(app, File(app.filesDir, "sessions.csv")).also { instance = it }
+            }
         }
     }
 }
