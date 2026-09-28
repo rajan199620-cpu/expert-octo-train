@@ -6,8 +6,13 @@ import android.os.Bundle
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,13 +20,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,8 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -47,7 +48,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Always light system-bar icons: the app is a night sky whatever the phone's theme.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         // Bells use the alarm stream, so the volume keys should adjust that while the app is open.
         volumeControlStream = AudioManager.STREAM_ALARM
         chime = Chime(applicationContext)
@@ -60,18 +65,16 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleShortcut(intent)
 
         setContent {
-            MeditationTheme {
-                App(
-                    prefs = prefs,
-                    tab = tab,
-                    onTab = { tab = it },
-                    mala = mala,
-                    onMalaTap = ::malaBead,
-                    onMalaChange = { mala = it; prefs.mala = it },
-                    onTestBell = { volume, mode -> chime.ring(volume, mode) },
-                    onBreathDone = { chime.ring(prefs.volume, AlertMode.BELL) },
-                )
-            }
+            App(
+                prefs = prefs,
+                tab = tab,
+                onTab = { tab = it },
+                mala = mala,
+                onMalaTap = ::malaBead,
+                onMalaChange = { mala = it; prefs.mala = it },
+                onTestBell = { volume, mode -> chime.ring(volume, mode) },
+                onBreathDone = { chime.ring(prefs.volume, AlertMode.BELL) },
+            )
         }
     }
 
@@ -157,45 +160,60 @@ private fun App(
     val session by SessionRepository.state.collectAsStateWithLifecycle()
     // A running or just-finished sit takes over the whole screen.
     val inSession = session !is SessionState.Idle
+    val target = if (inSession) Accents.SIT else tab.accent
+    // The ambient light cross-fades as you move between tabs.
+    val main by animateColorAsState(target.main, tween(700), label = "accent")
+    val second by animateColorAsState(target.second, tween(700), label = "accent2")
+    val accent = Accent(main, second)
 
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            Box(
-                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
-                contentAlignment = Alignment.TopCenter,
-            ) {
-                when {
-                    inSession || tab == Tab.SIT -> TimerTab(session, prefs, onTestBell, onHistory = { onTab(Tab.HISTORY) })
-                    tab == Tab.BREATHE -> BreathTab(prefs, onBreathDone)
-                    tab == Tab.MALA -> MalaTab(mala, onMalaTap, onMalaChange)
-                    else -> HistoryTab()
+    MeditationTheme(accent) {
+        AmbientBackground(accent) {
+            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                Box(
+                    Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    when {
+                        inSession || tab == Tab.SIT -> TimerTab(session, prefs, onTestBell, onHistory = { onTab(Tab.HISTORY) })
+                        tab == Tab.BREATHE -> BreathTab(prefs, onBreathDone)
+                        tab == Tab.MALA -> MalaTab(mala, onMalaTap, onMalaChange)
+                        else -> HistoryTab()
+                    }
                 }
+                if (!inSession) TabBar(tab, onTab)
             }
-            if (!inSession) TabBar(tab, onTab)
         }
     }
 }
 
+/** Floating glass bar; the selected tab glows in its own colour. */
 @Composable
 private fun TabBar(selected: Tab, onTab: (Tab) -> Unit) {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-    Row(Modifier.fillMaxWidth().height(64.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+    val shape = RoundedCornerShape(28.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.07f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), shape)
+            .padding(6.dp),
+    ) {
         for (tab in Tab.entries) {
             val isSelected = tab == selected
+            val color = if (isSelected) tab.accent.main else InkMuted
             Column(
-                Modifier.weight(1f).fillMaxSize().clickable { onTab(tab) },
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(if (isSelected) tab.accent.main.copy(alpha = 0.16f) else Color.Transparent)
+                    .clickable { onTab(tab) }
+                    .padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    tab.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Box(
-                    Modifier.padding(top = 6.dp).width(24.dp).height(3.dp).clip(RoundedCornerShape(2.dp))
-                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background),
-                )
+                TabIcon(tab, color)
+                Text(tab.label, style = MaterialTheme.typography.labelMedium, color = color)
             }
         }
     }

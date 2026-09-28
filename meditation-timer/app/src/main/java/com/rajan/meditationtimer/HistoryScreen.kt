@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,9 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,9 +55,10 @@ fun HistoryTab() {
         Modifier.widthIn(max = 480.dp).fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item { Spacer(Modifier.height(8.dp)) }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("History", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
+                Text("Your practice", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
                 if (records.isNotEmpty()) {
                     TextButton(onClick = {
                         val send = Intent(Intent.ACTION_SEND)
@@ -86,7 +86,7 @@ fun HistoryTab() {
                 )
             }
         }
-        item { Heatmap(heatmap) }
+        item { GlassCard(Modifier.fillMaxWidth()) { Heatmap(heatmap) } }
         if (summary.days.isEmpty()) {
             item {
                 Text(
@@ -98,9 +98,8 @@ fun HistoryTab() {
             }
         }
         items(summary.days, key = { it.date.toEpochDay() }) { day ->
-            Column(Modifier.fillMaxWidth()) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)) {
+            GlassCard(Modifier.fillMaxWidth(), padding = 16.dp) {
+                Row(Modifier.fillMaxWidth()) {
                     Text(day.date.format(dayFormat), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
                     Text(
                         formatDuration(day.totalSec.toLong()),
@@ -111,6 +110,7 @@ fun HistoryTab() {
                 for (session in day.sessions) SessionLine(session, zone)
             }
         }
+        item { Spacer(Modifier.height(8.dp)) }
     }
 }
 
@@ -142,11 +142,9 @@ private fun dayCount(days: Int) = if (days == 1) "1 day" else "$days days"
 
 @Composable
 private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-        Column(Modifier.padding(16.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
-        }
+    GlassCard(modifier, padding = 16.dp) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -154,7 +152,7 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
 @Composable
 private fun Heatmap(weeks: List<List<Int?>>) {
     val primary = MaterialTheme.colorScheme.primary
-    val empty = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
+    val empty = Color.White.copy(alpha = 0.07f)
     fun shade(minutes: Int?): Color = when {
         minutes == null -> Color.Transparent
         minutes == 0 -> empty
@@ -163,8 +161,8 @@ private fun Heatmap(weeks: List<List<Int?>>) {
         minutes < 40 -> primary.copy(alpha = 0.8f)
         else -> primary
     }
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Last 12 weeks", style = MaterialTheme.typography.titleSmall)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Last 12 weeks", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (d in 0 until 7) {

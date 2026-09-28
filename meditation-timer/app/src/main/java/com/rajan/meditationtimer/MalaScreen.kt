@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,22 +51,23 @@ fun MalaTab(mala: MalaCount, onTap: () -> Unit, onChange: (MalaCount) -> Unit) {
             confirmReset = false
         }
     }
-    val primary = MaterialTheme.colorScheme.primary
-    val outline = MaterialTheme.colorScheme.outline
+    val accent = LocalAccent.current
 
     Column(
         Modifier.widthIn(max = 480.dp).fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Mala", Modifier.fillMaxWidth(), style = MaterialTheme.typography.headlineSmall)
-        ChipRow(listOf(27, 54, 108), mala.target, { "$it beads" }) {
+        Spacer(Modifier.height(8.dp))
+        Text("Mala", Modifier.fillMaxWidth(), style = MaterialTheme.typography.headlineMedium)
+        ChipRow(listOf(27, 54, 108), mala.target, { "$it beads" }, center = true) {
             onChange(mala.copy(target = it, beads = mala.beads.coerceAtMost(it - 1)))
         }
         Box(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
+                .glow(accent.main, 0.4f + 0.6f * mala.beads / mala.target)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onTap() },
             contentAlignment = Alignment.Center,
         ) {
@@ -72,10 +77,22 @@ fun MalaTab(mala: MalaCount, onTap: () -> Unit, onChange: (MalaCount) -> Unit) {
                 for (i in 0 until mala.target) {
                     val angle = Math.toRadians(-90.0 + 360.0 * i / mala.target)
                     val at = Offset(center.x + ringRadius * cos(angle).toFloat(), center.y + ringRadius * sin(angle).toFloat())
-                    drawCircle(if (i < mala.beads) primary else outline, radius = beadRadius, center = at)
+                    if (i < mala.beads) {
+                        // Counted beads glow, shading from saffron to gold around the ring.
+                        val t = i.toFloat() / mala.target
+                        val c = Color(
+                            red = accent.main.red + (accent.second.red - accent.main.red) * t,
+                            green = accent.main.green + (accent.second.green - accent.main.green) * t,
+                            blue = accent.main.blue + (accent.second.blue - accent.main.blue) * t,
+                        )
+                        drawCircle(Brush.radialGradient(listOf(c.copy(alpha = 0.45f), Color.Transparent), at, beadRadius * 3f), beadRadius * 3f, at)
+                        drawCircle(c, radius = beadRadius, center = at)
+                    } else {
+                        drawCircle(Color.White.copy(alpha = 0.16f), radius = beadRadius, center = at)
+                    }
                 }
                 // The guru bead marks where each round starts and ends.
-                drawCircle(primary, radius = beadRadius * 2f, center = Offset(center.x, center.y - ringRadius - beadRadius * 3.5f))
+                drawCircle(accent.second, radius = beadRadius * 2f, center = Offset(center.x, center.y - ringRadius - beadRadius * 3.5f))
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("${mala.beads}", style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.Light)

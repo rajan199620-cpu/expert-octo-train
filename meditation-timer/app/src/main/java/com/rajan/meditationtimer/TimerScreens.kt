@@ -6,6 +6,11 @@ import android.os.Build
 import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,12 +27,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -45,16 +47,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 
 val RATING_LABELS = listOf("Restless", "Scattered", "Okay", "Calm", "Deep")
@@ -94,7 +100,13 @@ fun TimerTab(session: SessionState, prefs: Prefs, onTestBell: (Float, AlertMode)
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+private fun greeting(): String = when (LocalTime.now().hour) {
+    in 4..11 -> "Good morning"
+    in 12..16 -> "Good afternoon"
+    in 17..21 -> "Good evening"
+    else -> "Quiet night"
+}
+
 @Composable
 private fun SetupScreen(
     prefs: Prefs,
@@ -120,76 +132,99 @@ private fun SetupScreen(
     Column(
         Modifier.widthIn(max = 480.dp).fillMaxSize().verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                streakLabel(streak),
-                Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(Modifier.weight(1f)) {
+                Text(greeting(), style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    if (streak > 0) "✦ ${streakLabel(streak)}" else "Settle in whenever you're ready",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (streak > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             TextButton(onClick = onHistory) { Text("History") }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            FilledTonalButton(onClick = { minutes = (minutes - 1).coerceAtLeast(1) }) { Text("−") }
-            Text(
-                "$minutes min",
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Light,
-                modifier = Modifier.padding(horizontal = 20.dp),
-            )
-            FilledTonalButton(onClick = { minutes = (minutes + 1).coerceAtMost(180) }) { Text("+") }
+
+        DurationDial(minutes, onMinus = { minutes = (minutes - 1).coerceAtLeast(1) }, onPlus = { minutes = (minutes + 1).coerceAtMost(180) })
+        ChipRow(listOf(5, 10, 15, 20, 30, 45, 60), minutes, { "$it" }, center = true) { minutes = it }
+
+        GlassCard(Modifier.fillMaxWidth()) {
+            CardTitle("Bells")
+            SectionLabel("Opening bell", "Rings this long after you tap Begin")
+            ChipRow(listOf(5, 10, 15, 30), opening, { "${it}s" }) { opening = it }
+            SectionLabel("Closing bell", "Rings this long before the session ends")
+            ChipRow(listOf(5, 10, 30, 60), closing, ::secondsLabel) { closing = it }
+            SectionLabel("Interval bells", "A soft reminder to come back to the breath")
+            ChipRow(listOf(0, 5, 10, 15), interval, { if (it == 0) "Off" else "Every $it min" }) { interval = it }
+            SwitchRow("Also ring when time is up", bellAtEnd) { bellAtEnd = it }
         }
-        ChipRow(listOf(5, 10, 15, 20, 30, 45, 60), minutes, { "$it" }) { minutes = it }
 
-        SectionLabel("Opening bell", "Rings this long after you tap Begin")
-        ChipRow(listOf(5, 10, 15, 30), opening, { "${it}s" }) { opening = it }
-
-        SectionLabel("Closing bell", "Rings this long before the session ends")
-        ChipRow(listOf(5, 10, 30, 60), closing, ::secondsLabel) { closing = it }
-
-        SectionLabel("Interval bells", "A soft reminder to come back to the breath")
-        ChipRow(listOf(0, 5, 10, 15), interval, { if (it == 0) "Off" else "Every $it min" }) { interval = it }
-
-        SectionLabel("How cues reach you", "Vibrate only is for sitting next to someone")
-        ChipRow(AlertMode.entries, alertMode, { it.label }) { alertMode = it }
-
-        SwitchRow("Also ring when time is up", bellAtEnd) { bellAtEnd = it }
-        SwitchRow("Silence notifications while I sit", autoDnd) {
-            autoDnd = it
-            if (it && !dndAccess) context.startActivity(Dnd.accessSettings)
-        }
-        if (autoDnd && !dndAccess) {
-            TextButton(onClick = { context.startActivity(Dnd.accessSettings) }) {
-                Text("Needs Do Not Disturb access — tap to allow Meditation Timer")
+        GlassCard(Modifier.fillMaxWidth()) {
+            CardTitle("Sound & stillness")
+            SectionLabel("How cues reach you", "Vibrate only is for sitting next to someone")
+            ChipRow(AlertMode.entries, alertMode, { it.label }) { alertMode = it }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Volume")
+                Slider(value = volume, onValueChange = { volume = it }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
+                TextButton(onClick = { onTestBell(volume, alertMode) }) { Text("Test") }
+            }
+            SwitchRow("Silence notifications while I sit", autoDnd) {
+                autoDnd = it
+                if (it && !dndAccess) context.startActivity(Dnd.accessSettings)
+            }
+            if (autoDnd && !dndAccess) {
+                TextButton(onClick = { context.startActivity(Dnd.accessSettings) }) {
+                    Text("Needs Do Not Disturb access — tap to allow")
+                }
             }
         }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Volume")
-            Slider(value = volume, onValueChange = { volume = it }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-            TextButton(onClick = { onTestBell(volume, alertMode) }) { Text("Test") }
-        }
 
-        Spacer(Modifier.height(4.dp))
-        Button(
-            onClick = {
-                val config = SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval)
-                prefs.saveTimer(config, volume, alertMode, autoDnd)
-                onBegin(config, volume, alertMode, autoDnd)
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-        ) { Text("Begin", style = MaterialTheme.typography.titleMedium) }
+        GradientButton("Begin", onClick = {
+            val config = SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval)
+            prefs.saveTimer(config, volume, alertMode, autoDnd)
+            onBegin(config, volume, alertMode, autoDnd)
+        })
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** Big glowing ring showing the chosen length; a full ring is one hour. */
+@Composable
+private fun DurationDial(minutes: Int, onMinus: () -> Unit, onPlus: () -> Unit) {
+    val accent = LocalAccent.current
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        RoundButton("−", onMinus)
+        Box(Modifier.size(200.dp).glow(accent.main), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize().padding(10.dp)) {
+                val stroke = 8.dp.toPx()
+                drawCircle(Color.White.copy(alpha = 0.08f), style = Stroke(stroke))
+                rotate(-90f) {
+                    drawArc(
+                        Brush.sweepGradient(listOf(accent.second, accent.main, accent.second)),
+                        startAngle = 0f,
+                        sweepAngle = 360f * minutes.coerceAtMost(60) / 60f,
+                        useCenter = false,
+                        style = Stroke(stroke, cap = StrokeCap.Round),
+                    )
+                }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("$minutes", style = MaterialTheme.typography.displayLarge)
+                Text("minutes", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        RoundButton("+", onPlus)
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun <T> ChipRow(options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
+fun <T> ChipRow(options: List<T>, selected: T, label: (T) -> String, center: Boolean = false, onSelect: (T) -> Unit) {
     FlowRow(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = if (center) Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally) else Arrangement.spacedBy(8.dp),
     ) {
         for (option in options) {
             FilterChip(selected = option == selected, onClick = { onSelect(option) }, label = { Text(label(option)) })
@@ -198,8 +233,13 @@ fun <T> ChipRow(options: List<T>, selected: T, label: (T) -> String, onSelect: (
 }
 
 @Composable
+fun CardTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+}
+
+@Composable
 fun SectionLabel(title: String, subtitle: String) {
-    Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium)
         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -226,18 +266,36 @@ private fun RunningScreen(session: SessionState.Running, onEnd: () -> Unit) {
     val elapsed = (now - session.startElapsedMs).coerceIn(0, total)
     val remaining = total - elapsed
     val next = BellSchedule.next(session.config, elapsed)
-    val track = MaterialTheme.colorScheme.outline
-    val arc = MaterialTheme.colorScheme.primary
+    val accent = LocalAccent.current
+    // The halo swells and fades over ~11 s, about the length of one slow breath.
+    val pulse by rememberInfiniteTransition(label = "pulse").animateFloat(
+        initialValue = 0.55f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(5_500), RepeatMode.Reverse),
+        label = "pulse",
+    )
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(40.dp)) {
-        Box(Modifier.size(280.dp), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) {
-                val stroke = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
-                drawArc(track, 0f, 360f, useCenter = false, style = stroke)
-                drawArc(arc, -90f, 360f * remaining / total, useCenter = false, style = stroke)
+    Column(
+        Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(36.dp, Alignment.CenterVertically),
+    ) {
+        Box(Modifier.size(300.dp).glow(accent.main, pulse), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize().padding(16.dp)) {
+                val stroke = 6.dp.toPx()
+                drawCircle(Color.White.copy(alpha = 0.08f), style = Stroke(stroke))
+                rotate(-90f) {
+                    drawArc(
+                        Brush.sweepGradient(listOf(accent.second, accent.main, accent.second)),
+                        startAngle = 0f,
+                        sweepAngle = 360f * remaining / total,
+                        useCenter = false,
+                        style = Stroke(stroke, cap = StrokeCap.Round),
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(formatClock(remaining), style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.Light)
+                Text(formatClock(remaining), style = MaterialTheme.typography.displayLarge)
                 if (next != null) {
                     Text(
                         cueHint(next, elapsed),
@@ -247,7 +305,13 @@ private fun RunningScreen(session: SessionState.Running, onEnd: () -> Unit) {
                 }
             }
         }
-        OutlinedButton(onClick = onEnd) { Text("End session") }
+        Text(
+            "Close your eyes. The bell will call you back.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        TextButton(onClick = onEnd) { Text("End session", color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -256,45 +320,44 @@ private fun RunningScreen(session: SessionState.Running, onEnd: () -> Unit) {
 private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: (Int, String) -> Unit) {
     var rating by rememberSaveable { mutableIntStateOf(0) }
     var note by rememberSaveable { mutableStateOf("") }
+    val accent = LocalAccent.current
 
     Column(
         Modifier.widthIn(max = 480.dp).verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Session complete", style = MaterialTheme.typography.headlineMedium)
-        Text(
-            "${session.config.durationSec / 60} minutes",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (streak > 0) Text(streakLabel(streak), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Box(Modifier.size(160.dp).glow(accent.main), contentAlignment = Alignment.Center) {
+            Text("${session.config.durationSec / 60}", style = MaterialTheme.typography.displayLarge)
+        }
+        Text("minutes of stillness", style = MaterialTheme.typography.headlineSmall)
+        if (streak > 0) Pill("✦ ${streakLabel(streak)}")
 
         // Optional and judgement-free: noticing, not scoring.
-        SectionLabel("How did the mind feel?", "Optional — helps you spot patterns later")
-        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-            RATING_LABELS.forEachIndexed { i, label ->
-                FilterChip(
-                    selected = rating == i + 1,
-                    onClick = { rating = if (rating == i + 1) 0 else i + 1 },
-                    label = { Text(label) },
-                )
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionLabel("How did the mind feel?", "Optional — helps you spot patterns later")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RATING_LABELS.forEachIndexed { i, label ->
+                    FilterChip(
+                        selected = rating == i + 1,
+                        onClick = { rating = if (rating == i + 1) 0 else i + 1 },
+                        label = { Text(label) },
+                    )
+                }
             }
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it.take(500) },
+                label = { Text("A line for your journal") },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
-        OutlinedTextField(
-            value = note,
-            onValueChange = { note = it.take(500) },
-            label = { Text("A line for your journal (optional)") },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Button(onClick = { onSave(rating, note) }, modifier = Modifier.fillMaxWidth()) {
-            Text(if (rating > 0 || note.isNotBlank()) "Save" else "Done")
-        }
+        GradientButton(if (rating > 0 || note.isNotBlank()) "Save" else "Done", onClick = { onSave(rating, note) })
     }
 }
 
 fun streakLabel(days: Int) = when (days) {
-    0 -> "No streak yet — today is a good day to start"
+    0 -> "No streak yet"
     1 -> "1-day streak"
     else -> "$days-day streak"
 }
