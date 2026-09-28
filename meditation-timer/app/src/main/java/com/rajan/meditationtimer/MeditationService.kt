@@ -15,6 +15,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 
 /**
@@ -28,6 +29,12 @@ class MeditationService : Service() {
     private lateinit var dnd: Dnd
     private var wakeLock: PowerManager.WakeLock? = null
     private var startedAtWallMs = 0L
+    private var volume = 0.6f
+    private var alertMode = AlertMode.BELL
+    private var autoDnd = false
+
+    private val running: SessionState.Running?
+        get() = SessionRepository.state.value as? SessionState.Running
 
     override fun onCreate() {
         super.onCreate()
@@ -45,12 +52,12 @@ class MeditationService : Service() {
                 AlertMode.entries.getOrElse(intent.getIntExtra(EXTRA_ALERT, 0)) { AlertMode.BELL },
                 intent.getBooleanExtra(EXTRA_DND, false),
             )
-            ACTION_STOP -> {
-                logEarlyEnd()
-                SessionRepository.reset()
-                shutdown()
-            }
-            else -> stopSelf()
+            ACTION_PAUSE -> pause()
+            ACTION_RESUME -> resume()
+            ACTION_END -> requestEnd()
+            ACTION_END_NOW -> endEarly()
+            // Nothing running (e.g. a stale notification action after the process died).
+            else -> if (running == null) stopSelf()
         }
         // Never restart after a crash: bells replayed at the wrong moment are worse than none.
         return START_NOT_STICKY
@@ -62,28 +69,74 @@ class MeditationService : Service() {
         chime.bell.onAllFinished = null
         chime.release()
 
-        val start = SystemClock.elapsedRealtime()
+        this.volume = volume
+        this.alertMode = alertMode
+        this.autoDnd = autoDnd
         startedAtWallMs = System.currentTimeMillis()
-        val notification = buildNotification(config)
+        val session = SessionState.Running(SessionClock(SystemClock.elapsedRealtime()), config)
+        val notification = buildNotification(session)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
-        acquireWakeLock(config.durationMs + WAKE_LOCK_SLACK_MS)
         if (autoDnd) dnd.engage()
-        SessionRepository.started(start, config)
+        SessionRepository.update(session)
+        schedule(session)
+    }
 
+    /** Posts the bells still to come and the finish, measured from where the clock stands now. */
+    private fun schedule(session: SessionState.Running) {
+        handler.removeCallbacksAndMessages(null)
+        val elapsed = session.clock.elapsedAt(SystemClock.elapsedRealtime())
+        val config = session.config
+        acquireWakeLock(config.durationMs - elapsed + WAKE_LOCK_SLACK_MS)
         for (cue in BellSchedule.cues(config)) {
-            handler.postDelayed({ chime.ring(volume, alertMode) }, cue.atMs)
+            if (cue.atMs > elapsed) handler.postDelayed({ chime.ring(volume, alertMode) }, cue.atMs - elapsed)
         }
         // Posted after the END bell (same delay, FIFO) so that bell is already ringing here.
-        handler.postDelayed({ complete(config) }, config.durationMs)
+        handler.postDelayed({ complete(config) }, (config.durationMs - elapsed).coerceAtLeast(0))
+    }
+
+    /** Freezes the clock and holds the bells. Do Not Disturb lifts so a call can reach you meanwhile. */
+    private fun pause(): SessionState.Running? {
+        val session = running ?: return null
+        if (session.clock.isPaused) return session
+        handler.removeCallbacksAndMessages(null)
+        releaseWakeLock()
+        dnd.restore()
+        val paused = session.copy(clock = session.clock.pause(SystemClock.elapsedRealtime()))
+        publish(paused)
+        return paused
+    }
+
+    private fun resume() {
+        val session = running ?: return
+        val resumed = session.copy(clock = session.clock.resume(SystemClock.elapsedRealtime()), endingAtMs = null)
+        if (autoDnd) dnd.engage()
+        publish(resumed)
+        schedule(resumed)
+    }
+
+    /** Tapping End pauses the sit and gives you a few seconds to change your mind. */
+    private fun requestEnd() {
+        val paused = pause() ?: return
+        if (paused.isEnding) return
+        val endingAt = SystemClock.elapsedRealtime() + SessionClock.END_CONFIRM_MS
+        publish(paused.copy(endingAtMs = endingAt))
+        // Hold the CPU just long enough for the window to close on time with the screen off.
+        acquireWakeLock(SessionClock.END_CONFIRM_MS + WAKE_LOCK_SLACK_MS)
+        handler.postDelayed({ endEarly() }, SessionClock.END_CONFIRM_MS)
+    }
+
+    private fun publish(session: SessionState.Running) {
+        SessionRepository.update(session)
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(session))
     }
 
     private fun complete(config: SessionConfig) {
         SessionLog.get(this).add(SessionRecord(startedAtWallMs, config.durationSec, config.durationSec))
-        SessionRepository.finished(config, startedAtWallMs)
+        SessionRepository.finished(config, startedAtWallMs, config.durationSec)
         dnd.restore()
         stopForeground(STOP_FOREGROUND_REMOVE)
         // Let a ringing bell fade out naturally before tearing down.
@@ -91,13 +144,19 @@ class MeditationService : Service() {
     }
 
     /** Ending early still counts: log the time actually sat, unless it was just a mis-tap. */
-    private fun logEarlyEnd() {
-        val running = SessionRepository.state.value as? SessionState.Running ?: return
-        val satSec = ((SystemClock.elapsedRealtime() - running.startElapsedMs) / 1000)
-            .coerceAtMost(running.config.durationSec.toLong()).toInt()
+    private fun endEarly() {
+        val session = running ?: return shutdown()
+        val satSec = (session.clock.elapsedAt(SystemClock.elapsedRealtime()) / 1000)
+            .coerceAtMost(session.config.durationSec.toLong()).toInt()
         if (satSec >= MIN_LOGGED_SEC) {
-            SessionLog.get(this).add(SessionRecord(startedAtWallMs, running.config.durationSec, satSec))
+            SessionLog.get(this).add(SessionRecord(startedAtWallMs, session.config.durationSec, satSec))
+            // Early sits get the same reflection screen: the rough ones are the most worth noting.
+            SessionRepository.finished(session.config, startedAtWallMs, satSec)
+        } else {
+            SessionRepository.reset()
+            Toast.makeText(this, R.string.too_short_to_log, Toast.LENGTH_SHORT).show()
         }
+        shutdown()
     }
 
     private fun shutdown() {
@@ -130,7 +189,7 @@ class MeditationService : Service() {
         wakeLock = null
     }
 
-    private fun buildNotification(config: SessionConfig): Notification {
+    private fun buildNotification(session: SessionState.Running): Notification {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, getString(R.string.channel_name), NotificationManager.IMPORTANCE_LOW).apply {
@@ -143,39 +202,61 @@ class MeditationService : Service() {
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val stop = PendingIntent.getService(
-            this, 1,
-            Intent(this, MeditationService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
+        val remaining = session.config.durationMs - session.clock.elapsedAt(SystemClock.elapsedRealtime())
         val builder = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_meditation)
-            .setContentTitle(getString(R.string.notification_title))
-            .setContentText(getString(R.string.notification_text, config.durationSec / 60))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            // Live countdown drawn by the system; no per-second notification updates needed.
-            .setUsesChronometer(true)
-            .setChronometerCountDown(true)
-            .setWhen(System.currentTimeMillis() + config.durationMs)
-            .setShowWhen(true)
             .setContentIntent(open)
-            .addAction(
-                Notification.Action.Builder(
-                    Icon.createWithResource(this, R.drawable.ic_stat_meditation),
-                    getString(R.string.end_session),
-                    stop,
-                ).build(),
-            )
+        when {
+            session.isEnding -> builder
+                .setContentTitle(getString(R.string.notification_ending_title))
+                .setContentText(getString(R.string.notification_ending_text))
+                .countDownTo(System.currentTimeMillis() + SessionClock.END_CONFIRM_MS)
+                .addAction(action(R.string.keep_sitting, ACTION_RESUME, 2))
+                .addAction(action(R.string.end_now, ACTION_END_NOW, 3))
+            session.isPaused -> builder
+                .setContentTitle(getString(R.string.notification_paused_title))
+                .setContentText(getString(R.string.notification_paused_text, formatClock(remaining)))
+                .setShowWhen(false)
+                .addAction(action(R.string.resume, ACTION_RESUME, 2))
+                .addAction(action(R.string.end_session, ACTION_END, 4))
+            else -> builder
+                .setContentTitle(getString(R.string.notification_title))
+                .setContentText(getString(R.string.notification_text, session.config.durationSec / 60))
+                // Live countdown drawn by the system; no per-second notification updates needed.
+                .countDownTo(System.currentTimeMillis() + remaining)
+                .addAction(action(R.string.pause, ACTION_PAUSE, 5))
+                .addAction(action(R.string.end_session, ACTION_END, 4))
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
         }
         return builder.build()
     }
 
+    private fun Notification.Builder.countDownTo(wallMs: Long) = this
+        .setUsesChronometer(true)
+        .setChronometerCountDown(true)
+        .setWhen(wallMs)
+        .setShowWhen(true)
+
+    private fun action(label: Int, serviceAction: String, requestCode: Int) = Notification.Action.Builder(
+        Icon.createWithResource(this, R.drawable.ic_stat_meditation),
+        getString(label),
+        PendingIntent.getService(
+            this, requestCode,
+            Intent(this, MeditationService::class.java).setAction(serviceAction),
+            PendingIntent.FLAG_IMMUTABLE,
+        ),
+    ).build()
+
     companion object {
         private const val ACTION_START = "com.rajan.meditationtimer.START"
-        private const val ACTION_STOP = "com.rajan.meditationtimer.STOP"
+        private const val ACTION_PAUSE = "com.rajan.meditationtimer.PAUSE"
+        private const val ACTION_RESUME = "com.rajan.meditationtimer.RESUME"
+        private const val ACTION_END = "com.rajan.meditationtimer.END"
+        private const val ACTION_END_NOW = "com.rajan.meditationtimer.END_NOW"
         private const val EXTRA_DURATION = "duration"
         private const val EXTRA_OPENING = "opening"
         private const val EXTRA_CLOSING = "closing"
@@ -202,8 +283,15 @@ class MeditationService : Service() {
             ContextCompat.startForegroundService(context, intent)
         }
 
-        fun stop(context: Context) {
-            context.startService(Intent(context, MeditationService::class.java).setAction(ACTION_STOP))
+        fun pause(context: Context) = send(context, ACTION_PAUSE)
+        fun resume(context: Context) = send(context, ACTION_RESUME)
+
+        /** Opens the few-second "keep sitting?" window rather than ending outright. */
+        fun end(context: Context) = send(context, ACTION_END)
+        fun endNow(context: Context) = send(context, ACTION_END_NOW)
+
+        private fun send(context: Context, action: String) {
+            context.startService(Intent(context, MeditationService::class.java).setAction(action))
         }
 
         private fun Intent.toConfig() = SessionConfig(

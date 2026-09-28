@@ -76,8 +76,12 @@ Build locally with the Android SDK installed: `./gradlew assembleRelease`.
 ## Design notes
 
 - **Screen off / locked:** the session runs in a foreground service holding a partial
-  wake lock, so bells stay on time for long sits. A notification shows a live countdown and
-  an *End session* action.
+  wake lock, so bells stay on time for long sits. A notification shows a live countdown with
+  *Pause* and *End* actions.
+- **Pause and a safe End**: Pause freezes the clock and holds the bells (Do Not Disturb lifts
+  while paused, so calls get through). End doesn't quit at once: the sit pauses and shows
+  "Ending in 5…" with *Keep sitting*, so a stray tap costs nothing. Early ends of a minute or
+  more get the same reflection screen as a full sit.
 - **Silent / Do Not Disturb:** bells play on the *alarm* stream, which DND lets through by
   default. That means the phone's alarm volume is the ceiling. Use the in-app volume slider
   and *Test* button to set a soft level (the volume keys adjust alarm volume while the app is open).

@@ -137,7 +137,19 @@ fun HistoryTab() {
                 for (session in day.sessions) SessionLine(session, zone)
             }
         }
-        item { Spacer(Modifier.height(8.dp)) }
+        // Which build is installed, so "is this the new APK?" has an answer.
+        item {
+            val version = remember {
+                runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
+            }
+            Text(
+                "Meditation Timer${version?.let { " · version $it" } ?: ""}",
+                Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 

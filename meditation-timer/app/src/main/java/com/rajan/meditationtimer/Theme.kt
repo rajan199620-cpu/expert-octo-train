@@ -1,5 +1,15 @@
 package com.rajan.meditationtimer
 
+import android.view.HapticFeedbackConstants
+import android.view.View
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -162,16 +172,72 @@ fun GlassCard(modifier: Modifier = Modifier, padding: Dp = 20.dp, content: @Comp
 @Composable
 fun GradientButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = LocalAccent.current
+    val view = LocalView.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    // A slight give under the finger makes the button feel physical.
+    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, tween(120), label = "press")
     Box(
         modifier
             .fillMaxWidth()
             .height(58.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(RoundedCornerShape(29.dp))
             .background(Brush.horizontalGradient(listOf(accent.main, accent.second)))
-            .clickable(onClick = onClick),
+            .clickable(interaction, LocalIndication.current) { view.tick(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Text(text, color = OnAccent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** A light tap felt under the finger, so a press registers even with eyes closed. */
+fun View.tick() {
+    performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+}
+
+enum class ControlIcon { PAUSE, PLAY, STOP }
+
+/** Round glass media control with its label underneath; the whole column is the touch target. */
+@Composable
+fun ControlButton(label: String, icon: ControlIcon, onClick: () -> Unit) {
+    val view = LocalView.current
+    val color = MaterialTheme.colorScheme.primary
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .clickable { view.tick(); onClick() }
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            Modifier.size(68.dp).clip(CircleShape).background(Glass).border(1.dp, GlassEdge, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(Modifier.size(22.dp)) {
+                val s = size.minDimension
+                val corner = CornerRadius(s * 0.08f)
+                when (icon) {
+                    ControlIcon.PAUSE -> {
+                        val bar = Size(s * 0.28f, s)
+                        drawRoundRect(color, Offset(s * 0.1f, 0f), bar, corner)
+                        drawRoundRect(color, Offset(s * 0.62f, 0f), bar, corner)
+                    }
+                    ControlIcon.PLAY -> drawPath(
+                        Path().apply {
+                            moveTo(s * 0.18f, 0f)
+                            lineTo(s * 0.95f, s / 2)
+                            lineTo(s * 0.18f, s)
+                            close()
+                        },
+                        color,
+                    )
+                    ControlIcon.STOP -> drawRoundRect(color, Offset(s * 0.1f, s * 0.1f), Size(s * 0.8f, s * 0.8f), CornerRadius(s * 0.14f))
+                }
+            }
+        }
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

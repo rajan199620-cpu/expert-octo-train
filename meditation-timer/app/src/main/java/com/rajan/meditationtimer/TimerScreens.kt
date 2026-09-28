@@ -4,14 +4,21 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +26,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -50,6 +59,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -89,8 +100,16 @@ fun TimerTab(
     val restore = rememberRestoreAction()
     val settingsVersion by Prefs.version.collectAsStateWithLifecycle()
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        when (session) {
+    // Setup, sit and reflection cross-fade into one another instead of cutting.
+    AnimatedContent(
+        session,
+        Modifier.fillMaxSize(),
+        transitionSpec = { fadeIn(tween(500, delayMillis = 150)) togetherWith fadeOut(tween(300)) },
+        contentAlignment = Alignment.Center,
+        label = "session",
+        contentKey = { it::class },
+    ) { state ->
+        when (state) {
             // Re-created when settings are restored, so the restored values show at once.
             SessionState.Idle -> key(settingsVersion) { SetupScreen(
                 prefs, streak, hasHistory = records.isNotEmpty(), onTestBell, onHistory, onRestore = restore, onPrinciples,
@@ -104,12 +123,12 @@ fun TimerTab(
                 }
                 MeditationService.start(context, config, volume, mode, dnd)
             } }
-            is SessionState.Running -> RunningScreen(session) { MeditationService.stop(context) }
+            is SessionState.Running -> RunningScreen(state)
             is SessionState.Finished -> FinishedScreen(
-                session,
+                state,
                 streak,
                 onSave = { rating, note ->
-                    if (rating > 0 || note.isNotBlank()) log.annotate(session.startedAtMs, rating, note)
+                    if (rating > 0 || note.isNotBlank()) log.annotate(state.startedAtMs, rating, note)
                     SessionRepository.reset()
                 },
             )
@@ -298,19 +317,22 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
 }
 
 @Composable
-private fun RunningScreen(session: SessionState.Running, onEnd: () -> Unit) {
+private fun RunningScreen(session: SessionState.Running) {
+    val context = LocalContext.current
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
-    LaunchedEffect(session.startElapsedMs) {
+    LaunchedEffect(Unit) {
         while (true) {
             now = SystemClock.elapsedRealtime()
             kotlinx.coroutines.delay(200)
         }
     }
     val total = session.config.durationMs
-    val elapsed = (now - session.startElapsedMs).coerceIn(0, total)
+    val elapsed = session.clock.elapsedAt(now).coerceIn(0, total)
     val remaining = total - elapsed
     val next = BellSchedule.next(session.config, elapsed)
     val accent = LocalAccent.current
+    // Back while deciding means "not yet": keep sitting rather than leave the app mid-choice.
+    BackHandler(enabled = session.isEnding) { MeditationService.resume(context) }
     // The halo swells and fades over ~11 s, about the length of one slow breath.
     val pulse by rememberInfiniteTransition(label = "pulse").animateFloat(
         initialValue = 0.55f,
@@ -318,14 +340,17 @@ private fun RunningScreen(session: SessionState.Running, onEnd: () -> Unit) {
         animationSpec = infiniteRepeatable(tween(5_500), RepeatMode.Reverse),
         label = "pulse",
     )
+    // Paused, the ring dims and stops breathing, so the state reads at a glance.
+    val still = session.clock.isPaused
+    val ringAlpha by animateFloatAsState(if (still) 0.4f else 1f, tween(600), label = "dim")
 
     Column(
-        Modifier.fillMaxSize(),
+        Modifier.widthIn(max = 480.dp).fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(36.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterVertically),
     ) {
-        Box(Modifier.size(300.dp).glow(accent.main, pulse), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize().padding(16.dp)) {
+        Box(Modifier.size(300.dp).glow(accent.main, if (still) 0.3f else pulse), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize().padding(16.dp).alpha(ringAlpha)) {
                 val stroke = 6.dp.toPx()
                 drawCircle(Color.White.copy(alpha = 0.08f), style = Stroke(stroke))
                 rotate(-90f) {
@@ -340,28 +365,110 @@ private fun RunningScreen(session: SessionState.Running, onEnd: () -> Unit) {
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(formatClock(remaining), style = MaterialTheme.typography.displayLarge)
-                if (next != null) {
-                    Text(
-                        cueHint(next, elapsed),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                val hint = when {
+                    still -> "Paused · bells on hold"
+                    next != null -> cueHint(next, elapsed)
+                    else -> null
+                }
+                if (hint != null) {
+                    Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
+
+        AnimatedContent(
+            when {
+                session.isEnding -> 2
+                session.isPaused -> 1
+                else -> 0
+            },
+            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+            label = "controls",
+        ) { mode ->
+            when (mode) {
+                2 -> EndingPrompt(
+                    endingAtMs = session.endingAtMs ?: now,
+                    now = now,
+                    satMs = elapsed,
+                    onKeepSitting = { MeditationService.resume(context) },
+                    onEndNow = { MeditationService.endNow(context) },
+                )
+                else -> Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                ) {
+                    if (mode == 1) {
+                        Text(
+                            "Take your time. Notifications can reach you while you’re paused.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    } else {
+                        Text(
+                            "Today’s focus: ${Principles.forLesson(rememberLessonIndex()).title}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            "Close your eyes. The bell will call you back.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(40.dp)) {
+                        if (mode == 1) {
+                            ControlButton("Resume", ControlIcon.PLAY) { MeditationService.resume(context) }
+                        } else {
+                            ControlButton("Pause", ControlIcon.PAUSE) { MeditationService.pause(context) }
+                        }
+                        ControlButton("End", ControlIcon.STOP) { MeditationService.end(context) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The few seconds after tapping End: the sit is paused, and doing nothing lets it end. */
+@Composable
+private fun EndingPrompt(endingAtMs: Long, now: Long, satMs: Long, onKeepSitting: () -> Unit, onEndNow: () -> Unit) {
+    val leftMs = (endingAtMs - now).coerceIn(0, SessionClock.END_CONFIRM_MS)
+    val seconds = ((leftMs + 999) / 1000).coerceAtLeast(1)
+    val accent = LocalAccent.current
+    GlassCard(Modifier.fillMaxWidth()) {
         Text(
-            "Today’s focus: ${Principles.forLesson(rememberLessonIndex()).title}",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
+            "Ending in $seconds…",
+            Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center,
         )
+        // Drains with the countdown, so the time left is felt as well as read.
+        Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.08f))) {
+            Box(
+                Modifier
+                    .fillMaxWidth(leftMs.toFloat() / SessionClock.END_CONFIRM_MS)
+                    .fillMaxHeight()
+                    .background(Brush.horizontalGradient(listOf(accent.main, accent.second))),
+            )
+        }
         Text(
-            "Close your eyes. The bell will call you back.",
-            style = MaterialTheme.typography.bodyLarge,
+            if (satMs >= MIN_LOGGED_SEC * 1000L) {
+                "${formatDuration(satMs / 1000)} so far. It’ll be saved to your history."
+            } else {
+                "Under a minute so far, so this one won’t be logged."
+            },
+            Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        TextButton(onClick = onEnd) { Text("End session", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        GradientButton("Keep sitting", onClick = onKeepSitting)
+        TextButton(onClick = onEndNow, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text("End now", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -378,10 +485,18 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        val minutes = session.satSec / 60
         Box(Modifier.size(160.dp).glow(accent.main), contentAlignment = Alignment.Center) {
-            Text("${session.config.durationSec / 60}", style = MaterialTheme.typography.displayLarge)
+            Text("$minutes", style = MaterialTheme.typography.displayLarge)
         }
-        Text("minutes of stillness", style = MaterialTheme.typography.headlineSmall)
+        Text(if (minutes == 1) "minute of stillness" else "minutes of stillness", style = MaterialTheme.typography.headlineSmall)
+        if (session.endedEarly) {
+            Text(
+                "of ${session.config.durationSec / 60} planned. Every minute counts.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         if (streak > 0) Pill("✦ ${streakLabel(streak)}")
 
         // Optional and judgement-free: noticing, not scoring.

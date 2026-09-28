@@ -10,7 +10,11 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -189,19 +193,34 @@ private fun App(
                     Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp),
                     contentAlignment = Alignment.TopCenter,
                 ) {
-                    when {
-                        inSession -> TimerTab(session, prefs, onTestBell, onHistory = { onTab(Tab.HISTORY) }, onPrinciples = {})
-                        showPrinciples -> PrinciplesScreen(onBack = { showPrinciples = false })
-                        tab == Tab.SIT -> TimerTab(
-                            session,
-                            prefs,
-                            onTestBell,
-                            onHistory = { onTab(Tab.HISTORY) },
-                            onPrinciples = { showPrinciples = true },
-                        )
-                        tab == Tab.BREATHE -> BreathTab(prefs, onBreathDone)
-                        tab == Tab.MALA -> MalaTab(mala, onMalaTap, onMalaChange)
-                        else -> HistoryTab()
+                    // A session takes over whole; otherwise the principles archive or the chosen tab.
+                    val screen: Any = when {
+                        inSession -> session
+                        showPrinciples -> PRINCIPLES
+                        else -> tab
+                    }
+                    AnimatedContent(
+                        screen,
+                        transitionSpec = { fadeIn(tween(400, delayMillis = 100)) togetherWith fadeOut(tween(200)) },
+                        contentAlignment = Alignment.TopCenter,
+                        label = "screen",
+                        // Pause, resume and finish are handled inside the session screen, not here.
+                        contentKey = { if (it is SessionState) SESSION else it },
+                    ) { target ->
+                        when (target) {
+                            is SessionState -> TimerTab(target, prefs, onTestBell, onHistory = { onTab(Tab.HISTORY) }, onPrinciples = {})
+                            PRINCIPLES -> PrinciplesScreen(onBack = { showPrinciples = false })
+                            Tab.SIT -> TimerTab(
+                                SessionState.Idle,
+                                prefs,
+                                onTestBell,
+                                onHistory = { onTab(Tab.HISTORY) },
+                                onPrinciples = { showPrinciples = true },
+                            )
+                            Tab.BREATHE -> BreathTab(prefs, onBreathDone)
+                            Tab.MALA -> MalaTab(mala, onMalaTap, onMalaChange)
+                            else -> HistoryTab()
+                        }
                     }
                 }
                 if (!inSession) {
@@ -214,6 +233,9 @@ private fun App(
         }
     }
 }
+
+private const val SESSION = "session"
+private const val PRINCIPLES = "principles"
 
 /** Floating glass bar; the selected tab glows in its own colour. */
 @Composable
