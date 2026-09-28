@@ -169,11 +169,11 @@ object Principles {
                 "Breines & Chen · Personality and Social Psychology Bulletin · 2012",
             )
             p(
-                "Your brain adapts",
-                "Regular practice doesn’t only change how you feel in the moment. Over weeks, it can be seen in the brain itself.",
-                "Remember today that each sit is part of a slow, physical change.",
-                "After an 8-week mindfulness course, meditation-naïve participants showed increased grey-matter concentration in the left hippocampus and other regions associated with memory and awareness.",
-                "Hölzel et al. · Psychiatry Research: Neuroimaging · 2011",
+                "Practise for your days, not your brain scan",
+                "You may read that a few weeks of meditation visibly reshapes the brain. The strongest evidence so far says that claim was premature. Judge practice by how your days feel, not by headlines.",
+                "This week, notice one small change in an ordinary day — that is the evidence that matters.",
+                "An early study reported grey-matter increases after an 8-week mindfulness course, but the largest and most rigorously controlled test — 218 people across two randomised trials — found no structural brain changes from the same course.",
+                "Kral et al. · Science Advances · 2022",
             )
         },
         section("Training attention") {
