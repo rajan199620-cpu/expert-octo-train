@@ -107,17 +107,17 @@ data class ReaderPalette(
 fun readerPalette(theme: ReaderTheme, systemDark: Boolean): ReaderPalette = when (theme) {
     ReaderTheme.SEPIA -> ReaderPalette(
         background = Color(0xFFF4ECD8), text = Color(0xFF3B2F1E), readText = Color(0x993B2F1E),
-        currentBackground = Color(0xFFEBCB8B), currentText = Color(0xFF2A1F10), heading = Color(0xFF5B4326),
+        currentBackground = Color(0xFFD6DEEF), currentText = Color(0xFF1D1A14), heading = Color(0xFF5B4326),
         accent = Color(0xFF9A5B00), isDark = false,
     )
     ReaderTheme.NIGHT -> ReaderPalette(
         background = Color(0xFF0E1014), text = Color(0xFFD9D5CC), readText = Color(0x80D9D5CC),
-        currentBackground = Color(0xFF2D3F7C), currentText = Color.White, heading = Color(0xFFB9C4FF),
+        currentBackground = Color(0xFF34488C), currentText = Color.White, heading = Color(0xFFB9C4FF),
         accent = Color(0xFFFFB961), isDark = true,
     )
     ReaderTheme.PAPER -> ReaderPalette(
         background = Color(0xFFFBF8F3), text = Color(0xFF1F1D1A), readText = Color(0x8C1F1D1A),
-        currentBackground = Color(0xFFFFE0A8), currentText = Color(0xFF1A1206), heading = Ink,
+        currentBackground = Color(0xFFDDE3FA), currentText = Color(0xFF10183A), heading = Ink,
         accent = Amber, isDark = false,
     )
     ReaderTheme.AUTO -> readerPalette(if (systemDark) ReaderTheme.NIGHT else ReaderTheme.PAPER, systemDark)

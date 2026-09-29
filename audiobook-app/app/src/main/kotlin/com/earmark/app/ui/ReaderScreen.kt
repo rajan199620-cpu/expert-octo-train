@@ -97,6 +97,13 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.unit.em
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -109,6 +116,9 @@ import com.earmark.core.annotations.AnnotationStore
 import com.earmark.core.annotations.HighlightColor
 import com.earmark.core.model.Book
 import com.earmark.core.player.PlaybackStatus
+
+private const val INLINE_BOOKMARK = "bookmark"
+private const val INLINE_NOTE = "note"
 
 private val SPEEDS = listOf(0.75f, 1.0f, 1.1f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f)
 
@@ -514,19 +524,19 @@ internal fun NowPlayingSheet(
             }
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBookmark, modifier = Modifier.pop(bookmarkScale)) {
+                LabeledAction("Bookmark", Modifier.pop(bookmarkScale), onClick = onBookmark) {
                     Icon(
                         if (bookmarkedHere) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                         "Bookmark what you just heard",
                         tint = if (bookmarkedHere) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                IconButton(onClick = onAsk) { Icon(Icons.Default.Keyboard, "Type a question", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                LabeledAction("Type", onClick = onAsk) { Icon(Icons.Default.Keyboard, "Type a question", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(84.dp)) {
-                    PulseRings(listening, MaterialTheme.colorScheme.secondary, Modifier.size(84.dp))
+                    PulseRings(listening, MicPulse, Modifier.size(84.dp))
                     Box(
                         Modifier.size(60.dp)
-                            .background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary)), CircleShape)
+                            .background(MicGradient, CircleShape)
                             .clickable(onClick = onMic),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -534,7 +544,7 @@ internal fun NowPlayingSheet(
                     }
                 }
                 Box {
-                    IconButton(onClick = { sleepOpen = true }) {
+                    LabeledAction("Sleep", onClick = { sleepOpen = true }) {
                         Icon(
                             Icons.Default.Bedtime,
                             "Sleep timer",
@@ -549,11 +559,22 @@ internal fun NowPlayingSheet(
                         DropdownMenuItem(text = { Text("Off") }, onClick = { sleepOpen = false; actions.setSleepTimer(null) })
                     }
                 }
-                IconButton(onClick = { actions.whereAmI() }) {
+                LabeledAction("Where am I", onClick = { actions.whereAmI() }) {
                     Icon(Icons.Default.AutoAwesome, "Where am I?", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LabeledAction(label: String, modifier: Modifier = Modifier, onClick: () -> Unit, icon: @Composable () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 4.dp),
+    ) {
+        Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) { icon() }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
     }
 }
 
@@ -584,7 +605,7 @@ internal fun ParagraphText(
     val text: AnnotatedString = buildAnnotatedString {
         for (i in range) {
             starts[i - range.first] = length
-            if (i in bookmarked) withStyle(SpanStyle(color = palette.accent)) { append("❝ ") }
+            if (i in bookmarked) { appendInlineContent(INLINE_BOOKMARK, "[bookmark]"); append(' ') }
             val span = when {
                 i == current -> SpanStyle(background = palette.currentBackground, color = palette.currentText)
                 i < current -> SpanStyle(color = palette.readText)
@@ -592,7 +613,7 @@ internal fun ParagraphText(
             }
             val style = highlights[i]?.let { c -> if (i == current) span else span.merge(SpanStyle(background = highlightColor(c))) } ?: span
             withStyle(style) { append(book.sentences[i].text) }
-            if (i in noted) withStyle(SpanStyle(color = palette.accent)) { append(" ✎") }
+            if (i in noted) { append(' '); appendInlineContent(INLINE_NOTE, "[note]") }
             if (i < range.last) append(' ')
         }
     }
@@ -607,8 +628,15 @@ internal fun ParagraphText(
         return range.first + k
     }
     val base = readingStyle(fontScale)
+    val inline = remember(palette) {
+        fun icon(vector: androidx.compose.ui.graphics.vector.ImageVector) = InlineTextContent(
+            Placeholder(width = 0.9.em, height = 0.9.em, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
+        ) { Icon(vector, contentDescription = null, tint = palette.accent, modifier = Modifier.fillMaxSize()) }
+        mapOf(INLINE_BOOKMARK to icon(Icons.Default.Bookmark), INLINE_NOTE to icon(Icons.Default.EditNote))
+    }
     Text(
         text = text,
+        inlineContent = inline,
         style = if (isHeading) base.copy(fontSize = base.fontSize * 1.35f, lineHeight = base.lineHeight * 1.2f, fontWeight = FontWeight.SemiBold) else base,
         onTextLayout = { layout = it },
         modifier = Modifier
@@ -642,7 +670,7 @@ internal fun AssistantOverlay(
         Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(26.dp).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary)), CircleShape),
+                    Modifier.size(26.dp).background(MicGradient, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(15.dp)) }
                 Spacer(Modifier.width(10.dp))
@@ -685,9 +713,11 @@ internal fun AssistantOverlay(
                     if (ui.reply.sources.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ui.reply.sources.take(3).forEach { idx ->
+                            // One chip per page: several cited passages often sit on the same page.
+                            ui.reply.sources.distinctBy { book.sentences.getOrNull(it)?.page }.take(3).forEach { idx ->
                                 val page = book.sentences.getOrNull(idx)?.page
-                                AssistChip(onClick = { onJump(idx) }, label = { Text("Page ${page ?: "?"}") }, leadingIcon = { Icon(Icons.Default.MyLocation, null, Modifier.size(16.dp)) })
+                                val label = if (book.pagesAreVirtual) "≈ page ${page ?: "?"}" else "Page ${page ?: "?"}"
+                                AssistChip(onClick = { onJump(idx) }, label = { Text(label) }, leadingIcon = { Icon(Icons.Default.MyLocation, null, Modifier.size(16.dp)) })
                             }
                         }
                     }

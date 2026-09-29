@@ -90,7 +90,39 @@ class SentenceSegmenter(
             if (best > 0) return from + best
         }
         val space = window.lastIndexOf(' ')
-        return from + if (space >= minCut) space + 1 else window.length
+        if (space >= minCut) return from + space + 1
+        return safeHardCut(s, from + window.length, from + 1)
+    }
+
+    /**
+     * Text with no spaces (Chinese, Japanese, long URLs) has to be cut mid-run. Never cut inside
+     * a surrogate pair, before a combining mark, or inside an emoji ZWJ sequence.
+     */
+    private fun safeHardCut(s: String, cut: Int, min: Int): Int {
+        if (cut >= s.length) return s.length
+        var c = cut
+        while (c > min && !isClusterBoundary(s, c)) c--
+        return if (c > min) c else cut
+    }
+
+    private fun isClusterBoundary(s: String, i: Int): Boolean {
+        val next = s[i]
+        val prev = s[i - 1]
+        if (next.isLowSurrogate() && prev.isHighSurrogate()) return false
+        if (prev == '\u200D' || next == '\u200D') return false
+        if (next == '\uFE0F' || next == '\uFE0E' || next in '\u20D0'..'\u20FF') return false
+        val type = Character.getType(s.codePointAt(i))
+        if (type == Character.NON_SPACING_MARK.toInt() || type == Character.COMBINING_SPACING_MARK.toInt() || type == Character.ENCLOSING_MARK.toInt()) return false
+        // Skin-tone modifiers and regional-indicator flag pairs.
+        val cp = s.codePointAt(i)
+        if (cp in 0x1F3FB..0x1F3FF) return false
+        if (cp in 0x1F1E6..0x1F1FF && i >= 2 && s.codePointBefore(i) in 0x1F1E6..0x1F1FF) {
+            var n = 0
+            var k = i
+            while (k >= 2 && s.codePointBefore(k) in 0x1F1E6..0x1F1FF) { n++; k -= 2 }
+            if (n % 2 == 1) return false
+        }
+        return true
     }
 
     private fun isBoundary(text: String, sentenceStart: Int, termIndex: Int, afterClosers: Int): Boolean {
@@ -162,9 +194,9 @@ class SentenceSegmenter(
         private val ENUMERATOR = Regex("""^\(?(?:\d{1,3}|[ivxlcdmIVXLCDM]{1,6}|[a-zA-Z])\)?$""")
 
         private val CUT_PREFERENCE = listOf(
-            listOf("; ", ": "),
+            listOf("; ", ": ", "\uFF1B", "\uFF1A"),
             listOf(" — ", "—", " – ", " - "),
-            listOf(", "),
+            listOf(", ", "\uFF0C", "\u3001", "\u060C "),
         )
 
         private val WS = Regex("""[\s     ]+""")

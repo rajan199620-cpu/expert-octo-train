@@ -204,10 +204,11 @@ class AnnotationStore(
     @Synchronized
     fun reanchor(book: Book): Reanchorer.Report {
         val report = Reanchorer.Report()
+        val index = Reanchorer.Index(book)
         val updated = items.map { a ->
             if (a.bookId != book.id) return@map a
-            val start = Reanchorer.locate(a.start, book)
-            val end = if (a.end == a.start) start else Reanchorer.locate(a.end, book)
+            val start = Reanchorer.locate(a.start, index)
+            val end = if (a.end == a.start) start else Reanchorer.locate(a.end, index)
             when {
                 start == null -> { report.orphaned++; a.copy(orphaned = true) }
                 start == a.start.sentenceIndex && (end ?: start) == a.end.sentenceIndex -> { report.unchanged++; a.copy(orphaned = false) }
@@ -248,41 +249,60 @@ class AnnotationStore(
 object Reanchorer {
     class Report(var unchanged: Int = 0, var moved: Int = 0, var orphaned: Int = 0)
 
-    /** Finds the sentence an anchor refers to in [book], or null if the text is gone. */
-    fun locate(anchor: TextAnchor, book: Book): Int? {
+    private const val KEY = 24
+
+    /**
+     * Normalised sentence texts and a prefix lookup, built once per book. Re-anchoring used to
+     * normalise every sentence for every annotation: 10,000 annotations on a 50,000-sentence
+     * book took minutes (found by StressTest).
+     */
+    class Index(val book: Book) {
+        internal val normed: Array<String> = Array(book.sentences.size) { norm(book.sentences[it].text) }
+        internal val byKey: Map<String, List<Int>> = normed.indices.groupBy { normed[it].take(KEY) }
+    }
+
+    fun locate(anchor: TextAnchor, book: Book): Int? = locate(anchor, Index(book))
+
+    /** Finds the sentence an anchor refers to, or null if the text is gone. */
+    fun locate(anchor: TextAnchor, index: Index): Int? {
+        val book = index.book
+        val normed = index.normed
         if (book.isEmpty) return null
         val quote = norm(anchor.quote)
         if (quote.isEmpty()) return book.clampIndex(anchor.sentenceIndex)
-        val direct = book.sentences.getOrNull(anchor.sentenceIndex)
-        if (direct != null && norm(direct.text).startsWith(quote)) return anchor.sentenceIndex
+        if (normed.getOrNull(anchor.sentenceIndex)?.startsWith(quote) == true) return anchor.sentenceIndex
 
         // Exact quote matches, closest to the old position wins; the prefix breaks ties
         // for repeated sentences ("He nodded.").
-        val candidates = book.sentences.indices.filter { norm(book.sentences[it].text).startsWith(quote) }
+        val candidates = if (quote.length >= KEY) {
+            index.byKey[quote.take(KEY)].orEmpty().filter { normed[it].startsWith(quote) }
+        } else {
+            normed.indices.filter { normed[it].startsWith(quote) }
+        }
         if (candidates.isNotEmpty()) {
             val prefix = norm(anchor.prefix)
-            val withPrefix = if (prefix.isEmpty()) candidates else candidates.filter { i ->
-                i > 0 && norm(book.sentences[i - 1].text).endsWith(prefix)
-            }
+            val withPrefix = if (prefix.isEmpty()) candidates else candidates.filter { i -> i > 0 && normed[i - 1].endsWith(prefix) }
             return (withPrefix.ifEmpty { candidates }).minBy { kotlin.math.abs(it - anchor.sentenceIndex) }
         }
 
         // The quote may now span two sentences (parser splits differently) or be slightly edited.
         val probe = quote.take(40)
-        book.sentences.indices.firstOrNull { norm(book.sentences[it].text).contains(probe) }?.let { return it }
-        val window = 2000
-        val lo = maxOf(0, anchor.sentenceIndex - window)
-        val hi = minOf(book.lastIndex, anchor.sentenceIndex + window)
+        val near = maxOf(0, anchor.sentenceIndex - 5000)..minOf(book.lastIndex, anchor.sentenceIndex + 5000)
+        (near.firstOrNull { normed[it].contains(probe) } ?: normed.indices.firstOrNull { normed[it].contains(probe) })?.let { return it }
+        val lo = maxOf(0, anchor.sentenceIndex - 300)
+        val hi = minOf(book.lastIndex, anchor.sentenceIndex + 300)
         var best = -1
         var bestScore = 0.0
         for (i in lo..hi) {
-            val score = similarity(quote, norm(book.sentences[i].text).take(quote.length + 20))
+            val score = similarity(quote, normed[i].take(quote.length + 20))
             if (score > bestScore) { bestScore = score; best = i }
         }
         return if (bestScore >= 0.6) best else null
     }
 
-    private fun norm(s: String) = s.lowercase().replace(Regex("""[^\p{L}\p{N}]+"""), " ").trim()
+    private val NON_WORD = Regex("""[^\p{L}\p{N}]+""")
+
+    internal fun norm(s: String) = s.lowercase().replace(NON_WORD, " ").trim()
 
     /** Dice coefficient over character trigrams. */
     internal fun similarity(a: String, b: String): Double {

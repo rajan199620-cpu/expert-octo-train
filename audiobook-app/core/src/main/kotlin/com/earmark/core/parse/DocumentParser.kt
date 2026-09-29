@@ -41,8 +41,8 @@ object DocumentParser {
      */
     fun parse(open: () -> InputStream, format: SourceFormat, fileName: String, id: String): Book {
         val raw = when (format) {
-            SourceFormat.EPUB -> open().use { EpubParser.parse(it) }
-            SourceFormat.DOCX -> open().use { DocxParser.parse(it) }
+            SourceFormat.EPUB -> damagedIsReadable("EPUB") { open().use { EpubParser.parse(it) } }
+            SourceFormat.DOCX -> damagedIsReadable("Word document") { open().use { DocxParser.parse(it) } }
             SourceFormat.HTML -> {
                 val doc = Jsoup.parse(decodeText(readLimited(open)))
                 RawDocument(doc.title().takeIf { it.isNotBlank() }, doc.selectFirst("meta[name=author]")?.attr("content"),
@@ -53,6 +53,20 @@ object DocumentParser {
             SourceFormat.PDF -> throw IllegalArgumentException("PDF text must be extracted by the platform; use PdfTextCleaner.")
         }
         return BookAssembler.assemble(id, titleFromFileName(fileName), format, raw, SentenceSegmenter())
+    }
+
+    /**
+     * A corrupted zip surfaces as IllegalArgumentException ("malformed input"), EOFException,
+     * IndexOutOfBounds... none of which should reach the user verbatim (found by fuzzing).
+     */
+    private inline fun <T> damagedIsReadable(kind: String, block: () -> T): T = try {
+        block()
+    } catch (e: DocumentParseException) {
+        throw e
+    } catch (e: java.io.IOException) {
+        throw DocumentParseException("This $kind is damaged and can't be read.", e)
+    } catch (e: RuntimeException) {
+        throw DocumentParseException("This $kind is damaged and can't be read.", e)
     }
 
     fun titleFromFileName(fileName: String) =

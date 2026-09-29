@@ -52,8 +52,8 @@ fun BookCover(title: String, author: String?, modifier: Modifier = Modifier, com
             .drawBehind {
                 // Spine shadow and a ribbon in the top-right corner.
                 drawRect(Color.Black.copy(alpha = 0.18f), size = size.copy(width = size.width * 0.06f))
-                val w = size.width * 0.12f
-                val x = size.width * 0.78f
+                val w = size.width * 0.1f
+                val x = size.width * 0.85f
                 val ribbon = Path().apply {
                     moveTo(x, 0f)
                     lineTo(x + w, 0f)
@@ -65,21 +65,22 @@ fun BookCover(title: String, author: String?, modifier: Modifier = Modifier, com
                 drawPath(ribbon, Color(0xFFFFD27A))
             },
     ) {
-        Column(Modifier.fillMaxSize().padding(start = if (compact) 12.dp else 18.dp, end = 12.dp, top = if (compact) 14.dp else 22.dp, bottom = 12.dp)) {
+        Column(Modifier.fillMaxSize().padding(start = if (compact) 11.dp else 16.dp, end = 8.dp, top = if (compact) 12.dp else 18.dp, bottom = 10.dp)) {
+            // Keep clear of the ribbon, and size the type to the cover so long words don't break.
             Text(
                 title,
                 color = Color.White,
                 fontFamily = SerifFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = if (compact) 15.sp else 20.sp,
-                lineHeight = if (compact) 18.sp else 24.sp,
-                maxLines = if (compact) 4 else 5,
+                fontSize = if (compact) 13.sp else 17.sp,
+                lineHeight = if (compact) 16.sp else 21.sp,
+                maxLines = if (compact) 5 else 6,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(end = 18.dp),
+                modifier = Modifier.fillMaxWidth(0.82f),
             )
             Spacer(Modifier.weight(1f))
             author?.let {
-                Text(it.uppercase(), color = Color.White.copy(alpha = 0.85f), fontSize = if (compact) 9.sp else 11.sp, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(it.uppercase(), color = Color.White.copy(alpha = 0.85f), fontSize = if (compact) 8.sp else 10.sp, letterSpacing = 1.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -146,7 +147,7 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun ProgressLine(progress: Float, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.secondary) {
-    Box(modifier.height(4.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
+    Box(modifier.height(4.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.outlineVariant)) {
         Box(Modifier.fillMaxHeight().fillMaxWidth(progress.coerceIn(0f, 1f)).clip(RoundedCornerShape(2.dp)).background(color))
     }
 }
@@ -155,3 +156,7 @@ fun ProgressLine(progress: Float, modifier: Modifier = Modifier, color: Color = 
 fun Dot(color: Color, size: Dp = 6.dp) {
     Box(Modifier.size(size).clip(CircleShape).background(color))
 }
+
+/** Warm amber-to-coral: the "talk" colour, distinct from the ink play button in both themes. */
+val MicGradient = Brush.linearGradient(listOf(Color(0xFFF2A93B), Color(0xFFE8664A)))
+val MicPulse = Color(0xFFE8664A)

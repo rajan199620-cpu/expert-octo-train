@@ -26,7 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.BorderColor
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -143,10 +143,10 @@ fun LibraryScreen(library: Library, incoming: MutableStateFlow<Uri?>, onOpen: (S
                 return@Column
             }
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 150.dp),
+                columns = GridCells.Adaptive(minSize = 104.dp),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 96.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 books.firstOrNull()?.let { recent ->
                     item(span = { GridItemSpan(maxLineSpan) }, key = "hero") {
@@ -196,12 +196,12 @@ internal fun ContinueListening(book: BookSummary, onResume: () -> Unit, onOpen: 
             Column(Modifier.weight(1f)) {
                 SectionLabel(if (book.position > 0) "Continue listening" else "Start listening")
                 Spacer(Modifier.height(4.dp))
-                Text(book.title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(book.title, style = MaterialTheme.typography.titleMedium, fontFamily = SerifFamily, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 book.author?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1) }
                 Spacer(Modifier.height(12.dp))
                 ProgressLine(book.progress)
                 Spacer(Modifier.height(6.dp))
-                Text("${(book.progress * 100).toInt()}% · ${book.chapterCount} chapters", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${(book.progress * 100).toInt()}% · ${book.chapterCount} ${if (book.chapterCount == 1) "chapter" else "chapters"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.width(12.dp))
             FilledIconButton(
@@ -217,11 +217,11 @@ internal fun ContinueListening(book: BookSummary, onResume: () -> Unit, onOpen: 
 @Composable
 internal fun CoverTile(book: BookSummary, onClick: () -> Unit, onLongClick: () -> Unit) {
     Column(Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
-        BookCover(book.title, book.author, Modifier.fillMaxWidth().aspectRatio(0.68f))
+        BookCover(book.title, book.author, Modifier.fillMaxWidth().aspectRatio(0.68f), compact = true)
         Spacer(Modifier.height(8.dp))
         ProgressLine(book.progress)
         Spacer(Modifier.height(6.dp))
-        Text(book.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(book.title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text(
             listOfNotNull(book.author, "${(book.progress * 100).toInt()}%").joinToString(" · "),
             style = MaterialTheme.typography.labelSmall,
@@ -243,9 +243,9 @@ internal fun EmptyLibrary(onAdd: () -> Unit) {
         Spacer(Modifier.height(20.dp))
         Feature(Icons.Default.Headphones, "PDF, EPUB, Word, web pages and text, read in a natural voice")
         Feature(Icons.Default.Mic, "Say \"bookmark this\", \"go back 30 seconds\" or ask \"who is this?\"")
-        Feature(Icons.Default.Highlight, "Highlights and notes you can export to Anki or your notes app")
+        Feature(Icons.Default.BorderColor, "Highlights and notes you can export to Anki or your notes app")
         Spacer(Modifier.height(24.dp))
-        TextButton(onClick = onAdd) { Text("Add your first book") }
+        Text("Tap \u201CAdd a book\u201D to begin, or share a file to Earmark from any app.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

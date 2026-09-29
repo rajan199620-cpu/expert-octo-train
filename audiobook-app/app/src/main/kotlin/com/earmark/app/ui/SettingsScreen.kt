@@ -71,6 +71,7 @@ fun SettingsScreen(store: SettingsStore, hub: PlayerHub, onBack: () -> Unit) {
 
     // Enumerate on-device voices once.
     var voices by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var voicesLoaded by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
         var tts: TextToSpeech? = null
         tts = TextToSpeech(context) { status ->
@@ -83,6 +84,7 @@ fun SettingsScreen(store: SettingsStore, hub: PlayerHub, onBack: () -> Unit) {
                     }
                 }.orEmpty()
             }
+            voicesLoaded = true
         }
         onDispose { tts?.shutdown() }
     }
@@ -95,91 +97,105 @@ fun SettingsScreen(store: SettingsStore, hub: PlayerHub, onBack: () -> Unit) {
             )
         },
     ) { padding ->
-        Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
             Section("Narrator voice")
-            EngineOption(settings.engine == NarratorEngine.SYSTEM, "On-device voice", "Free, works offline, instant. Sounds as good as your phone's TTS engine.") {
-                update(true) { it.copy(engine = NarratorEngine.SYSTEM) }
+            Group {
+                EngineOption(settings.engine == NarratorEngine.SYSTEM, "On-device voice", "Free, works offline, instant. Sounds as good as your phone's TTS engine.") {
+                    update(true) { it.copy(engine = NarratorEngine.SYSTEM) }
+                }
+                EngineOption(settings.engine == NarratorEngine.ELEVENLABS, "ElevenLabs", "The most human-sounding voices. Needs your API key and internet; billed per character.") {
+                    update(true) { it.copy(engine = NarratorEngine.ELEVENLABS) }
+                }
+                EngineOption(settings.engine == NarratorEngine.OPENAI, "OpenAI", "Natural, steerable narration. Needs your API key and internet; cheaper than ElevenLabs.") {
+                    update(true) { it.copy(engine = NarratorEngine.OPENAI) }
+                }
             }
-            EngineOption(settings.engine == NarratorEngine.ELEVENLABS, "ElevenLabs", "The most human-sounding voices. Needs your API key and internet; billed per character.") {
-                update(true) { it.copy(engine = NarratorEngine.ELEVENLABS) }
-            }
-            EngineOption(settings.engine == NarratorEngine.OPENAI, "OpenAI", "Natural, steerable narration. Needs your API key and internet; cheaper than ElevenLabs.") {
-                update(true) { it.copy(engine = NarratorEngine.OPENAI) }
-            }
-            Spacer(Modifier.height(8.dp))
-            when (settings.engine) {
-                NarratorEngine.SYSTEM -> {
-                    Text("Voice", style = MaterialTheme.typography.labelLarge)
-                    if (voices.isEmpty()) Text("Loading voices…", style = MaterialTheme.typography.bodySmall)
-                    voices.take(12).forEach { (name, label) ->
-                        Row(Modifier.fillMaxWidth().clickable { update(true) { it.copy(systemVoiceName = name) } }, verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = settings.systemVoiceName == name, onClick = { update(true) { it.copy(systemVoiceName = name) } })
-                            Column { Text(name, style = MaterialTheme.typography.bodyMedium); Text(label, style = MaterialTheme.typography.bodySmall) }
+            Group {
+                when (settings.engine) {
+                    NarratorEngine.SYSTEM -> {
+                        Text("Voice", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
+                        when {
+                            !voicesLoaded -> Text("Loading voices…", style = MaterialTheme.typography.bodySmall)
+                            voices.isEmpty() -> Text("Using your phone's default voice. Download more voices for a better one.", style = MaterialTheme.typography.bodySmall)
                         }
+                        voices.take(12).forEach { (name, label) ->
+                            Row(Modifier.fillMaxWidth().clickable { update(true) { it.copy(systemVoiceName = name) } }, verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = settings.systemVoiceName == name, onClick = { update(true) { it.copy(systemVoiceName = name) } })
+                                Column { Text(name, style = MaterialTheme.typography.bodyMedium); Text(label, style = MaterialTheme.typography.bodySmall) }
+                            }
+                        }
+                        OutlinedButton(onClick = {
+                            runCatching { context.startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                        }, modifier = Modifier.padding(vertical = 8.dp)) { Text("Download better voices") }
                     }
-                    OutlinedButton(onClick = {
-                        runCatching { context.startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                    }) { Text("Download better voices") }
-                }
-                NarratorEngine.ELEVENLABS -> {
-                    KeyField("ElevenLabs API key", settings.elevenLabsKey) { v -> update(true) { it.copy(elevenLabsKey = v) } }
-                    PlainField("Voice ID", settings.elevenLabsVoiceId) { v -> update(true) { it.copy(elevenLabsVoiceId = v) } }
-                }
-                NarratorEngine.OPENAI -> {
-                    KeyField("OpenAI API key", settings.openAiKey) { v -> update(true) { it.copy(openAiKey = v) } }
-                    PlainField("Voice (alloy, ash, coral, sage, verse…)", settings.openAiVoice) { v -> update(true) { it.copy(openAiVoice = v.trim()) } }
+                    NarratorEngine.ELEVENLABS -> {
+                        KeyField("ElevenLabs API key", settings.elevenLabsKey) { v -> update(true) { it.copy(elevenLabsKey = v) } }
+                        PlainField("Voice ID", settings.elevenLabsVoiceId) { v -> update(true) { it.copy(elevenLabsVoiceId = v) } }
+                    }
+                    NarratorEngine.OPENAI -> {
+                        KeyField("OpenAI API key", settings.openAiKey) { v -> update(true) { it.copy(openAiKey = v) } }
+                        PlainField("Voice (alloy, ash, coral, sage, verse…)", settings.openAiVoice) { v -> update(true) { it.copy(openAiVoice = v.trim()) } }
+                    }
                 }
             }
 
             session?.book?.let { book ->
                 val chars = book.totalChars
-                Spacer(Modifier.height(12.dp))
-                Text("What \"${book.title}\" costs to narrate", style = MaterialTheme.typography.labelLarge)
-                CostEstimator.Voice.values().forEach { v ->
-                    val e = CostEstimator.estimate(chars, v)
-                    Text("${v.label}: ${if (e.usd == 0.0) "free" else "about $" + String.format(Locale.US, "%.2f", e.usd)} for ≈ ${String.format(Locale.US, "%.1f", e.audioHours)} h of audio", style = MaterialTheme.typography.bodySmall)
+                Group {
+                    Text("What \"${book.title}\" costs to narrate", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 4.dp))
+                    CostEstimator.Voice.values().forEach { v ->
+                        val e = CostEstimator.estimate(chars, v)
+                        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                            Text(v.label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                            Text(if (e.usd == 0.0) "free" else "≈ $" + String.format(Locale.US, "%.2f", e.usd), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    Text("≈ ${String.format(Locale.US, "%.1f", CostEstimator.estimate(chars, CostEstimator.Voice.SYSTEM).audioHours)} h of audio. Cloud audio is cached, so re-listening is free. Prices change; check your provider.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 4.dp))
                 }
-                Text("Cloud audio is cached, so re-listening is free. Prices change; check your provider.", style = MaterialTheme.typography.bodySmall)
             }
 
-            Divider()
             Section("Ask the book")
-            KeyField("Anthropic API key (for questions and recaps)", settings.anthropicKey) { v -> update(true) { it.copy(anthropicKey = v) } }
-            Text("Without a key, questions fall back to finding the most relevant passage offline.", style = MaterialTheme.typography.bodySmall)
-            Toggle("Spoiler-safe answers", "Answers only use the book up to where you are.", settings.spoilerSafe) { v -> update { it.copy(spoilerSafe = v) } }
-            Toggle("Send the whole book as context", "Better answers for short books; more expensive on the first question.", settings.fullBookContext) { v -> update(true) { it.copy(fullBookContext = v) } }
+            Group {
+                KeyField("Anthropic API key (for questions and recaps)", settings.anthropicKey) { v -> update(true) { it.copy(anthropicKey = v) } }
+                Text("Without a key, questions fall back to finding the most relevant passage offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Toggle("Spoiler-safe answers", "Answers only use the book up to where you are.", settings.spoilerSafe) { v -> update { it.copy(spoilerSafe = v) } }
+                Toggle("Send the whole book as context", "Better answers for short books; more expensive on the first question.", settings.fullBookContext) { v -> update(true) { it.copy(fullBookContext = v) } }
+            }
 
-            Divider()
-            Section("Controls")
-            Toggle("Earbud double-tap / next = bookmark", "Bookmark what you just heard without speaking. A short tone confirms.", settings.headsetNextBookmarks) { v -> update { it.copy(headsetNextBookmarks = v) } }
-            Toggle("Spoken confirmations", "Say \"Bookmarked\" etc. after voice commands.", settings.spokenConfirmations) { v -> update { it.copy(spokenConfirmations = v) } }
+            Section("Listening")
+            Group {
+                Toggle("Earbud double-tap = bookmark", "Bookmark what you just heard without speaking. A short tone confirms.", settings.headsetNextBookmarks) { v -> update { it.copy(headsetNextBookmarks = v) } }
+                Toggle("Spoken confirmations", "Say \"Bookmarked\" etc. after voice commands.", settings.spokenConfirmations) { v -> update { it.copy(spokenConfirmations = v) } }
+            }
 
-            Divider()
             Section("Pronunciation")
-            Text("Teach the voice names and terms it gets wrong.", style = MaterialTheme.typography.bodySmall)
-            settings.lexicon.forEachIndexed { i, e ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("${e.from} → ${e.to}", modifier = Modifier.weight(1f))
-                    IconButton(onClick = { update(true) { s -> s.copy(lexicon = s.lexicon.filterIndexed { k, _ -> k != i }) } }) { Icon(Icons.Default.Delete, "Remove") }
+            Group {
+                Text("Teach the voice names and terms it gets wrong.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                settings.lexicon.forEachIndexed { i, e ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${e.from} → ${e.to}", modifier = Modifier.weight(1f))
+                        IconButton(onClick = { update(true) { s -> s.copy(lexicon = s.lexicon.filterIndexed { k, _ -> k != i }) } }) { Icon(Icons.Default.Delete, "Remove") }
+                    }
                 }
-            }
-            var from by remember { mutableStateOf("") }
-            var to by remember { mutableStateOf("") }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(from, { from = it }, label = { Text("Written") }, singleLine = true, modifier = Modifier.weight(1f))
-                Spacer(Modifier.width(8.dp))
-                OutlinedTextField(to, { to = it }, label = { Text("Say it as") }, singleLine = true, modifier = Modifier.weight(1f))
-            }
-            Button(
-                onClick = {
-                    update(true) { it.copy(lexicon = it.lexicon + LexiconEntry(from.trim(), to.trim())) }
-                    from = ""; to = ""
-                },
-                enabled = from.isNotBlank() && to.isNotBlank(),
-            ) { Text("Add") }
-            if (from.isNotBlank() && to.isNotBlank()) {
-                val preview = SpeechNormalizer(com.earmark.core.text.Lexicon(listOf(LexiconEntry(from, to)))).normalize("Example: $from.")
-                Text("Will be read as: $preview", style = MaterialTheme.typography.bodySmall)
+                var from by remember { mutableStateOf("") }
+                var to by remember { mutableStateOf("") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(from, { from = it }, label = { Text("Written") }, singleLine = true, modifier = Modifier.weight(1f))
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedTextField(to, { to = it }, label = { Text("Say it as") }, singleLine = true, modifier = Modifier.weight(1f))
+                }
+                Button(
+                    onClick = {
+                        update(true) { it.copy(lexicon = it.lexicon + LexiconEntry(from.trim(), to.trim())) }
+                        from = ""; to = ""
+                    },
+                    enabled = from.isNotBlank() && to.isNotBlank(),
+                    modifier = Modifier.padding(vertical = 8.dp),
+                ) { Text("Add") }
+                if (from.isNotBlank() && to.isNotBlank()) {
+                    val preview = SpeechNormalizer(com.earmark.core.text.Lexicon(listOf(LexiconEntry(from, to)))).normalize("Example: $from.")
+                    Text("Will be read as: $preview", style = MaterialTheme.typography.bodySmall)
+                }
             }
             Spacer(Modifier.height(48.dp))
         }
@@ -187,8 +203,19 @@ fun SettingsScreen(store: SettingsStore, hub: PlayerHub, onBack: () -> Unit) {
 }
 
 @Composable
+private fun Group(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    androidx.compose.material3.Surface(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), content = content)
+    }
+}
+
+@Composable
 private fun Section(title: String) {
-    Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+    SectionLabel(title, Modifier.padding(start = 4.dp, top = 18.dp, bottom = 4.dp))
 }
 
 @Composable
