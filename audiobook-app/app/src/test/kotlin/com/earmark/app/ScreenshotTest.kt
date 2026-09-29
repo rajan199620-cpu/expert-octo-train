@@ -27,7 +27,7 @@ import com.earmark.app.ui.AssistantOverlay
 import com.earmark.app.ui.EarmarkTheme
 import com.earmark.app.ui.LibraryScreen
 import com.earmark.app.ui.NowPlayingSheet
-import com.earmark.app.ui.ParagraphText
+import com.earmark.app.ui.ReaderText
 import com.earmark.app.ui.PlayerActions
 import com.earmark.app.ui.ReaderPalette
 import com.earmark.app.ui.SerifFamily
@@ -91,11 +91,28 @@ class ScreenshotTest {
         return BookAssembler.assemble("demo", title, SourceFormat.EPUB, raw)
     }
 
+    /** One page-long paragraph, as PDFs often produce: the case where the highlight used to walk off screen. */
+    private fun longParagraphBook(): Book {
+        val sentences = (1..40).joinToString(" ") { n ->
+            "Sentence $n of the long paragraph explains, in careful and deliberate detail, why the harbour master kept the lamp dark."
+        }
+        val raw = RawDocument("Notes on the Harbour", "R. Singh", listOf(RawSection("Evidence", listOf(RawBlock("Evidence", isHeading = true), RawBlock(sentences)))))
+        return BookAssembler.assemble("long", "long", SourceFormat.PDF, raw)
+    }
+
+    private fun wordOf(book: Book, sentence: Int, word: String): IntRange {
+        val t = book.sentences[sentence].text
+        val i = t.indexOf(word)
+        return i until i + word.length
+    }
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun ReaderPreview(book: Book, palette: ReaderPalette, position: Int, assistant: AssistantUi) {
+    private fun ReaderPreview(book: Book, palette: ReaderPalette, position: Int, assistant: AssistantUi, word: IntRange? = null) {
         val charsBefore = LongArray(book.sentences.size + 1).also { a -> for (i in book.sentences.indices) a[i + 1] = a[i] + book.sentences[i].text.length }
         val highlights = mapOf(5 to HighlightColor.YELLOW, 6 to HighlightColor.YELLOW)
+        val paragraphs = paragraphRanges(book)
+        val itemOfSentence = IntArray(book.sentences.size).also { arr -> paragraphs.forEachIndexed { i, r -> for (k in r) arr[k] = i } }
         Scaffold(
             containerColor = palette.background,
             topBar = {
@@ -118,11 +135,11 @@ class ScreenshotTest {
             },
         ) { padding ->
             Box(Modifier.padding(padding).fillMaxSize()) {
-                LazyColumn(contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)) {
-                    items(paragraphRanges(book)) { r ->
-                        ParagraphText(book, r, position, highlights, setOf(3), setOf(9), palette, 1.0f, {}, {})
-                    }
-                }
+                ReaderText(
+                    book = book, paragraphs = paragraphs, itemOfSentence = itemOfSentence, position = position, word = word,
+                    playing = true, highlights = highlights, bookmarked = setOf(3), noted = setOf(9), palette = palette,
+                    fontScale = 1.0f, follow = true, onFollowChange = {}, onTap = {}, onLongPress = {},
+                )
                 if (assistant !is AssistantUi.Idle) {
                     Box(Modifier.align(Alignment.BottomCenter)) { AssistantOverlay(assistant, book, {}, {}, {}, {}) }
                 }
@@ -132,7 +149,14 @@ class ScreenshotTest {
 
     @Test
     fun readerPaper() = render("reader-paper") {
-        ReaderPreview(book(), readerPalette(ReaderTheme.PAPER, false), position = 7, assistant = AssistantUi.Idle)
+        val b = book()
+        ReaderPreview(b, readerPalette(ReaderTheme.PAPER, false), position = 7, assistant = AssistantUi.Idle, word = wordOf(b, 7, "cracked"))
+    }
+
+    @Test
+    fun readerFollowsInsideLongParagraph() = render("reader-follow-long-paragraph") {
+        val b = longParagraphBook()
+        ReaderPreview(b, readerPalette(ReaderTheme.PAPER, false), position = 34, assistant = AssistantUi.Idle, word = wordOf(b, 34, "deliberate"))
     }
 
     @Test

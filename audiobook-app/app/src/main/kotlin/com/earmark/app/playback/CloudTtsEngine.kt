@@ -34,7 +34,8 @@ class CloudTtsEngine(
     private val synth = Executors.newSingleThreadExecutor()
     private val cacheDir = File(context.cacheDir, "tts").apply { mkdirs() }
 
-    private class Prepared(val chunk: SpeechChunk, val file: File, val starts: List<Long>)
+    /** [charStarts] has one entry per character of the chunk text when the voice provides timestamps. */
+    private class Prepared(val chunk: SpeechChunk, val file: File, val starts: List<Long>, val charStarts: List<Long>)
 
     private val waiting = ArrayDeque<Utterance>()
     private val ready = ArrayDeque<Prepared>()
@@ -43,6 +44,7 @@ class CloudTtsEngine(
     private var player: MediaPlayer? = null
     private var playing: Prepared? = null
     private var reported = -1
+    private var reportedChar = -1
     private var speed = 1f
 
     private val ticker = object : Runnable {
@@ -108,17 +110,19 @@ class CloudTtsEngine(
         val audio = File(cacheDir, "$key.mp3")
         val timings = File(cacheDir, "$key.timings")
         if (audio.exists() && timings.exists()) {
-            val starts = timings.readText().split(',').mapNotNull { it.trim().toLongOrNull() }
+            val lines = timings.readLines()
+            val starts = lines.getOrNull(0).orEmpty().split(',').mapNotNull { it.trim().toLongOrNull() }
+            val chars = lines.getOrNull(1).orEmpty().split(',').mapNotNull { it.trim().toLongOrNull() }
             if (starts.size == chunk.utterances.size) {
                 audio.setLastModified(System.currentTimeMillis())
-                return Prepared(chunk, audio, starts)
+                return Prepared(chunk, audio, starts, chars)
             }
         }
         val out = voice.synthesize(chunk, speed)
         audio.writeBytes(out.bytes)
-        timings.writeText(out.utteranceStartMillis.joinToString(","))
+        timings.writeText(out.utteranceStartMillis.joinToString(",") + "\n" + out.charStartMillis.joinToString(","))
         trimCache()
-        return Prepared(chunk, audio, out.utteranceStartMillis)
+        return Prepared(chunk, audio, out.utteranceStartMillis, out.charStartMillis)
     }
 
     private fun maybePlay() {
@@ -140,6 +144,7 @@ class CloudTtsEngine(
             player = mp
             playing = p
             reported = -1
+            reportedChar = -1
             mp.playbackParams = mp.playbackParams.setSpeed(speed)
             mp.start()
             main.post(ticker)
@@ -168,6 +173,36 @@ class CloudTtsEngine(
             callbacks.started(us[reported].id)
             if (gen != generation) return
         }
+        reportWord(mp, p, pos)
+    }
+
+    /**
+     * Which character is being spoken: exact with ElevenLabs timestamps, otherwise estimated
+     * from the sentence's start and end times (OpenAI returns no timings).
+     */
+    private fun reportWord(mp: MediaPlayer, p: Prepared, pos: Long) {
+        val k = reported
+        if (k < 0) return
+        val u = p.chunk.utterances[k]
+        if (u.text.isEmpty()) return
+        val uStart = p.chunk.offsets[k]
+        val within = (if (p.charStarts.size == p.chunk.text.length) {
+            var lo = uStart
+            var hi = minOf(uStart + u.text.length, p.charStarts.size) - 1
+            while (lo < hi) {
+                val mid = (lo + hi + 1) / 2
+                if (p.charStarts[mid] <= pos) lo = mid else hi = mid - 1
+            }
+            lo - uStart
+        } else {
+            val t0 = p.starts[k]
+            val t1 = p.starts.getOrNull(k + 1) ?: runCatching { mp.duration.toLong() }.getOrDefault(t0 + 1)
+            if (t1 <= t0) 0 else ((pos - t0).toDouble() / (t1 - t0) * u.text.length).toInt()
+        }).coerceIn(0, u.text.length - 1)
+        if (within != reportedChar) {
+            reportedChar = within
+            callbacks.range(u.id, within, within + 1)
+        }
     }
 
     private fun finishChunk(p: Prepared) {
@@ -187,18 +222,9 @@ class CloudTtsEngine(
     }
 
     private fun fail(chunk: SpeechChunk, e: Throwable) {
-        val message = when (e) {
-            is VoiceException -> when (e.kind) {
-                VoiceException.Kind.AUTH -> "${voice.name} rejected your API key. Check it in Settings."
-                VoiceException.Kind.QUOTA -> "Your ${voice.name} quota is used up. Switch to the on-device voice in Settings."
-                VoiceException.Kind.NETWORK -> "No connection to ${voice.name}. Cached parts still play; the on-device voice works offline."
-                else -> e.message ?: "${voice.name} failed."
-            }
-            else -> e.message ?: "Playback failed."
-        }
         val id = chunk.utterances.firstOrNull()?.id ?: return
         reset()
-        callbacks.error(id, message)
+        callbacks.error(id, errorMessage(voice.name, e))
     }
 
     private fun releasePlayer() {
@@ -207,6 +233,7 @@ class CloudTtsEngine(
         player = null
         playing = null
         reported = -1
+        reportedChar = -1
     }
 
     private fun trimCache(maxBytes: Long = 300L * 1024 * 1024) {
@@ -224,6 +251,17 @@ class CloudTtsEngine(
     private fun sha256(s: String) = MessageDigest.getInstance("SHA-256").digest(s.toByteArray()).joinToString("") { "%02x".format(it) }
 
     companion object {
+        /** What to tell the listener when [voiceName] fails with [e]. */
+        fun errorMessage(voiceName: String, e: Throwable): String = when (e) {
+            is VoiceException -> when (e.kind) {
+                VoiceException.Kind.AUTH -> "$voiceName rejected your API key. Check it in Settings."
+                VoiceException.Kind.QUOTA -> "Your $voiceName quota is used up. Switch to the on-device voice in Settings."
+                VoiceException.Kind.NETWORK -> "No connection to $voiceName. Cached parts still play; the on-device voice works offline."
+                else -> e.message ?: "$voiceName failed."
+            }
+            else -> e.message ?: "Playback failed."
+        }
+
         /** Duration of an MP3 in memory, for voices that return no timestamps (OpenAI). */
         fun durationMillis(context: Context, bytes: ByteArray): Long {
             val tmp = File.createTempFile("dur", ".mp3", context.cacheDir)

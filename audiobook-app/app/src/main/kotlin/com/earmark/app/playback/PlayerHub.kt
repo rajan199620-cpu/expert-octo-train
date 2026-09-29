@@ -27,13 +27,12 @@ import com.earmark.core.model.Book
 import com.earmark.core.player.PlaybackController
 import com.earmark.core.player.PlaybackStatus
 import com.earmark.core.player.PlayerState
+import com.earmark.core.player.WordTracker
 import com.earmark.core.qa.ClaudeAnswerer
 import com.earmark.core.qa.ExtractiveAnswerer
 import com.earmark.core.qa.FallbackAnswerer
 import com.earmark.core.qa.PassageIndex
 import com.earmark.core.qa.QaPromptBuilder
-import com.earmark.core.speech.ElevenLabsVoice
-import com.earmark.core.speech.OpenAiVoice
 import com.earmark.core.text.Lexicon
 import com.earmark.core.text.ScriptDetector
 import com.earmark.core.text.SpeechNormalizer
@@ -45,6 +44,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** The word being spoken: display character range within sentence [sentence]. */
+data class WordHighlight(val sentence: Int, val range: IntRange)
 
 /** What the assistant overlay shows. */
 sealed interface AssistantUi {
@@ -87,6 +89,10 @@ class PlayerHub(private val app: Application, val library: Library, val settings
 
     private val assistantState = MutableStateFlow<AssistantUi>(AssistantUi.Idle)
     val assistant: StateFlow<AssistantUi> = assistantState.asStateFlow()
+
+    private val wordFlow = MutableStateFlow<WordHighlight?>(null)
+    /** Word-level progress, kept apart from [playerState] so the notification isn't rebuilt per word. */
+    val currentWord: StateFlow<WordHighlight?> = wordFlow.asStateFlow()
 
     /** Bumped whenever annotations change so the reader redraws highlights. */
     private val annotationVersionFlow = MutableStateFlow(0)
@@ -146,6 +152,7 @@ class PlayerHub(private val app: Application, val library: Library, val settings
                 controllerRef?.onUtteranceError(id)
                 scope.launch { assistantState.value = AssistantUi.Error(message) }
             }
+            override fun range(id: String, start: Int, end: Int) { controllerRef?.onUtteranceRange(id, start, end) }
         }
         val (engine, lookahead) = createEngine(book, settings, callbacks)
         val normalizer = SpeechNormalizer(Lexicon(settings.lexicon))
@@ -161,13 +168,18 @@ class PlayerHub(private val app: Application, val library: Library, val settings
             annotationVersionFlow.value++
         }
         val index = PassageIndex(book)
-        val claude = settings.anthropicKey.takeIf { it.isNotBlank() }?.let {
+        val claude = settings.anthropicKey.trim().takeIf { it.isNotEmpty() }?.let {
             ClaudeAnswerer(book, it, QaPromptBuilder(book, index), fullBookContext = settings.fullBookContext)
         }
         val answerer = FallbackAnswerer(claude, ExtractiveAnswerer(book, index))
         val assistant = Assistant(book, controller, annotations, answerer) { settingsStore.current.spoilerSafe }
 
         controller.listener = { state -> onPlayerState(book, state) }
+        val words = WordTracker(book) { controller.speechTextFor(it) }
+        controller.rangeListener = { sentence, start, _ ->
+            words.displayRange(sentence, start)?.let { wordFlow.value = WordHighlight(sentence, it) }
+        }
+        wordFlow.value = null
         val session = Session(book, controller, engine, annotations, assistant, listOfNotNull(claude))
         sessionState.value = session
         playerStateFlow.value = controller.state
@@ -176,24 +188,13 @@ class PlayerHub(private val app: Application, val library: Library, val settings
     }
 
     private fun createEngine(book: Book, s: AppSettings, callbacks: EngineCallbacks): Pair<AppEngine, Int> {
-        val language = ScriptDetector.guessLanguage(book)
-        fun system() = SystemTtsEngine(app, s.systemVoiceName, language, callbacks) to 3
-        return when (s.engine) {
-            NarratorEngine.SYSTEM -> system()
-            NarratorEngine.ELEVENLABS -> if (s.elevenLabsKey.isBlank()) {
-                assistantState.value = AssistantUi.Error("Add your ElevenLabs API key in Settings. Using the on-device voice for now.")
-                system()
-            } else {
-                CloudTtsEngine(app, ElevenLabsVoice(s.elevenLabsKey, s.elevenLabsVoiceId), "eleven:${s.elevenLabsVoiceId}", callbacks) to 12
-            }
-            NarratorEngine.OPENAI -> if (s.openAiKey.isBlank()) {
-                assistantState.value = AssistantUi.Error("Add your OpenAI API key in Settings. Using the on-device voice for now.")
-                system()
-            } else {
-                val voice = OpenAiVoice(s.openAiKey, s.openAiVoice, durationOf = { bytes -> CloudTtsEngine.durationMillis(app, bytes) })
-                CloudTtsEngine(app, voice, "openai:${s.openAiVoice}", callbacks) to 12
-            }
+        if (s.engine != NarratorEngine.SYSTEM) {
+            val cloud = cloudVoiceFor(app, s)
+            if (cloud != null) return CloudTtsEngine(app, cloud.first, cloud.second, callbacks) to 12
+            val provider = if (s.engine == NarratorEngine.ELEVENLABS) "ElevenLabs" else "OpenAI"
+            assistantState.value = AssistantUi.Error("Add your $provider API key in Settings. Using the on-device voice for now.")
         }
+        return SystemTtsEngine(app, s.systemVoiceName, ScriptDetector.guessLanguage(book), s.performReading, callbacks) to 3
     }
 
     private fun onPlayerState(book: Book, state: PlayerState) {

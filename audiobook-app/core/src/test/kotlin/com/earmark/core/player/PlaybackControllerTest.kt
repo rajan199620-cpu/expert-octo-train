@@ -50,11 +50,12 @@ class PlaybackControllerTest {
         val c = controller(e)
         c.play()
         assertEquals(listOf(0, 1, 2, 3), e.queue.map { it.sentenceIndex })
+        e.speakNext(c) // sentence 0 starts and ends: the highlight moves on and the queue tops up
+        assertEquals(1, c.state.position)
+        assertEquals(listOf(1, 2, 3, 4), e.queue.map { it.sentenceIndex })
         e.speakNext(c)
-        assertEquals(1, c.state.position.let { if (it == 0) 1 else it }.coerceAtLeast(1))
-        assertEquals(listOf(1, 2, 3), e.queue.map { it.sentenceIndex })
-        e.speakNext(c) // starts 1 -> tops up to 4
-        assertEquals(listOf(2, 3, 4), e.queue.map { it.sentenceIndex })
+        assertEquals(2, c.state.position)
+        assertEquals(listOf(2, 3, 4, 5), e.queue.map { it.sentenceIndex })
     }
 
     @Test
@@ -280,6 +281,52 @@ class PlaybackControllerTest {
         val s = c.state
         assertTrue(s.position in book.sentences.indices)
         assertTrue(s.speed in 0.5f..3f)
+    }
+
+    @Test
+    fun `highlight keeps moving with engines that never report sentence starts`() {
+        val e = FakeEngine()
+        val c = controller(e)
+        val seen = ArrayList<Int>()
+        c.listener = { seen += it.position }
+        c.play()
+        while (true) {
+            val u = synchronized(e) { e.queue.removeFirstOrNull() } ?: break
+            c.onUtteranceDone(u.id) // no onUtteranceStarted at all
+        }
+        assertEquals(PlaybackStatus.FINISHED, c.state.status)
+        assertEquals(book.sentences.indices.toList(), seen.distinct().filter { it in book.sentences.indices }.sorted().distinct())
+    }
+
+    @Test
+    fun `word ranges are forwarded, recover a lost start, and stale ones are dropped`() {
+        val e = FakeEngine()
+        val c = controller(e)
+        val ranges = ArrayList<Triple<Int, Int, Int>>()
+        c.rangeListener = { s, a, b -> ranges += Triple(s, a, b) }
+        c.onUtteranceRange("1:0", 0, 3) // not playing yet: ignored
+        c.play()
+        val first = e.queue[0]
+        val second = e.queue[1]
+        c.onUtteranceStarted(first.id)
+        c.onUtteranceRange(first.id, 5, 9)
+        c.onUtteranceRange(second.id, 0, 4) // start of sentence 1 was never reported
+        assertEquals(1, c.state.position)
+        c.seekTo(10)
+        c.onUtteranceRange(first.id, 12, 15) // from before the seek
+        assertEquals(listOf(Triple(0, 5, 9), Triple(1, 0, 4)), ranges)
+    }
+
+    @Test
+    fun `utterances carry heading, paragraph and chapter boundaries for pauses`() {
+        val e = FakeEngine()
+        val c = controller(e, lookahead = 50)
+        c.play()
+        val byIndex = e.queue.associateBy { it.sentenceIndex }
+        val lastOfFirstParagraph = book.paragraphRange(0).last
+        assertTrue(byIndex.getValue(lastOfFirstParagraph).endsParagraph)
+        assertFalse(byIndex.getValue(0).endsParagraph)
+        assertTrue(byIndex.getValue(book.chapters[0].lastSentence).endsChapter)
     }
 
     @Test

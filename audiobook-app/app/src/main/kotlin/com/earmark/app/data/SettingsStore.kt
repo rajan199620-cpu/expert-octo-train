@@ -1,6 +1,7 @@
 package com.earmark.app.data
 
 import android.content.Context
+import com.earmark.core.speech.ElevenLabsVoice
 import com.earmark.core.storage.JsonCodec
 import com.earmark.core.text.LexiconEntry
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,11 @@ data class AppSettings(
     val lexicon: List<LexiconEntry> = emptyList(),
     val readerTheme: ReaderTheme = ReaderTheme.AUTO,
     val fontScale: Float = 1.0f,
+    /** On-device voice: pauses, dialogue voice, question/exclamation tone. */
+    val performReading: Boolean = true,
+    /** Cloud voices: 0 = even, 1 = dramatic. */
+    val expressiveness: Float = 0.6f,
+    val elevenLabsModel: String = ElevenLabsVoice.MULTILINGUAL_V2,
 ) {
     companion object {
         /** "Rachel", one of ElevenLabs' default voices. */
@@ -72,6 +78,9 @@ class SettingsStore(context: Context) {
             lexicon = lexicon,
             readerTheme = runCatching { ReaderTheme.valueOf(prefs.getString("readerTheme", null) ?: "AUTO") }.getOrDefault(ReaderTheme.AUTO),
             fontScale = prefs.getFloat("fontScale", 1.0f).coerceIn(0.8f, 1.6f),
+            performReading = prefs.getBoolean("performReading", true),
+            expressiveness = prefs.getFloat("expressiveness", 0.6f).coerceIn(0f, 1f),
+            elevenLabsModel = prefs.getString("elevenModel", null) ?: ElevenLabsVoice.MULTILINGUAL_V2,
         )
     }
 
@@ -91,6 +100,9 @@ class SettingsStore(context: Context) {
             .putBoolean("spokenConfirmations", s.spokenConfirmations)
             .putString("readerTheme", s.readerTheme.name)
             .putFloat("fontScale", s.fontScale)
+            .putBoolean("performReading", s.performReading)
+            .putFloat("expressiveness", s.expressiveness)
+            .putString("elevenModel", s.elevenLabsModel)
             .apply()
         lexiconFile.writeText(JsonCodec.encodeLexicon(s.lexicon))
     }

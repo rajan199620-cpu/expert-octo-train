@@ -21,6 +21,18 @@ Export highlights as Markdown, Anki flashcards or Readwise-style CSV.
 | ElevenLabs | The most human-like option available | ~$0.05–0.10 per 1,000 characters (≈ $30–60 for a 300-page book) | No (audio is cached after the first listen) |
 | OpenAI `gpt-4o-mini-tts` | Natural, steerable narration style | ≈ $15 per million characters | No (cached) |
 
+**Less flat narration.** Phone voices can't act; they can only change pitch, pace and pauses. So Earmark
+*performs* the text for them: real silences after headings, paragraphs and chapters, a lighter voice for
+dialogue, rising questions and a beat after "…". Cloud voices get an **Expressiveness** slider (calm to
+dramatic). For ElevenLabs it trades stability for style, and you can pick Eleven v3, its most emotional model.
+For OpenAI, each passage gets a direction that matches its mood (tense, tender, sad, joyful…).
+Every voice has a ▶ sample button in Settings so you can hear it before choosing.
+
+**The highlight follows the voice word by word**, and the page scrolls with the line being read, even inside
+a page-long paragraph. Scroll away and it catches up 4 seconds after you stop. Word timing is exact with
+ElevenLabs and with Google's on-device voices. For OpenAI it is estimated. Phone engines that don't report
+word progress highlight the sentence.
+
 Settings shows the estimated cost for the open book before you switch. Paid voices use **your own API key**.
 Questions and recaps use Claude with **your own Anthropic API key**. Without one, the app falls back to
 finding the most relevant passage offline.

@@ -32,6 +32,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -165,16 +170,9 @@ fun ReaderScreen(hub: PlayerHub, onBack: () -> Unit, onAnnotations: () -> Unit, 
     val position = state?.position ?: 0
     val playing = state?.status == PlaybackStatus.PLAYING
     val speed = state?.speed ?: 1f
-    val listState = rememberLazyListState()
+    val currentWord by hub.currentWord.collectAsStateWithLifecycle()
+    val word = currentWord?.takeIf { it.sentence == position }?.range
     var follow by remember { mutableStateOf(true) }
-    val dragged by listState.interactionSource.collectIsDraggedAsState()
-    LaunchedEffect(dragged) { if (dragged) follow = false }
-    LaunchedEffect(position, follow) {
-        if (!follow || book.isEmpty) return@LaunchedEffect
-        val item = itemOfSentence[book.clampIndex(position)]
-        val visible = listState.layoutInfo.visibleItemsInfo.map { it.index }
-        if (item !in visible.dropLast(1)) listState.animateScrollToItem(maxOf(0, item - 1))
-    }
 
     var menuFor by remember { mutableStateOf<Int?>(null) }
     var noteFor by remember { mutableStateOf<Int?>(null) }
@@ -249,28 +247,23 @@ fun ReaderScreen(hub: PlayerHub, onBack: () -> Unit, onAnnotations: () -> Unit, 
         },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize().background(palette.background)) {
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 180.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                itemsIndexed(paragraphs, key = { _, r -> r.first }) { _, range ->
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                        ParagraphText(
-                            book = book,
-                            range = range,
-                            current = position,
-                            highlights = highlightOf,
-                            bookmarked = bookmarked,
-                            noted = noted,
-                            palette = palette,
-                            fontScale = settings.fontScale,
-                            onTap = { idx -> follow = true; hub.seekTo(idx) },
-                            onLongPress = { idx -> menuFor = idx },
-                        )
-                    }
-                }
-            }
+            ReaderText(
+                book = book,
+                paragraphs = paragraphs,
+                itemOfSentence = itemOfSentence,
+                position = position,
+                word = word,
+                playing = playing,
+                highlights = highlightOf,
+                bookmarked = bookmarked,
+                noted = noted,
+                palette = palette,
+                fontScale = settings.fontScale,
+                follow = follow,
+                onFollowChange = { follow = it },
+                onTap = { idx -> follow = true; hub.seekTo(idx) },
+                onLongPress = { idx -> menuFor = idx },
+            )
             AnimatedVisibility(
                 visible = !follow,
                 enter = fadeIn() + slideInVertically { it },
@@ -404,6 +397,113 @@ fun ReaderScreen(hub: PlayerHub, onBack: () -> Unit, onAnnotations: () -> Unit, 
                 }
             },
         )
+    }
+}
+
+/** Where a paragraph's text was laid out, so the reader can scroll to an exact line. */
+internal class ParagraphLayout(val layout: TextLayoutResult, val sentenceTextStarts: IntArray, val textTopPx: Float)
+
+/**
+ * Keeps the line being spoken comfortably in view. The first version only scrolled when the
+ * current *paragraph* left the screen, so inside a page-long PDF paragraph the highlight walked
+ * off the bottom while the text stood still.
+ */
+internal object FollowPolicy {
+    const val TOP = 0.12f
+    const val BOTTOM = 0.62f
+    const val TARGET = 0.3f
+    const val RESUME_AFTER_MILLIS = 4000L
+
+    /** Pixels to scroll so a line spanning [lineTop, lineBottom] is in view; 0 when it already is. */
+    fun scrollDelta(lineTop: Int, lineBottom: Int, viewport: Int): Int {
+        if (viewport <= 0) return 0
+        if (lineTop >= viewport * TOP && lineBottom <= viewport * BOTTOM) return 0
+        return (lineTop - viewport * TARGET).toInt()
+    }
+}
+
+/** The book text: paragraphs with highlights, and follow-the-voice scrolling. */
+@Composable
+internal fun ReaderText(
+    book: Book,
+    paragraphs: List<IntRange>,
+    itemOfSentence: IntArray,
+    position: Int,
+    word: IntRange?,
+    playing: Boolean,
+    highlights: Map<Int, HighlightColor>,
+    bookmarked: Set<Int>,
+    noted: Set<Int>,
+    palette: ReaderPalette,
+    fontScale: Float,
+    follow: Boolean,
+    onFollowChange: (Boolean) -> Unit,
+    onTap: (Int) -> Unit,
+    onLongPress: (Int) -> Unit,
+    listState: LazyListState = rememberLazyListState(),
+) {
+    val layouts = remember(book) { HashMap<Int, ParagraphLayout>() }
+    val setFollow by rememberUpdatedState(onFollowChange)
+    val dragged by listState.interactionSource.collectIsDraggedAsState()
+
+    // Scrolling by hand pauses following. While the voice keeps reading, following resumes on
+    // its own once the list has been at rest for a few seconds (like synced lyrics).
+    LaunchedEffect(dragged, playing, follow) {
+        if (dragged) {
+            setFollow(false)
+            return@LaunchedEffect
+        }
+        if (!follow && playing) {
+            while (listState.isScrollInProgress) delay(200)
+            delay(FollowPolicy.RESUME_AFTER_MILLIS)
+            setFollow(true)
+        }
+    }
+
+    LaunchedEffect(position, word?.first, follow) {
+        if (!follow || book.isEmpty) return@LaunchedEffect
+        val sentence = book.clampIndex(position)
+        val item = itemOfSentence[sentence]
+        if (listState.layoutInfo.visibleItemsInfo.none { it.index == item }) {
+            listState.scrollToItem(item)
+            withFrameNanos { } // let the paragraph lay out before measuring its lines
+        }
+        val info = listState.layoutInfo
+        val itemInfo = info.visibleItemsInfo.firstOrNull { it.index == item } ?: return@LaunchedEffect
+        val pl = layouts[item] ?: return@LaunchedEffect
+        val textLength = pl.layout.layoutInput.text.length
+        val offset = ((pl.sentenceTextStarts.getOrNull(sentence - paragraphs[item].first) ?: 0) + (word?.first ?: 0))
+            .coerceIn(0, maxOf(0, textLength - 1))
+        val line = pl.layout.getLineForOffset(offset)
+        val top = itemInfo.offset + pl.textTopPx + pl.layout.getLineTop(line)
+        val bottom = itemInfo.offset + pl.textTopPx + pl.layout.getLineBottom(line)
+        val delta = FollowPolicy.scrollDelta(top.toInt(), bottom.toInt(), info.viewportSize.height)
+        if (delta != 0) listState.animateScrollBy(delta.toFloat())
+    }
+
+    LazyColumn(
+        state = listState,
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 180.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        itemsIndexed(paragraphs, key = { _, r -> r.first }) { index, range ->
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                ParagraphText(
+                    book = book,
+                    range = range,
+                    current = position,
+                    word = if (position in range) word else null,
+                    highlights = highlights,
+                    bookmarked = bookmarked,
+                    noted = noted,
+                    palette = palette,
+                    fontScale = fontScale,
+                    onTap = onTap,
+                    onLongPress = onLongPress,
+                    onLayout = { layout, starts, topPx -> layouts[index] = ParagraphLayout(layout, starts, topPx) },
+                )
+            }
+        }
     }
 }
 
@@ -592,6 +692,7 @@ internal fun ParagraphText(
     book: Book,
     range: IntRange,
     current: Int,
+    word: IntRange?,
     highlights: Map<Int, HighlightColor>,
     bookmarked: Set<Int>,
     noted: Set<Int>,
@@ -599,9 +700,11 @@ internal fun ParagraphText(
     fontScale: Float,
     onTap: (Int) -> Unit,
     onLongPress: (Int) -> Unit,
+    onLayout: (TextLayoutResult, IntArray, Float) -> Unit = { _, _, _ -> },
 ) {
     val isHeading = book.sentences[range.first].isHeading
     val starts = IntArray(range.last - range.first + 1)
+    val textStarts = IntArray(range.last - range.first + 1)
     val text: AnnotatedString = buildAnnotatedString {
         for (i in range) {
             starts[i - range.first] = length
@@ -612,7 +715,17 @@ internal fun ParagraphText(
                 else -> SpanStyle(color = if (isHeading) palette.heading else palette.text)
             }
             val style = highlights[i]?.let { c -> if (i == current) span else span.merge(SpanStyle(background = highlightColor(c))) } ?: span
-            withStyle(style) { append(book.sentences[i].text) }
+            val sentenceText = book.sentences[i].text
+            textStarts[i - range.first] = length
+            val w = word?.takeIf { i == current && it.first >= 0 && it.last < sentenceText.length && it.first <= it.last }
+            if (w == null) {
+                withStyle(style) { append(sentenceText) }
+            } else {
+                // The word being spoken sits in a stronger tint inside the sentence highlight.
+                withStyle(style) { append(sentenceText.substring(0, w.first)) }
+                withStyle(style.merge(SpanStyle(background = palette.wordBackground))) { append(sentenceText.substring(w.first, w.last + 1)) }
+                withStyle(style) { append(sentenceText.substring(w.last + 1)) }
+            }
             if (i in noted) { append(' '); appendInlineContent(INLINE_NOTE, "[note]") }
             if (i < range.last) append(' ')
         }
@@ -628,6 +741,10 @@ internal fun ParagraphText(
         return range.first + k
     }
     val base = readingStyle(fontScale)
+    val topPadding = if (isHeading) 28.dp else 6.dp
+    val topPx = with(LocalDensity.current) { topPadding.toPx() }
+    val reportLayout by rememberUpdatedState(onLayout)
+    val currentTextStarts by rememberUpdatedState(textStarts)
     val inline = remember(palette) {
         fun icon(vector: androidx.compose.ui.graphics.vector.ImageVector) = InlineTextContent(
             Placeholder(width = 0.9.em, height = 0.9.em, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
@@ -638,11 +755,11 @@ internal fun ParagraphText(
         text = text,
         inlineContent = inline,
         style = if (isHeading) base.copy(fontSize = base.fontSize * 1.35f, lineHeight = base.lineHeight * 1.2f, fontWeight = FontWeight.SemiBold) else base,
-        onTextLayout = { layout = it },
+        onTextLayout = { layout = it; reportLayout(it, currentTextStarts, topPx) },
         modifier = Modifier
             .widthIn(max = 680.dp) // comfortable line length on tablets
             .fillMaxWidth()
-            .padding(top = if (isHeading) 28.dp else 6.dp, bottom = if (isHeading) 12.dp else 10.dp)
+            .padding(top = topPadding, bottom = if (isHeading) 12.dp else 10.dp)
             .pointerInput(range) {
                 detectTapGestures(
                     onTap = { pos -> layout?.let { tap(sentenceAt(it.getOffsetForPosition(pos))) } },

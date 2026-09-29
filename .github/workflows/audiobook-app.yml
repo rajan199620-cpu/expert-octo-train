@@ -80,8 +80,14 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Render screens
-        run: ./gradlew :app:testDebugUnitTest --tests '*ScreenshotTest*' --no-daemon --stacktrace
+      - name: App unit tests and screens
+        run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+      - name: Upload app test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-test-report
+          path: audiobook-app/app/build/reports/tests/testDebugUnitTest
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4

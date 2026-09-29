@@ -9,6 +9,10 @@ data class Utterance(
     val sentenceIndex: Int,
     val paragraph: Int,
     val text: String,
+    /** Structure a narrator performs with pauses: headings, paragraph and chapter ends. */
+    val isHeading: Boolean = false,
+    val endsParagraph: Boolean = false,
+    val endsChapter: Boolean = false,
 )
 
 /**
@@ -48,6 +52,12 @@ class PlaybackController(
     startPosition: Int = 0,
 ) {
     var listener: ((PlayerState) -> Unit)? = null
+
+    /**
+     * Word-level progress from engines that report it (Android TTS onRangeStart, ElevenLabs
+     * character timestamps): sentence index plus a character range in that sentence's speech text.
+     */
+    var rangeListener: ((sentence: Int, speechStart: Int, speechEnd: Int) -> Unit)? = null
 
     private var position = book.clampIndex(startPosition)
     private var status = if (book.isEmpty) PlaybackStatus.FINISHED else PlaybackStatus.IDLE
@@ -214,6 +224,24 @@ class PlaybackController(
         notifyChanged()
     }
 
+    /** The engine is speaking characters [start, end) of utterance [id]'s speech text. */
+    fun onUtteranceRange(id: String, start: Int, end: Int) {
+        val index: Int
+        synchronized(this) {
+            val (gen, idx) = parseId(id) ?: return
+            if (gen != generation || status != PlaybackStatus.PLAYING) return
+            // A range for a sentence we never saw start means its start callback got lost.
+            if (idx != position) {
+                position = idx
+                currentStartedAt = clock()
+                topUpQueue()
+                notifyChanged()
+            }
+            index = idx
+        }
+        rangeListener?.invoke(index, start, end)
+    }
+
     @Synchronized
     fun onUtteranceDone(id: String) {
         val (gen, index) = parseId(id) ?: return
@@ -252,6 +280,16 @@ class PlaybackController(
             // Engine drained without reporting a start for the next item (e.g. it never got one).
             position = index + 1
             restartAt(position)
+            return
+        }
+        if (index == position) {
+            // Move the highlight on when a sentence ends, not only when the next one reports its
+            // start: some engines deliver start callbacks late or never, which left the highlight
+            // stuck while the voice kept reading.
+            position = index + 1
+            currentStartedAt = clock()
+            topUpQueue()
+            notifyChanged()
         }
     }
 
@@ -303,15 +341,24 @@ class PlaybackController(
         val out = ArrayList<Utterance>(end - from + 1)
         for (i in from..end) {
             val text = speechTextFor(i)
-            out += Utterance("$generation:$i", i, book.sentences[i].paragraph, text.ifBlank { book.sentences[i].text })
+            val s = book.sentences[i]
+            val next = book.sentences.getOrNull(i + 1)
+            out += Utterance(
+                id = "$generation:$i",
+                sentenceIndex = i,
+                paragraph = s.paragraph,
+                text = text.ifBlank { s.text },
+                isHeading = s.isHeading,
+                endsParagraph = next == null || next.paragraph != s.paragraph,
+                endsChapter = next == null || next.chapter != s.chapter,
+            )
         }
         lastQueued = end
         return out
     }
 
     private fun parseId(id: String): Pair<Int, Int>? {
-        val gen = id.substringBefore(':', "").toIntOrNull() ?: return null
-        val idx = id.substringAfter(':', "").toIntOrNull() ?: return null
+        val (gen, idx) = parseUtteranceId(id) ?: return null
         if (idx !in book.sentences.indices) return null
         return gen to idx
     }
@@ -323,5 +370,12 @@ class PlaybackController(
     companion object {
         const val MIN_SPEED = 0.5f
         const val MAX_SPEED = 3.0f
+
+        /** "generation:sentenceIndex" -> (generation, sentenceIndex). */
+        fun parseUtteranceId(id: String): Pair<Int, Int>? {
+            val gen = id.substringBefore(':', "").toIntOrNull() ?: return null
+            val idx = id.substringAfter(':', "").toIntOrNull() ?: return null
+            return gen to idx
+        }
     }
 }

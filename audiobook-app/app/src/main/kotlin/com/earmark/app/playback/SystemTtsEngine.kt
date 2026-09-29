@@ -7,25 +7,40 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import com.earmark.core.player.Utterance
+import com.earmark.core.speech.ProsodyPlanner
+import com.earmark.core.speech.SpeechSegment
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /** Callbacks shared by all narrator engines; ids are [Utterance.id]s. */
 interface EngineCallbacks {
     fun started(id: String)
     fun done(id: String)
     fun error(id: String, message: String)
+
+    /** Characters [start, end) of the utterance's speech text are being spoken (word tracking). */
+    fun range(id: String, start: Int, end: Int) {}
 }
 
 /**
  * The phone's own TTS voice: free, offline and instant, but only as human as the installed
  * engine (Google's "network"/neural voices are decent; older engines sound robotic).
+ *
+ * Phone voices read every sentence with the same flat melody, so each sentence is performed
+ * as a few pieces ([ProsodyPlanner]): dialogue in a different pitch, questions and
+ * exclamations lifted, and real silences after headings, paragraphs and chapters. Each piece
+ * is its own TTS request ("id#k"); callbacks are folded back into one start/done per sentence.
  */
 class SystemTtsEngine(
     context: Context,
     private val preferredVoice: String?,
     private val language: String?,
+    private val perform: Boolean,
     private val callbacks: EngineCallbacks,
 ) : AppEngine {
+    private class Plan(val segments: List<SpeechSegment>, val lastRequestId: String)
+
+    private val plans = ConcurrentHashMap<String, Plan>()
     private val pending = ArrayList<Pair<List<Utterance>, Boolean>>()
     private var ready = false
     private var failed = false
@@ -47,12 +62,37 @@ class SystemTtsEngine(
             configureVoice()
             tts.setSpeechRate(rate)
             tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                override fun onStart(utteranceId: String) = callbacks.started(utteranceId)
-                override fun onDone(utteranceId: String) = callbacks.done(utteranceId)
+                override fun onStart(utteranceId: String) {
+                    val (uid, piece, isPause) = split(utteranceId) ?: return
+                    if (piece == 0 && !isPause) callbacks.started(uid)
+                }
+
+                override fun onDone(utteranceId: String) {
+                    val (uid, _, _) = split(utteranceId) ?: return
+                    val plan = plans[uid] ?: return
+                    if (utteranceId == plan.lastRequestId) {
+                        plans.remove(uid)
+                        callbacks.done(uid)
+                    }
+                }
+
+                // Word-by-word progress (Google's engine reports it; others may not).
+                override fun onRangeStart(utteranceId: String, start: Int, end: Int, frame: Int) {
+                    val (uid, piece, isPause) = split(utteranceId) ?: return
+                    if (isPause) return
+                    val seg = plans[uid]?.segments?.getOrNull(piece) ?: return
+                    callbacks.range(uid, seg.offset + start, seg.offset + end)
+                }
+
                 @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String) = callbacks.error(utteranceId, "The voice engine failed.")
-                override fun onError(utteranceId: String, errorCode: Int) =
-                    callbacks.error(utteranceId, if (errorCode == TextToSpeech.ERROR_NETWORK || errorCode == TextToSpeech.ERROR_NETWORK_TIMEOUT) "The voice needs a network connection." else "The voice engine failed ($errorCode).")
+                override fun onError(utteranceId: String) {
+                    split(utteranceId)?.let { callbacks.error(it.first, "The voice engine failed.") }
+                }
+
+                override fun onError(utteranceId: String, errorCode: Int) {
+                    val uid = split(utteranceId)?.first ?: return
+                    callbacks.error(uid, if (errorCode == TextToSpeech.ERROR_NETWORK || errorCode == TextToSpeech.ERROR_NETWORK_TIMEOUT) "The voice needs a network connection." else "The voice engine failed ($errorCode).")
+                }
             })
             ready = true
             val queued = pending.toList()
@@ -63,15 +103,8 @@ class SystemTtsEngine(
 
     private fun configureVoice() {
         val voices: Set<Voice> = runCatching { tts.voices }.getOrNull().orEmpty()
-        val byName = preferredVoice?.let { name -> voices.firstOrNull { it.name == name } }
-        if (byName != null) {
-            tts.voice = byName
-            return
-        }
-        val locale = language?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault()
-        val candidates = voices.filter { it.locale.language == locale.language && TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in it.features }
-        val best = candidates.maxWithOrNull(compareBy<Voice>({ it.quality }, { -it.latency }, { it.locale.country == locale.country }))
-        if (best != null) tts.voice = best else tts.language = locale
+        val chosen = preferredVoice?.let { name -> voices.firstOrNull { it.name == name } } ?: autoVoice(tts, language)
+        if (chosen != null) tts.voice = chosen else tts.language = localeFor(language)
     }
 
     @Synchronized
@@ -89,15 +122,44 @@ class SystemTtsEngine(
     }
 
     private fun enqueue(utterances: List<Utterance>, flush: Boolean) {
-        utterances.forEachIndexed { i, u ->
-            val mode = if (flush && i == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-            tts.speak(u.text.take(TextToSpeech.getMaxSpeechInputLength()), mode, Bundle(), u.id)
+        if (flush) plans.clear()
+        var first = flush
+        val max = TextToSpeech.getMaxSpeechInputLength()
+        for (u in utterances) {
+            val segments = ProsodyPlanner.plan(u.text, u.isHeading, u.endsParagraph, u.endsChapter, perform)
+            val last = segments.lastIndex
+            val lastId = if (segments[last].pauseAfterMillis > 0) "${u.id}#p$last" else "${u.id}#$last"
+            // Register before speaking: callbacks for the first piece can arrive immediately.
+            plans[u.id] = Plan(segments, lastId)
+            segments.forEachIndexed { k, seg ->
+                // Pitch and rate are captured per request, so each piece gets its own delivery.
+                tts.setPitch(seg.pitch)
+                tts.setSpeechRate(rate * seg.rate)
+                tts.speak(seg.text.take(max), if (first) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, Bundle(), "${u.id}#$k")
+                first = false
+                if (seg.pauseAfterMillis > 0) {
+                    tts.playSilentUtterance((seg.pauseAfterMillis / rate).toLong(), TextToSpeech.QUEUE_ADD, "${u.id}#p$k")
+                }
+            }
         }
+        tts.setPitch(1f)
+        tts.setSpeechRate(rate)
+    }
+
+    /** "gen:idx#k" or "gen:idx#pk" -> (utterance id, piece index, is a pause). */
+    private fun split(requestId: String): Triple<String, Int, Boolean>? {
+        val hash = requestId.lastIndexOf('#')
+        if (hash <= 0) return null
+        val part = requestId.substring(hash + 1)
+        val isPause = part.startsWith("p")
+        val piece = part.removePrefix("p").toIntOrNull() ?: return null
+        return Triple(requestId.substring(0, hash), piece, isPause)
     }
 
     @Synchronized
     override fun stop() {
         pending.clear()
+        plans.clear()
         if (ready) tts.stop()
     }
 
@@ -113,13 +175,40 @@ class SystemTtsEngine(
     }
 
     companion object {
-        /** Voices the user can pick in Settings, best first. */
+        /**
+         * Voices the user can pick in Settings, best first. Online ("network") voices are the
+         * engine's neural voices and sound noticeably more natural, so they rank above offline
+         * voices of the same quality.
+         */
         fun listVoices(tts: TextToSpeech, language: String?): List<Voice> {
-            val locale = language?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault()
-            return runCatching { tts.voices }.getOrNull().orEmpty()
-                .filter { it.locale.language == locale.language }
-                .sortedWith(compareByDescending<Voice> { it.quality }.thenBy { it.latency }.thenBy { it.name })
+            val locale = localeFor(language)
+            return installed(tts, locale)
+                .sortedWith(
+                    compareByDescending<Voice> { it.quality }
+                        .thenByDescending { it.isNetworkConnectionRequired }
+                        .thenByDescending { it.locale.country == locale.country }
+                        .thenBy { it.name },
+                )
         }
+
+        /**
+         * The voice used when none is chosen: the highest quality installed voice for the
+         * language, preferring low latency (an offline voice keeps reading without a network).
+         */
+        fun autoVoice(tts: TextToSpeech, language: String?): Voice? {
+            val locale = localeFor(language)
+            return installed(tts, locale).maxWithOrNull(compareBy<Voice>({ it.quality }, { -it.latency }, { it.locale.country == locale.country }))
+        }
+
+        private fun localeFor(language: String?): Locale = language?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault()
+
+        private fun installed(tts: TextToSpeech, locale: Locale): List<Voice> =
+            runCatching { tts.voices }.getOrNull().orEmpty()
+                .filter { it.locale.language == locale.language && TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in it.features }
+
+        const val SAMPLE =
+            "The storm had finally passed. \u201CIs anyone there?\u201D she called into the dark. " +
+                "Nobody answered... and then, far below, a light began to glow."
     }
 }
 
