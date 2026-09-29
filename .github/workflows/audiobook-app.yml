@@ -49,6 +49,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      - name: Check the APK is signed with the fixed key (so it installs as an update)
+        run: |
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          digest=$("$apksigner" verify --print-certs app/build/outputs/apk/debug/*.apk | grep -m1 'SHA-256 digest' | awk '{print $NF}')
+          echo "Signing certificate SHA-256: $digest"
+          test "$digest" = "3caa9f2095d0ff8f1061751ce392b8d48aa33a32ed034d2b15c33ff7bb2da85b"
       - name: Android lint
         run: ./gradlew :app:lintDebug --no-daemon
       - name: Upload APK

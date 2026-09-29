@@ -14,8 +14,22 @@ android {
         applicationId = "com.earmark.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI run numbers only grow, so each build installs as an update to the last one.
+        val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = build
+        versionName = "0.1.$build"
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            // A fixed key: the default debug key is generated per machine, so every CI build
+            // was signed differently and Android refused to install it over the previous one.
+            // This key only signs sideloaded test builds; use a private key for any release.
+            storeFile = file("earmark-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {

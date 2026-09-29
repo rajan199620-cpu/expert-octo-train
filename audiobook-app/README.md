@@ -60,6 +60,11 @@ runs the core tests, builds the debug APK and uploads it as the `earmark-debug-a
 
 Minimum Android version: 8.0 (API 26).
 
+Test builds are signed with the key in `app/earmark-debug.keystore`, so each new APK installs over the
+previous one and keeps your library. (Builds made before this key was added were signed with a random key:
+uninstall that version once before installing a newer one.) The key is public, so use a private one for any
+build you distribute.
+
 ## Privacy
 
 Books, positions, annotations and settings stay on the phone (app-private storage, excluded from backup).
