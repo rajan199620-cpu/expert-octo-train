@@ -230,7 +230,7 @@ fun ReaderScreen(hub: PlayerHub, onBack: () -> Unit, onAnnotations: () -> Unit, 
                 sleepAtChapterEnd = state?.sleepAtChapterEnd == true,
                 listening = assistant is AssistantUi.Listening,
                 bookmarkedHere = position in bookmarked,
-                hub = hub,
+                actions = remember(hub) { HubActions(hub) },
                 onFollow = { follow = true },
                 onMic = { onMic() },
                 onAsk = { askOpen = true },
@@ -397,8 +397,31 @@ fun ReaderScreen(hub: PlayerHub, onBack: () -> Unit, onAnnotations: () -> Unit, 
     }
 }
 
+/** What the now-playing sheet can do; the hub in the app, a no-op in screenshot tests. */
+interface PlayerActions {
+    fun seekTo(index: Int) {}
+    fun skipSentences(delta: Int) {}
+    fun rewindSeconds(seconds: Int) {}
+    fun forwardSeconds(seconds: Int) {}
+    fun togglePlayPause() {}
+    fun setSpeed(speed: Float) {}
+    fun setSleepTimer(minutes: Int?) {}
+    fun whereAmI() {}
+}
+
+private class HubActions(private val hub: PlayerHub) : PlayerActions {
+    override fun seekTo(index: Int) { hub.seekTo(index) }
+    override fun skipSentences(delta: Int) { hub.skipSentences(delta) }
+    override fun rewindSeconds(seconds: Int) { hub.rewindSeconds(seconds) }
+    override fun forwardSeconds(seconds: Int) { hub.forwardSeconds(seconds) }
+    override fun togglePlayPause() = hub.togglePlayPause()
+    override fun setSpeed(speed: Float) = hub.setSpeed(speed)
+    override fun setSleepTimer(minutes: Int?) = hub.setSleepTimer(minutes)
+    override fun whereAmI() = hub.submitText("where am I")
+}
+
 @Composable
-private fun NowPlayingSheet(
+internal fun NowPlayingSheet(
     book: Book,
     position: Int,
     playing: Boolean,
@@ -408,7 +431,7 @@ private fun NowPlayingSheet(
     sleepAtChapterEnd: Boolean,
     listening: Boolean,
     bookmarkedHere: Boolean,
-    hub: PlayerHub,
+    actions: PlayerActions,
     onFollow: () -> Unit,
     onMic: () -> Unit,
     onAsk: () -> Unit,
@@ -448,7 +471,7 @@ private fun NowPlayingSheet(
                         shape = RoundedCornerShape(50),
                     )
                     DropdownMenu(expanded = speedOpen, onDismissRequest = { speedOpen = false }) {
-                        SPEEDS.forEach { v -> DropdownMenuItem(text = { Text(speedLabel(v)) }, onClick = { speedOpen = false; hub.setSpeed(v) }) }
+                        SPEEDS.forEach { v -> DropdownMenuItem(text = { Text(speedLabel(v)) }, onClick = { speedOpen = false; actions.setSpeed(v) }) }
                     }
                 }
             }
@@ -456,7 +479,7 @@ private fun NowPlayingSheet(
                 Slider(
                     value = scrub ?: position.toFloat(),
                     onValueChange = { scrub = it },
-                    onValueChangeFinished = { scrub?.let { hub.seekTo(it.toInt()) }; scrub = null; onFollow() },
+                    onValueChangeFinished = { scrub?.let { actions.seekTo(it.toInt()) }; scrub = null; onFollow() },
                     valueRange = 0f..(total - 1).toFloat(),
                     colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.secondary, activeTrackColor = MaterialTheme.colorScheme.secondary),
                 )
@@ -477,17 +500,17 @@ private fun NowPlayingSheet(
             }
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { hub.rewindSeconds(10) }) { Icon(Icons.Default.Replay10, "Back 10 seconds", Modifier.size(28.dp)) }
-                IconButton(onClick = { hub.skipSentences(-1) }) { Icon(Icons.Default.SkipPrevious, "Previous sentence", Modifier.size(28.dp)) }
+                IconButton(onClick = { actions.rewindSeconds(10) }) { Icon(Icons.Default.Replay10, "Back 10 seconds", Modifier.size(28.dp)) }
+                IconButton(onClick = { actions.skipSentences(-1) }) { Icon(Icons.Default.SkipPrevious, "Previous sentence", Modifier.size(28.dp)) }
                 FilledIconButton(
-                    onClick = { onFollow(); hub.togglePlayPause() },
+                    onClick = { onFollow(); actions.togglePlayPause() },
                     modifier = Modifier.size(68.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
                     Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (playing) "Pause" else "Play", Modifier.size(38.dp))
                 }
-                IconButton(onClick = { hub.skipSentences(1) }) { Icon(Icons.Default.SkipNext, "Next sentence", Modifier.size(28.dp)) }
-                IconButton(onClick = { hub.forwardSeconds(30) }) { Icon(Icons.Default.Forward30, "Forward 30 seconds", Modifier.size(28.dp)) }
+                IconButton(onClick = { actions.skipSentences(1) }) { Icon(Icons.Default.SkipNext, "Next sentence", Modifier.size(28.dp)) }
+                IconButton(onClick = { actions.forwardSeconds(30) }) { Icon(Icons.Default.Forward30, "Forward 30 seconds", Modifier.size(28.dp)) }
             }
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
@@ -520,13 +543,13 @@ private fun NowPlayingSheet(
                     }
                     DropdownMenu(expanded = sleepOpen, onDismissRequest = { sleepOpen = false }) {
                         listOf(5, 10, 15, 30, 45, 60).forEach { m ->
-                            DropdownMenuItem(text = { Text("$m minutes") }, onClick = { sleepOpen = false; hub.setSleepTimer(m) })
+                            DropdownMenuItem(text = { Text("$m minutes") }, onClick = { sleepOpen = false; actions.setSleepTimer(m) })
                         }
-                        DropdownMenuItem(text = { Text("End of chapter") }, onClick = { sleepOpen = false; hub.setSleepTimer(-1) })
-                        DropdownMenuItem(text = { Text("Off") }, onClick = { sleepOpen = false; hub.setSleepTimer(null) })
+                        DropdownMenuItem(text = { Text("End of chapter") }, onClick = { sleepOpen = false; actions.setSleepTimer(-1) })
+                        DropdownMenuItem(text = { Text("Off") }, onClick = { sleepOpen = false; actions.setSleepTimer(null) })
                     }
                 }
-                IconButton(onClick = { hub.submitText("where am I") }) {
+                IconButton(onClick = { actions.whereAmI() }) {
                     Icon(Icons.Default.AutoAwesome, "Where am I?", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -544,7 +567,7 @@ private fun MenuRow(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ParagraphText(
+internal fun ParagraphText(
     book: Book,
     range: IntRange,
     current: Int,
@@ -602,7 +625,7 @@ private fun ParagraphText(
 }
 
 @Composable
-private fun AssistantOverlay(
+internal fun AssistantOverlay(
     ui: AssistantUi,
     book: Book,
     onDismiss: () -> Unit,
@@ -676,7 +699,7 @@ private fun AssistantOverlay(
     }
 }
 
-private fun paragraphRanges(book: Book): List<IntRange> {
+internal fun paragraphRanges(book: Book): List<IntRange> {
     val out = ArrayList<IntRange>()
     var start = 0
     for (i in 1..book.sentences.size) {

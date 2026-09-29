@@ -54,6 +54,10 @@ android {
         }
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     lint {
         abortOnError = false
         checkReleaseBuilds = false
@@ -62,6 +66,12 @@ android {
 
 kotlin {
     compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
+}
+
+tasks.withType<Test>().configureEach {
+    // Roborazzi: write screenshots instead of comparing against stored ones.
+    systemProperty("roborazzi.test.record", "true")
+    maxHeapSize = "3g"
 }
 
 dependencies {
@@ -85,4 +95,13 @@ dependencies {
 
     // PDF text extraction (Android port of Apache PDFBox 2.0.27).
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+
+    // Screenshot tests: real Compose rendering on the JVM.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.16.1")
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.46.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.46.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

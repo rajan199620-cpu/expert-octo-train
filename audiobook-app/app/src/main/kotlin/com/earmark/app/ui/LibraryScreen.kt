@@ -183,7 +183,7 @@ fun LibraryScreen(library: Library, incoming: MutableStateFlow<Uri?>, onOpen: (S
 }
 
 @Composable
-private fun ContinueListening(book: BookSummary, onResume: () -> Unit, onOpen: () -> Unit) {
+internal fun ContinueListening(book: BookSummary, onResume: () -> Unit, onOpen: () -> Unit) {
     Card(
         onClick = onOpen,
         shape = RoundedCornerShape(24.dp),
@@ -215,7 +215,7 @@ private fun ContinueListening(book: BookSummary, onResume: () -> Unit, onOpen: (
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CoverTile(book: BookSummary, onClick: () -> Unit, onLongClick: () -> Unit) {
+internal fun CoverTile(book: BookSummary, onClick: () -> Unit, onLongClick: () -> Unit) {
     Column(Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         BookCover(book.title, book.author, Modifier.fillMaxWidth().aspectRatio(0.68f))
         Spacer(Modifier.height(8.dp))
@@ -233,7 +233,7 @@ private fun CoverTile(book: BookSummary, onClick: () -> Unit, onLongClick: () ->
 }
 
 @Composable
-private fun EmptyLibrary(onAdd: () -> Unit) {
+internal fun EmptyLibrary(onAdd: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.Center) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             BookCover("Any book, read aloud", "You", Modifier.width(150.dp).aspectRatio(0.68f))
