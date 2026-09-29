@@ -134,6 +134,7 @@ class PerformanceTest {
         val c = ChunkPlanner.plan(listOf(Utterance("0:0", 0, 0, "One."), Utterance("0:1", 1, 1, "Two.")))[1]
         val body = ElevenLabsVoice("k", "v", ElevenLabsVoice.MODEL_V3, expressiveness = 0.9f).requestBody(c, 1f)
         assertNull(body["previous_text"])
+        assertEquals(setOf("stability"), body["voice_settings"]!!.jsonObject.keys, "v3 gets only the setting it documents")
         assertEquals(0.0, body["voice_settings"]!!.jsonObject["stability"]!!.jsonPrimitive.content.toDouble())
         fun v3Stability(e: Float) = ElevenLabsVoice("k", "v", ElevenLabsVoice.MODEL_V3, expressiveness = e).requestBody(c, 1f)["voice_settings"]!!.jsonObject["stability"]!!.jsonPrimitive.content.toDouble()
         assertEquals(0.5, v3Stability(0.5f))

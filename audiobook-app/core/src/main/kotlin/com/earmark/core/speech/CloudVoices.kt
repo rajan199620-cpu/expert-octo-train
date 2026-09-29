@@ -126,15 +126,16 @@ class ElevenLabsVoice(
         putJsonObject("voice_settings") {
             if (v3) {
                 // v3 exposes three stability presets: Creative (0), Natural (0.5), Robust (1).
+                // Nothing else is sent: a setting v3 refuses would make it fall back to v2.
                 put("stability", if (e >= 0.67f) 0.0 else if (e >= 0.34f) 0.5 else 1.0)
             } else {
                 put("stability", round2(0.65 - 0.4 * e))
                 put("similarity_boost", 0.75)
                 put("style", round2(0.55 * e))
                 put("use_speaker_boost", true)
+                // ElevenLabs accepts 0.7-1.2; faster listening is applied at playback instead.
+                put("speed", speed.coerceIn(0.7f, 1.2f).toDouble())
             }
-            // ElevenLabs accepts 0.7-1.2; faster listening is applied at playback instead.
-            put("speed", speed.coerceIn(0.7f, 1.2f).toDouble())
         }
     }
 
