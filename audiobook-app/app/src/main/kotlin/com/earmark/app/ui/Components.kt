@@ -9,6 +9,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -65,22 +66,33 @@ fun BookCover(title: String, author: String?, modifier: Modifier = Modifier, com
                 drawPath(ribbon, Color(0xFFFFD27A))
             },
     ) {
-        Column(Modifier.fillMaxSize().padding(start = if (compact) 11.dp else 16.dp, end = 8.dp, top = if (compact) 12.dp else 18.dp, bottom = 10.dp)) {
-            // Keep clear of the ribbon, and size the type to the cover so long words don't break.
-            Text(
-                title,
-                color = Color.White,
-                fontFamily = SerifFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = if (compact) 13.sp else 17.sp,
-                lineHeight = if (compact) 16.sp else 21.sp,
-                maxLines = if (compact) 5 else 6,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(0.82f),
-            )
-            Spacer(Modifier.weight(1f))
-            author?.let {
-                Text(it.uppercase(), color = Color.White.copy(alpha = 0.85f), fontSize = if (compact) 8.sp else 10.sp, letterSpacing = 1.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val startPad = if (compact) 11.dp else 16.dp
+            // Shrink the type until the longest word fits on one line: covers must never show
+            // "Lightho-use" (found in the rendered screenshots).
+            val textWidth = (maxWidth - startPad - 8.dp) * 0.82f
+            val longest = title.split(' ', '-', '/').maxOfOrNull { it.length }?.coerceAtLeast(4) ?: 4
+            val baseSize = if (compact) 13f else 17f
+            val fitted = minOf(baseSize, textWidth.value / (longest * 0.62f)).coerceAtLeast(8f)
+            Column(Modifier.fillMaxSize().padding(start = startPad, end = 8.dp, top = if (compact) 12.dp else 18.dp, bottom = 10.dp)) {
+                Text(
+                    title,
+                    color = Color.White,
+                    fontFamily = SerifFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = fitted.sp,
+                    lineHeight = (fitted * 1.22f).sp,
+                    maxLines = if (compact) 5 else 6,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(0.82f),
+                )
+                Spacer(Modifier.weight(1f))
+                author?.let {
+                    Text(
+                        it.uppercase(), color = Color.White.copy(alpha = 0.85f), fontSize = if (compact) 8.sp else 10.sp,
+                        lineHeight = if (compact) 10.sp else 13.sp, letterSpacing = 1.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

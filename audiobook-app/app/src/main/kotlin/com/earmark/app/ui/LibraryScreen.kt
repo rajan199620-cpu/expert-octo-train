@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -236,7 +237,7 @@ internal fun CoverTile(book: BookSummary, onClick: () -> Unit, onLongClick: () -
 internal fun EmptyLibrary(onAdd: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.Center) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            BookCover("Any book, read aloud", "You", Modifier.width(150.dp).aspectRatio(0.68f))
+            BookCover("Any book, read aloud", "You", Modifier.width(150.dp).aspectRatio(0.68f).clickable(onClick = onAdd))
         }
         Spacer(Modifier.height(28.dp))
         Text("Turn any document into an audiobook you can talk to.", style = MaterialTheme.typography.headlineSmall)
