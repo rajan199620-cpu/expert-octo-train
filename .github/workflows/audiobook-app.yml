@@ -37,6 +37,8 @@ jobs:
   android-build:
     name: Android APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # to publish the APK to the permanent download link
     defaults:
       run:
         working-directory: audiobook-app
@@ -62,6 +64,21 @@ jobs:
         with:
           name: earmark-debug-apk
           path: audiobook-app/app/build/outputs/apk/debug/*.apk
+      # Artifact links expire in minutes; this release asset URL never changes and always
+      # serves the newest build: https://github.com/<repo>/releases/download/earmark-apk/earmark.apk
+      - name: Publish to the permanent download link
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/*.apk "$RUNNER_TEMP/earmark.apk"
+          notes="Build $GITHUB_RUN_NUMBER from ${GITHUB_SHA::7}. This link always serves the newest build."
+          if gh release view earmark-apk >/dev/null 2>&1; then
+            gh release edit earmark-apk --notes "$notes"
+          else
+            gh release create earmark-apk --target "$GITHUB_SHA" --title "Earmark: latest APK" --notes "$notes" --latest=false
+          fi
+          gh release upload earmark-apk "$RUNNER_TEMP/earmark.apk" --clobber
       - name: Upload lint report
         if: always()
         uses: actions/upload-artifact@v4

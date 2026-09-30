@@ -1,7 +1,12 @@
 # Earmark: talk to your audiobook
 
 An Android app that reads a PDF, EPUB, Word document, web page, Markdown or text file aloud,
-and lets you interact with the book while you listen:
+and lets you interact with the book while you listen.
+
+**Download:** [earmark.apk](https://github.com/rajan199620-cpu/expert-octo-train/releases/download/earmark-apk/earmark.apk)
+always serves the newest build (CI republishes it on every push).
+
+What you can do while listening:
 
 - "**Bookmark this**", "bookmark this page", "bookmark the last sentence as Tobin's lie"
 - "**Highlight that**", "highlight the last two sentences in green"
