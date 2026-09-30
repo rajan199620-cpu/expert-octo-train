@@ -83,15 +83,25 @@ class PerformanceTest {
     }
 
     @Test
+    fun `semicolons and colons get a short breath, times and ratios do not`() {
+        val s = "Whoever commits theft; or attempts it: shall be punished at 10:30 today."
+        val segs = ProsodyPlanner.plan(s)
+        assertSlices(s, segs)
+        assertEquals(listOf("Whoever commits theft;", "or attempts it:", "shall be punished at 10:30 today."), segs.map { it.text })
+        assertEquals(listOf(ProsodyPlanner.CLAUSE_PAUSE, ProsodyPlanner.CLAUSE_PAUSE, 0), segs.map { it.pauseAfterMillis })
+        assertEquals(1, ProsodyPlanner.plan(s, perform = false).size)
+    }
+
+    @Test
     fun `fuzz - segments are always ordered slices that keep every character`() {
         val rnd = Random(21)
-        val alphabet = "abc def “”\"\"...…!?,. Mira ".toCharArray()
+        val alphabet = "abc def “”\"\"...…!?,.;: Mira ".toCharArray()
         repeat(3000) {
             val s = String(CharArray(rnd.nextInt(1, 160)) { alphabet[rnd.nextInt(alphabet.size)] })
             if (s.isBlank()) return@repeat
             val segs = ProsodyPlanner.plan(s, isHeading = rnd.nextInt(10) == 0, endsParagraph = rnd.nextBoolean())
             assertSlices(s, segs)
-            assertTrue(segs.size in 1..6)
+            assertTrue(segs.size in 1..10)
             segs.forEach { assertTrue(it.pitch in 0.9f..1.2f && it.rate in 0.9f..1.1f, "delivery out of range: $it") }
         }
     }

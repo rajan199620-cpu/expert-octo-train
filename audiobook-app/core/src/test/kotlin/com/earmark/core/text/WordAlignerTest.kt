@@ -28,13 +28,25 @@ class WordAlignerTest {
     fun `expanded symbols and abbreviations map to the written form`() {
         val display = "Dr. Rao paid ₹1,00,000 under § 302 on p. 12."
         val spoken = SpeechNormalizer().normalize(display)
-        assertEquals("Doctor Rao paid 100000 rupees under section 302 on page 12.", spoken)
+        assertEquals("Doctor Rao paid 1 lakh rupees under section 302 on page 12.", spoken)
         assertEquals("Dr", spokenWordAt(display, spoken, "Doctor"))
-        assertEquals("₹1,00,000", spokenWordAt(display, spoken, "100000"))
+        assertEquals("₹1,00,000", spokenWordAt(display, spoken, "lakh"))
+        assertEquals("paid", spokenWordAt(display, spoken, "paid"))
         assertEquals("₹1,00,000", spokenWordAt(display, spoken, "rupees"))
         assertEquals("§", spokenWordAt(display, spoken, "section"))
         assertEquals("302", spokenWordAt(display, spoken, "302"))
         assertEquals("12", spokenWordAt(display, spoken, "12"))
+    }
+
+    @Test
+    fun `statute numbering highlights the written reference`() {
+        val display = "Under section 179(1)(a) the officer; (ii) the witness and/or clerk."
+        val spoken = SpeechNormalizer().normalize(display)
+        assertEquals("Under section 179, sub-section 1, clause A, the officer; 2, the witness and or clerk.", spoken)
+        assertEquals("179(1)(a)", spokenWordAt(display, spoken, "sub-section"))
+        assertEquals("179(1)(a)", spokenWordAt(display, spoken, "clause"))
+        assertEquals("officer", spokenWordAt(display, spoken, "officer"))
+        assertEquals("witness", spokenWordAt(display, spoken, "witness"))
     }
 
     @Test

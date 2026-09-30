@@ -227,7 +227,7 @@ class PlaybackControllerTest {
         )
         val b = com.earmark.core.parse.BookAssembler.assemble("h", "h", com.earmark.core.model.SourceFormat.TEXT, raw)
         val c = PlaybackController(b, FakeEngine())
-        assertEquals("Chapter 4 the arrival.", c.speechTextFor(0))
+        assertEquals("Chapter 4: the arrival.", c.speechTextFor(0))
         assertEquals("Doctor Rao paid 500 rupees.", c.speechTextFor(1))
     }
 

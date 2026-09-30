@@ -30,7 +30,9 @@ object ProsodyPlanner {
     const val PARAGRAPH_PAUSE = 450
     const val CHAPTER_PAUSE = 1100
     const val ELLIPSIS_PAUSE = 280
-    private const val MAX_SEGMENTS = 6
+    /** A breath after ";" and ":" so long legal clauses don't run together. */
+    const val CLAUSE_PAUSE = 200
+    private const val MAX_SEGMENTS = 10
 
     fun plan(
         speech: String,
@@ -51,7 +53,7 @@ object ProsodyPlanner {
             if (dialogue) {
                 trimmed(speech, start, end)?.let { pieces += it.copy(pitch = DIALOGUE_PITCH, rate = DIALOGUE_RATE) }
             } else {
-                pieces += splitEllipses(speech, start, end)
+                pieces += splitPauses(speech, start, end)
             }
         }
         var segs = mergeTiny(speech, pieces).ifEmpty { listOf(SpeechSegment(speech, 0)) }
@@ -73,6 +75,8 @@ object ProsodyPlanner {
         val last = segs.last()
         return segs.dropLast(1) + last.copy(pauseAfterMillis = maxOf(last.pauseAfterMillis, endPause))
     }
+
+    private val PAUSE_POINT = Regex("""(\.\.\.|…|[;:])(?=\s+\S)""")
 
     private data class Span(val start: Int, val end: Int, val dialogue: Boolean)
 
@@ -104,14 +108,17 @@ object ProsodyPlanner {
         return out
     }
 
-    /** "He waited... Then he ran" gets a beat of silence after the ellipsis. */
-    private fun splitEllipses(s: String, start: Int, end: Int): List<SpeechSegment> {
+    /**
+     * "He waited... Then he ran" gets a beat of silence after the ellipsis, and "; " or ": " a
+     * short breath. Phone voices barely pause there, so clause-heavy text blurs together.
+     */
+    private fun splitPauses(s: String, start: Int, end: Int): List<SpeechSegment> {
         val out = ArrayList<SpeechSegment>()
         var from = start
-        val re = Regex("""(\.\.\.|…)(?=\s+\S)""")
-        for (m in re.findAll(s.substring(start, end))) {
+        for (m in PAUSE_POINT.findAll(s.substring(start, end))) {
             val cut = start + m.range.last + 1
-            trimmed(s, from, cut)?.let { out += it.copy(pauseAfterMillis = ELLIPSIS_PAUSE) }
+            val pause = if (m.value == ";" || m.value == ":") CLAUSE_PAUSE else ELLIPSIS_PAUSE
+            trimmed(s, from, cut)?.let { out += it.copy(pauseAfterMillis = pause) }
             from = cut
         }
         trimmed(s, from, end)?.let { out += it }

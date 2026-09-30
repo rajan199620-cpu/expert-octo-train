@@ -16,6 +16,8 @@ class SpeechNormalizer(
         val dropCitations: Boolean = true,
         val expandAbbreviations: Boolean = true,
         val speakUrlsAsDomain: Boolean = true,
+        /** "179(1)(a)" as "179, sub-section 1, clause A" and list markers "(ii)" as "2". */
+        val speakLegalNumbering: Boolean = true,
     )
 
     fun normalize(input: String): String {
@@ -31,18 +33,23 @@ class SpeechNormalizer(
         if (options.speakUrlsAsDomain) {
             s = s.replace(URL) { m -> m.groupValues[1].removePrefix("www.") }
         }
-        s = ungroupNumbers(s, INDIAN_GROUPED)
+        s = ungroupNumbers(s, INDIAN_GROUPED, indian = true)
         s = ungroupNumbers(s, WESTERN_GROUPED)
         s = expandCurrency(s)
         s = expandSymbols(s)
         if (options.expandAbbreviations) s = expandAbbreviations(s)
         s = expandRomanAfterKeywords(s)
+        if (options.speakLegalNumbering) s = expandLegalNumbering(s)
+        s = s.replace(PROVISO_DASH, ": ")
+        s = speakAsides(s)
         s = s.replace(NUMBER_RANGE) { "${it.groupValues[1]} to ${it.groupValues[2]}" }
         s = s.replace(SPACED_DASH, ", ")
         s = s.replace(EM_DASH, ", ")
+        s = s.replace(HEADING_NUMBER, "$1 $2: ")
         s = fixShouting(s)
         s = s.replace(SPACE_BEFORE_PUNCT, "$1")
         s = s.replace(DOUBLE_COMMA, ",")
+        s = s.replace(COMMA_BEFORE_STOP, "$1")
         s = s.replace(MULTI_SPACE, " ").trim()
         s = s.trimStart(',', ';', ' ')
         return s
@@ -52,9 +59,25 @@ class SpeechNormalizer(
      * "1,00,000" and "1,000,000" lose their separators so engines read them as one number,
      * but "sections 302,304" is a list, not three hundred two thousand.
      */
-    private fun ungroupNumbers(input: String, pattern: Regex): String = pattern.replace(input) { m ->
+    private fun ungroupNumbers(input: String, pattern: Regex, indian: Boolean = false): String = pattern.replace(input) { m ->
         val before = input.substring(0, m.range.first).trimEnd().substringAfterLast(' ').lowercase().trimEnd('.')
-        if (before in LIST_CONTEXT) m.value else m.value.replace(",", "")
+        when {
+            before in LIST_CONTEXT -> m.value
+            // Written the Indian way, it is read the Indian way: "5,00,000" is "5 lakh".
+            indian -> m.value.replace(",", "").toLongOrNull()?.let(::lakhCrore) ?: m.value.replace(",", "")
+            else -> m.value.replace(",", "")
+        }
+    }
+
+    private fun lakhCrore(n: Long): String {
+        val parts = ArrayList<String>()
+        val crore = n / 10_000_000
+        val lakh = (n % 10_000_000) / 100_000
+        val rest = n % 100_000
+        if (crore > 0) parts += "$crore crore"
+        if (lakh > 0) parts += "$lakh lakh"
+        if (rest > 0) parts += "$rest"
+        return parts.joinToString(" ")
     }
 
     private fun expandCurrency(input: String): String {
@@ -108,6 +131,66 @@ class SpeechNormalizer(
         if (n == null) m.value else "${m.groupValues[1]} $n"
     }
 
+    /**
+     * Statute numbering. Engines read "179(1)(a)" as "179 1 a" in one breath and "(ii)" as
+     * "eye eye". Indian statutes number sections, then sub-sections (1), clauses (a) and
+     * sub-clauses (i), and that is how they are read aloud.
+     */
+    private fun expandLegalNumbering(input: String): String {
+        var s = input
+        val romanList = ROMAN_LIST_HINT.containsMatchIn(s)
+        // "179(1)(a)(ii)": a number with bracketed sub-divisions glued on.
+        s = s.replace(SUBDIVISION_CHAIN) { m ->
+            val parts = BRACKETED.findAll(m.groupValues[2]).map { it.groupValues[1] }.toList()
+            val words = ArrayList<String>()
+            var level = 0 // 0 nothing yet, 1 sub-section, 2 clause, 3 sub-clause
+            for (p in parts) {
+                when {
+                    p.all { it.isDigit() } -> { words += "sub-section $p"; level = 1 }
+                    level >= 2 && ROMAN_TOKEN.matches(p) && RomanNumerals.toInt(p.uppercase()) != null -> {
+                        words += "sub-clause ${RomanNumerals.toInt(p.uppercase())}"; level = 3
+                    }
+                    p.length <= 2 && p.all { it.isLetter() } -> { words += "clause ${p.uppercase()}"; level = 2 }
+                    else -> words += p
+                }
+            }
+            m.groupValues[1] + ", " + words.joinToString(", ") + ","
+        }
+        // "clause (a)", "sub-section (2)", "sub-clause (ii)", "sub-sections (1) and (2)".
+        s = s.replace(KEYWORD_BRACKETS) { m ->
+            val keyword = m.groupValues[1]
+            val sub = keyword.lowercase().startsWith("sub-clause")
+            BRACKETED.replace(m.value.substring(keyword.length)) { b -> " " + speakMarker(b.groupValues[1], romanAllowed = sub || romanList) }
+                .let { keyword + it }
+                .replace(MULTI_SPACE, " ")
+        }
+        // List markers at the start of an item: "(a) any person", "; (ii) the Court".
+        s = s.replace(LIST_MARKER) { m ->
+            m.groupValues[1] + speakMarker(m.groupValues[2], romanAllowed = romanList) + ","
+        }
+        // Bare references mid-sentence: "applies to (ii) above", "as in (a)".
+        s = s.replace(REFERENCE_MARKER) { m -> m.groupValues[1] + speakMarker(m.groupValues[2], romanAllowed = romanList) }
+        s = s.replace(SLASH_WORDS) { m -> SLASH_MAP.getValue(m.value.lowercase()) }
+        return s
+    }
+
+    private fun speakMarker(token: String, romanAllowed: Boolean): String {
+        if (token.all { it.isDigit() }) return token
+        // Only i, v and x count as roman: "(c)", "(d)", "(l)" and "(m)" are clause letters.
+        // "(i)" and multi-letter "(ii)", "(iv)" read as numbers; "(v)" and "(x)" alone only
+        // when the passage is visibly numbered that way.
+        if (ROMAN_TOKEN.matches(token) && (token.length > 1 || token == "i" || romanAllowed)) {
+            RomanNumerals.toInt(token.uppercase())?.let { return it.toString() }
+        }
+        return if (token.length <= 2 && token.all { it.isLetter() }) token.uppercase() else token
+    }
+
+    /**
+     * Brackets are silent to a phone voice, so "the Act (hereinafter the Code) applies" runs on
+     * without a breath. Asides of two words or more are spoken between commas instead.
+     */
+    private fun speakAsides(input: String): String = input.replace(ASIDE) { m -> ", " + m.groupValues[1].trim() + ", " }
+
     /** ALL-CAPS runs of long words are read letter by letter by some engines; sentence-case them. */
     private fun fixShouting(input: String): String {
         val letters = input.count { it.isLetter() }
@@ -116,9 +199,15 @@ class SpeechNormalizer(
         if (upper.toDouble() / letters < 0.8) {
             return input.replace(SHOUTED_WORD) { m -> m.value.lowercase().replaceFirstChar { it.titlecase() } }
         }
-        val lowered = input.lowercase()
+        // A shouted heading is sentence-cased, but acronyms in it (BNSS, IPC, FIR) stay capitals
+        // so they are still spelled out rather than read as made-up words.
+        val lowered = WORD.replace(input) { m -> if (isAcronym(m.value)) m.value else m.value.lowercase() }
         return lowered.replaceFirstChar { it.titlecase() }
     }
+
+    private fun isAcronym(word: String): Boolean =
+        word.length in 2..5 && word.all { it.isUpperCase() } &&
+            (word in KNOWN_ACRONYMS || word.none { it in "AEIOUY" })
 
     private data class Currency(
         val singular: String,
@@ -210,6 +299,7 @@ class SpeechNormalizer(
             abbr("""\b[Ss]s\.\s?(?=\d)""", "sections "),
             abbr("""(?<![\p{L}.])[Ss]\.\s?(?=\d)""", "section "),
             abbr("""\bArt\.\s?(?=\d)""", "article "),
+            abbr("""\bSch\.\s?(?=[\dIVX])""", "Schedule "),
             abbr("""\bu/s\b""", "under section", ignoreCase = true),
             abbr("""\br/w\b""", "read with", ignoreCase = true),
             abbr("""\bw\.e\.f\.""", "with effect from", ignoreCase = true),
@@ -231,7 +321,33 @@ class SpeechNormalizer(
         private val NUMBER_RANGE = Regex("""(\d)\s?[–—]\s?(\d)""")
         private val SPACED_DASH = Regex("""\s+[–—-]{1,2}\s+""")
         private val EM_DASH = Regex("""—""")
+        /** "CHAPTER 13 INFORMATION TO THE POLICE": a beat between the number and the title. */
+        private val HEADING_NUMBER = Regex("""^(Chapter|CHAPTER|Part|PART|Book|BOOK|Title|TITLE)\s+(\d+)\s+(?=\p{Lu}{2})""")
         private val SHOUTED_WORD = Regex("""\b\p{Lu}{5,}\b""")
+        private val WORD = Regex("""\p{L}+""")
+        private val KNOWN_ACRONYMS = setOf(
+            "IPC", "FIR", "UAPA", "NIA", "CBI", "ED", "RBI", "SEBI", "UPSC", "IAS", "IPS", "AIR", "SCC",
+            "CPC", "RTI", "GST", "UK", "USA", "UN", "EU", "AI", "PIL", "SLP", "ADR", "IO", "SHO", "DGP",
+        )
+        private val SUBDIVISION_CHAIN = Regex("""\b(\d{1,4}[A-Z]{0,2})((?:\((?:\d{1,3}|[a-z]{1,2}|[ivxl]{1,6})\)){1,4})""")
+        private val BRACKETED = Regex("""\(\s*(\w{1,6})\s*\)""")
+        private val KEYWORD_BRACKETS = Regex(
+            """\b((?:[Ss]ub-)?(?:[Ss]ections?|[Cc]lauses?|[Rr]ules?|[Pp]aragraphs?|[Ii]tems?|[Pp]rovisos?)|[Ss]ub-[Cc]lauses?|[Ss]ub-[Ss]ections?)((?:\s*(?:,|and|or|to)?\s*\(\s*\w{1,6}\s*\))+)""",
+        )
+        private val LIST_MARKER = Regex("""(^|[.;:,—–]\s*|\s(?:and|or)\s)\(\s*(\d{1,3}|[a-z]{1,2}|[ivx]{1,6})\s*\)(?=\s)""")
+        private val REFERENCE_MARKER = Regex("""(\s(?:to|in|of|under|with|by|from|see)\s)\(\s*(\d{1,3}|[a-z]{1,2}|[ivx]{1,6})\s*\)(?=[\s.,;:])""")
+        private val ROMAN_TOKEN = Regex("[ivx]{1,6}")
+        private val ROMAN_LIST_HINT = Regex("""\((?:ii|iii|iv|vi|vii|viii|ix)\)""")
+        private val SLASH_WORDS = Regex("""\b(?:and/or|s/o|d/o|w/o|h/o|his/her|him/her|he/she|her/his)\b""", RegexOption.IGNORE_CASE)
+        private val SLASH_MAP = mapOf(
+            "and/or" to "and or", "s/o" to "son of", "d/o" to "daughter of", "w/o" to "wife of",
+            "h/o" to "husband of", "his/her" to "his or her", "him/her" to "him or her",
+            "he/she" to "he or she", "her/his" to "her or his",
+        )
+        /** "Explanation.—", "Provided that:—", "Illustration.-" introduce what follows. */
+        private val PROVISO_DASH = Regex("""(?<=\p{L}|\d)\s?[.:]\s?[—–-]{1,2}\s*""")
+        private val ASIDE = Regex("""\s?\(([^()]*[\p{L}\d][^()]*\s[^()]*[\p{L}\d][^()]*)\)""")
+        private val COMMA_BEFORE_STOP = Regex(""",\s*([.;:!?])""")
         private val SPACE_BEFORE_PUNCT = Regex("""\s+([,.;:!?])""")
         private val DOUBLE_COMMA = Regex(""",\s*,""")
         private val MULTI_SPACE = Regex("""\s{2,}""")

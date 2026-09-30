@@ -60,14 +60,25 @@ class WordAligner private constructor(
                     else -> { j-- } // display word that is not spoken (e.g. a dropped citation)
                 }
             }
-            // Unmatched spoken words belong to the nearest preceding display word ("500 rupees" -> "₹500").
-            var last = -1
-            for (k in map.indices) {
-                if (map[k] >= 0) last = map[k] else if (last >= 0) map[k] = last
-            }
-            var next = -1
-            for (k in map.indices.reversed()) {
-                if (map[k] >= 0) next = map[k] else map[k] = if (next >= 0) next else 0
+            // Unmatched spoken words belong to a neighbouring display word: the preceding one
+            // ("500 rupees" -> "₹500"), unless that was an exact match and the following one was
+            // rewritten ("paid 1 lakh rupees" -> "paid ₹1,00,000": "1 lakh" belongs to the amount).
+            val exact = BooleanArray(n) { k -> map[k] >= 0 && sk[k] == dk[map[k]] }
+            var k = 0
+            while (k < n) {
+                if (map[k] >= 0) { k++; continue }
+                var end = k
+                while (end < n && map[end] < 0) end++
+                val prev = if (k > 0) k - 1 else -1
+                val next = if (end < n) end else -1
+                val target = when {
+                    prev >= 0 && next >= 0 && exact[prev] && !exact[next] -> map[next]
+                    prev >= 0 -> map[prev]
+                    next >= 0 -> map[next]
+                    else -> 0
+                }
+                for (x in k until end) map[x] = target
+                k = end
             }
             return WordAligner(s.map { it.second }, d.map { it.second }, map)
         }
@@ -76,11 +87,21 @@ class WordAligner private constructor(
         private fun tokens(text: String): List<Pair<String, IntRange>> = TOKEN.findAll(text).mapNotNull { m ->
             var a = m.range.first
             var b = m.range.last
-            while (a < b && text[a] in EDGE_PUNCT) a++
-            while (b > a && text[b] in EDGE_PUNCT) b--
+            while (a < b && text[a] in EDGE_PUNCT && !opensInside(text, a, m.range.last)) a++
+            // Keep a ")" that closes a bracket inside the word: "179(1)(a)" stays whole.
+            while (b > a && text[b] in EDGE_PUNCT && !(text[b] == ')' && closesInside(text, a, b))) b--
             val word = text.substring(a, b + 1)
             if (word.isEmpty()) null else word to (a..b)
         }.toList()
+
+        private fun closesInside(text: String, from: Int, at: Int): Boolean {
+            val inner = text.substring(from, at)
+            return inner.count { it == '(' } > inner.count { it == ')' }
+        }
+
+        /** "(a)" alone is trimmed to "a", but "(2019)SCC"-style glued brackets keep their "(". */
+        private fun opensInside(text: String, at: Int, last: Int): Boolean =
+            text[at] == '(' && text.indexOf(')', at) in (at + 1) until last
 
         private fun key(word: String): String {
             val k = word.lowercase().filter { it.isLetterOrDigit() }

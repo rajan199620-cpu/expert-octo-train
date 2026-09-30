@@ -21,6 +21,10 @@ Export highlights as Markdown, Anki flashcards or Readwise-style CSV.
 | ElevenLabs | The most human-like option available | ~$0.05–0.10 per 1,000 characters (≈ $30–60 for a 300-page book) | No (audio is cached after the first listen) |
 | OpenAI `gpt-4o-mini-tts` | Natural, steerable narration style | ≈ $15 per million characters | No (cached) |
 
+**Clear statute reading.** "179(1)(a)" is read "179, sub-section 1, clause A"; "(ii)" as "2"; "and/or",
+"s/o" and "Explanation.—" are spoken properly; "₹5,00,000" is "5 lakh rupees"; and the phone voice takes a
+short breath at ";" and ":" and around bracketed asides.
+
 **Less flat narration.** Phone voices can't act; they can only change pitch, pace and pauses. So Earmark
 *performs* the text for them: real silences after headings, paragraphs and chapters, a lighter voice for
 dialogue, rising questions and a beat after "…". Cloud voices get an **Expressiveness** slider (calm to
