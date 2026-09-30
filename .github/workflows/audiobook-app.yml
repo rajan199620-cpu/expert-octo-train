@@ -127,5 +127,7 @@ jobs:
           git add docs/screenshots
           if ! git diff --cached --quiet; then
             git commit -m "Update UI screenshots [skip ci]"
+            # Another push may have landed while this job ran; rebase the screenshot commit onto it.
+            git pull --rebase origin "${{ github.head_ref || github.ref_name }}"
             git push
           fi
