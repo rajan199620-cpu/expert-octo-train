@@ -3,6 +3,9 @@
 A quiet meditation app built around a synthesised singing bowl. Everything beyond the core
 timer is opt-in, so the defaults behave exactly like the plain timer.
 
+**Download:** [meditation-timer.apk](https://github.com/rajan199620-cpu/expert-octo-train/releases/download/apk/meditation-timer.apk)
+always serves the newest build (CI republishes it on every push).
+
 **Sit** (the core)
 - **Opening bell** a few seconds after you tap Begin (default 5 s), so you know it is running
   without opening your eyes.

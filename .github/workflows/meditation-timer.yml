@@ -13,6 +13,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # to publish the APK to the permanent download link
     defaults:
       run:
         working-directory: meditation-timer
@@ -43,3 +45,18 @@ jobs:
         with:
           name: meditation-timer-apk
           path: meditation-timer/app/build/outputs/apk/release/*.apk
+      # Artifact links expire in minutes; a release asset has a stable URL that always serves
+      # the newest build: https://github.com/<repo>/releases/download/apk/meditation-timer.apk
+      - name: Publish to the permanent download link
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/release/*.apk "$RUNNER_TEMP/meditation-timer.apk"
+          notes="Build $GITHUB_RUN_NUMBER from ${GITHUB_SHA::7}. This link always serves the newest build."
+          if gh release view apk >/dev/null 2>&1; then
+            gh release edit apk --notes "$notes"
+          else
+            gh release create apk --target "$GITHUB_SHA" --title "Meditation Timer: latest APK" --notes "$notes"
+          fi
+          gh release upload apk "$RUNNER_TEMP/meditation-timer.apk" --clobber
