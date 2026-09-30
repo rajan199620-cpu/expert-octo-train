@@ -39,7 +39,11 @@ measure of skill rather than mood, adapted from a breath-counting task validated
 mindfulness (Levinson et al., 2014). Results are kept to compare over weeks.
 
 **Mood chart** (History): one dot per rated sit over the last 12 weeks, Restless → Deep, plus
-a line for the average of your last five ratings; tap to inspect a sit.
+a line for the average of your last five ratings once you have five; tap to inspect a sit.
+
+**History layout**: this week as seven dots at the top (resets each Monday; the streak shows only
+while it's alive), then the mood chart, a calendar that grows from your first week up to 12, one
+card for the session log, and backup/restore at the bottom.
 
 **Shortcuts**: long-press the app icon for *Start my usual sit* (starts your last settings
 with no screens in between), *Breathe* or *Mala*.

@@ -113,6 +113,27 @@ object History {
     }
 
     /**
+     * Monday to Sunday of the current week: true if you sat that day, false if not, null for days
+     * still to come. Resets every Monday, so a missed day never follows you for long.
+     */
+    fun week(activeDays: Set<LocalDate>, today: LocalDate): List<Pair<LocalDate, Boolean?>> {
+        val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        return (0L..6L).map { monday.plusDays(it) }.map { it to if (it.isAfter(today)) null else it in activeDays }
+    }
+
+    /**
+     * How many weeks the calendar shows: back to the week of your first sit, at least [min] and at
+     * most [max], so a new practice isn't drowned in empty squares.
+     */
+    fun weeksToShow(firstDay: LocalDate?, today: LocalDate, min: Int = 4, max: Int = 12): Int {
+        if (firstDay == null) return min
+        val thisMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val firstMonday = firstDay.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val weeks = java.time.temporal.ChronoUnit.WEEKS.between(firstMonday, thisMonday).toInt() + 1
+        return weeks.coerceIn(min, max)
+    }
+
+    /**
      * Rated sits in the last [days] days, oldest first, each with a rolling average of the last
      * [window] ratings. Single sits are noisy; the rolling line is what shows a trend.
      */

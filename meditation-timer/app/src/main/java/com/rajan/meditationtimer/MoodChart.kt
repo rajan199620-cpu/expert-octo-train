@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -40,31 +42,30 @@ private val axisDate = DateTimeFormatter.ofPattern("d MMM")
 private val detailDate = DateTimeFormatter.ofPattern("EEE d MMM")
 private val detailTime = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
+/** A five-sit average needs five sits; before that the line would just echo the dots. */
+const val MIN_FOR_TREND = 5
+
 /**
- * How the mind felt over the last 12 weeks: one dot per rated sit (y = Restless … Deep, x = date)
- * and a 2dp line for the rolling average of the last five, which is what shows a trend. One series,
- * so no legend; the title names it. Tap anywhere to inspect the nearest sit. The session list below
- * the chart carries every rating as text (the table view).
+ * How the mind felt over the last 12 weeks: one dot per rated sit (y = Restless … Deep, x = date).
+ * From [MIN_FOR_TREND] rated sits on, a 2dp line adds the rolling average of the last five, which
+ * is what shows a trend. One series, so no legend. Tap to inspect the nearest sit.
  */
 @OptIn(ExperimentalTextApi::class)
 @Composable
 fun MoodChart(points: List<MoodPoint>, zone: ZoneId) {
+    val showTrend = points.size >= MIN_FOR_TREND
     Column(Modifier.fillMaxWidth()) {
-        Text("How your sits felt", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+        Text("How your sits felt", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
         Text(
-            "Each dot is a sit you rated; the line is the average of your last five.",
+            when {
+                points.size < 2 -> "Rate a couple of sits on the ‘Session complete’ screen and they’ll appear here."
+                showTrend -> "Each dot is a rated sit; the line is the average of your last five."
+                else -> "Each dot is a rated sit. A trend line appears after $MIN_FOR_TREND (${points.size} so far)."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (points.size < 2) {
-            Text(
-                "Rate a couple of sits on the ‘Session complete’ screen and your trend will appear here.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            return@Column
-        }
+        if (points.size < 2) return@Column
 
         var selected by remember(points) { mutableIntStateOf(points.lastIndex) }
         val measurer = rememberTextMeasurer()
@@ -72,73 +73,81 @@ fun MoodChart(points: List<MoodPoint>, zone: ZoneId) {
         val firstMs = points.first().startedAtMs
         val lastMs = points.last().startedAtMs
         val spanMs = (lastMs - firstMs).coerceAtLeast(1L)
+        // Gutter as wide as the longest feeling label, not a fixed guess.
+        val labels = remember(measurer) { RATING_LABELS.map { measurer.measure(it, axisStyle) } }
+        val density = LocalDensity.current
+        val gutterPx = with(density) { labels.maxOf { it.size.width } + 10.dp.toPx() }
+        // End dots sit fully inside the card instead of being cut by its edge.
+        val insetPx = with(density) { 10.dp.toPx() }
 
         Canvas(
             Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .padding(top = 12.dp)
+                .height(180.dp)
                 .pointerInput(points) {
                     detectTapGestures { tap ->
-                        val gutter = 76.dp.toPx()
-                        val plotW = size.width - gutter - 8.dp.toPx()
-                        val xs = points.map { gutter + plotW * (it.startedAtMs - firstMs) / spanMs }
+                        val plotW = size.width - gutterPx - 2 * insetPx
+                        val xs = points.map { gutterPx + insetPx + plotW * (it.startedAtMs - firstMs) / spanMs }
                         selected = xs.indices.minBy { abs(xs[it] - tap.x) }
                     }
                 },
         ) {
-            val gutter = 76.dp.toPx()
             val top = 8.dp.toPx()
             val axisBand = 22.dp.toPx() // x-axis labels live inside the chart's own height
-            val plotW = size.width - gutter - 8.dp.toPx()
+            val plotW = size.width - gutterPx - 2 * insetPx
             val plotH = size.height - top - axisBand
-            fun x(p: MoodPoint) = gutter + plotW * (p.startedAtMs - firstMs) / spanMs
+            fun x(p: MoodPoint) = gutterPx + insetPx + plotW * (p.startedAtMs - firstMs) / spanMs
             fun y(v: Double) = top + plotH * (5 - v).toFloat() / 4f
 
             // Recessive hairline grid, one line per feeling, labelled in text ink.
             for (level in 1..5) {
                 val gy = y(level.toDouble())
-                drawLine(GridLine, Offset(gutter, gy), Offset(gutter + plotW, gy), strokeWidth = 1f)
-                val label = measurer.measure(RATING_LABELS[level - 1], axisStyle)
+                drawLine(GridLine, Offset(gutterPx, gy), Offset(size.width, gy), strokeWidth = 1f)
+                val label = labels[level - 1]
                 drawText(label, topLeft = Offset(0f, gy - label.size.height / 2f))
             }
-            // Dates at both ends of the x-axis.
-            val startLabel = measurer.measure(Instant.ofEpochMilli(firstMs).atZone(zone).format(axisDate), axisStyle)
-            val endLabel = measurer.measure(Instant.ofEpochMilli(lastMs).atZone(zone).format(axisDate), axisStyle)
+            // Dates under the first and last sit (one label if they share a day).
+            val firstDay = Instant.ofEpochMilli(firstMs).atZone(zone).format(axisDate)
+            val lastDay = Instant.ofEpochMilli(lastMs).atZone(zone).format(axisDate)
+            val startLabel = measurer.measure(firstDay, axisStyle)
             val labelY = size.height - startLabel.size.height
-            drawText(startLabel, topLeft = Offset(gutter, labelY))
-            drawText(endLabel, topLeft = Offset(gutter + plotW - endLabel.size.width, labelY))
-
-            // Crosshair on the selected sit.
-            val sel = points[selected]
-            drawLine(GridLine.copy(alpha = 0.2f), Offset(x(sel), top), Offset(x(sel), top + plotH), strokeWidth = 1f)
-
-            // Rolling-average line: 2dp, round joins and caps.
-            val path = Path()
-            points.forEachIndexed { i, p ->
-                if (i == 0) path.moveTo(x(p), y(p.rollingAverage)) else path.lineTo(x(p), y(p.rollingAverage))
+            drawText(startLabel, topLeft = Offset(gutterPx + insetPx - startLabel.size.width / 2f, labelY))
+            if (lastDay != firstDay) {
+                val endLabel = measurer.measure(lastDay, axisStyle)
+                drawText(endLabel, topLeft = Offset(size.width - endLabel.size.width, labelY))
             }
-            drawPath(path, MoodMark, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 
-            // One dot per sit, with a 2dp surface ring so overlaps stay legible.
+            if (showTrend) {
+                val path = Path()
+                points.forEachIndexed { i, p ->
+                    if (i == 0) path.moveTo(x(p), y(p.rollingAverage)) else path.lineTo(x(p), y(p.rollingAverage))
+                }
+                drawPath(path, MoodMark, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+
+            // One dot per sit, with a surface ring so overlaps stay legible; the selected one gets
+            // an outline halo rather than a bigger size, so size never reads as "more".
             val r = 4.dp.toPx()
             val ring = 2.dp.toPx()
             points.forEachIndexed { i, p ->
                 val c = Offset(x(p), y(p.rating.toDouble()))
-                val radius = if (i == selected) r * 1.5f else r
-                drawCircle(SurfaceRing, radius + ring, c)
-                drawCircle(MoodMark.copy(alpha = if (i == selected) 1f else 0.7f), radius, c)
+                drawCircle(SurfaceRing, r + ring, c)
+                drawCircle(MoodMark, r, c)
+                if (i == selected) drawCircle(Ink, r + ring + 1.5.dp.toPx(), c, style = Stroke(1.5.dp.toPx()))
             }
         }
 
         val sel = points[selected]
         val at = Instant.ofEpochMilli(sel.startedAtMs).atZone(zone)
         Text(
-            "${at.format(detailDate)}, ${at.format(detailTime)}  ·  ${RATING_LABELS[sel.rating - 1]}",
+            "${at.format(detailDate)} · ${at.format(detailTime)} · ${RATING_LABELS[sel.rating - 1]}",
+            Modifier.padding(top = 8.dp),
             style = MaterialTheme.typography.bodyMedium,
         )
         History.mostCommonRating(points)?.let {
             Text(
-                "Most often: ${RATING_LABELS[it - 1]}  ·  ${points.size} rated sits in the last 12 weeks",
+                "Most often ${RATING_LABELS[it - 1]} · ${points.size} rated sits",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

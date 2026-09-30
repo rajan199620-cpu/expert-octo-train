@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,9 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
@@ -52,7 +54,10 @@ fun HistoryTab() {
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now()
     val summary = remember(records) { History.summarize(records, zone, today) }
-    val heatmap = remember(records) { History.heatmap(records, zone, today) }
+    val activeDays = remember(records) { records.map { it.day(zone) }.toSet() }
+    val week = remember(activeDays) { History.week(activeDays, today) }
+    val weeks = remember(activeDays) { History.weeksToShow(activeDays.minOrNull(), today) }
+    val heatmap = remember(records, weeks) { History.heatmap(records, zone, today, weeks) }
     val mood = remember(records) { History.moodTrend(records, zone, today) }
 
     // Back up = save a CSV file you keep (Drive, Downloads...); Restore = read one back.
@@ -68,75 +73,60 @@ fun HistoryTab() {
     }
     val restore = rememberRestoreAction()
 
+    // Order follows what you come here for: how this week is going, how sits felt, the calendar,
+    // then the log. Rarely used backup controls sit at the bottom (progressive disclosure).
     LazyColumn(
         Modifier.widthIn(max = 480.dp).fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Spacer(Modifier.height(8.dp)) }
         item {
-            Column {
-                Text("Your practice", style = MaterialTheme.typography.headlineMedium)
-                Row {
-                    if (records.isNotEmpty()) {
-                        TextButton(onClick = { backup.launch("meditation-history-$today.csv") }) { Text("Back up") }
+            Text("Your practice", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.headlineMedium)
+        }
+        if (records.isEmpty()) {
+            item {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Text("Your sits will appear here.", style = MaterialTheme.typography.titleMedium)
+                    if (AutoBackup.supported) {
+                        Text(
+                            "Reinstalled the app? Restore brings back your history from ${AutoBackup.LOCATION}.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        TextButton(onClick = restore) { Text("Restore history") }
                     }
-                    TextButton(onClick = restore) { Text("Restore") }
-                }
-                if (AutoBackup.supported) {
-                    Text(
-                        "A copy without your journal notes is saved automatically to ${AutoBackup.LOCATION}. " +
-                            "Back up saves everything, notes included, wherever you choose.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard("Current streak", dayCount(summary.currentStreak), Modifier.weight(1f))
-                StatCard("Longest streak", dayCount(summary.longestStreak), Modifier.weight(1f))
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard("Last 7 days", formatDuration(summary.last7DaysSec), Modifier.weight(1f))
-                StatCard(
-                    "All time",
-                    "${formatDuration(summary.totalSec)}\n${summary.sessionCount} ${if (summary.sessionCount == 1) "session" else "sessions"}",
-                    Modifier.weight(1f),
-                )
-            }
-        }
-        item { GlassCard(Modifier.fillMaxWidth()) { MoodChart(mood, zone) } }
-        item { GlassCard(Modifier.fillMaxWidth()) { Heatmap(heatmap) } }
-        if (summary.days.isEmpty()) {
+        } else {
+            item { WeekCard(week, summary) }
+            item { GlassCard(Modifier.fillMaxWidth()) { MoodChart(mood, zone) } }
+            item { GlassCard(Modifier.fillMaxWidth()) { Heatmap(heatmap) } }
             item {
                 Text(
-                    if (AutoBackup.supported) {
-                        "Your sessions will appear here.\n\nReinstalled the app? Tap Restore and pick\n${AutoBackup.LOCATION}"
-                    } else {
-                        "Your sessions will appear here."
-                    },
-                    Modifier.fillMaxWidth().padding(top = 24.dp),
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "Sessions",
+                    Modifier.padding(top = 8.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
-        }
-        items(summary.days, key = { it.date.toEpochDay() }) { day ->
-            GlassCard(Modifier.fillMaxWidth(), padding = 16.dp) {
-                Row(Modifier.fillMaxWidth()) {
-                    Text(day.date.format(dayFormat), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        formatDuration(day.totalSec.toLong()),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+            // One card for the whole log, days separated by hairlines rather than a card each.
+            item {
+                GlassCard(Modifier.fillMaxWidth(), padding = 16.dp) {
+                    summary.days.forEachIndexed { i, day ->
+                        if (i > 0) HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                        Row(Modifier.fillMaxWidth()) {
+                            Text(day.date.format(dayFormat), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                formatDuration(day.totalSec.toLong()),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        for (session in day.sessions) SessionLine(session, zone)
+                    }
                 }
-                for (session in day.sessions) SessionLine(session, zone)
             }
         }
+        item { DataCard(hasRecords = records.isNotEmpty(), onBackup = { backup.launch("meditation-history-$today.csv") }, onRestore = restore) }
         // Which build is installed, so "is this the new APK?" has an answer.
         item {
             val version = remember {
@@ -153,13 +143,89 @@ fun HistoryTab() {
     }
 }
 
+/**
+ * The headline: this week as seven dots. It resets every Monday (a fresh start) and a missed day
+ * is just an empty dot, not a lost number. The streak is shown only while it's alive: an intact
+ * streak motivates, a highlighted broken one discourages (Silverman & Barasch, 2023).
+ */
+@Composable
+private fun WeekCard(week: List<Pair<LocalDate, Boolean?>>, summary: HistorySummary) {
+    val primary = MaterialTheme.colorScheme.primary
+    val daysSat = week.count { it.second == true }
+    GlassCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("$daysSat", style = MaterialTheme.typography.displaySmall, color = primary)
+            Text(
+                if (daysSat == 1) "  day this week" else "  days this week",
+                Modifier.padding(bottom = 6.dp),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            for ((date, sat) in week) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(
+                                when (sat) {
+                                    true -> primary
+                                    false -> Color.White.copy(alpha = 0.08f)
+                                    null -> Color.Transparent
+                                },
+                            )
+                            .border(1.dp, if (sat == null) Color.White.copy(alpha = 0.10f) else Color.Transparent, CircleShape),
+                    )
+                    Text(
+                        date.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        val parts = buildList {
+            add("${formatDuration(summary.last7DaysSec)} in the last 7 days")
+            if (summary.currentStreak >= 2) add("✦ ${streakLabel(summary.currentStreak)}")
+        }
+        Text(parts.joinToString("  ·  "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "All time: ${formatDuration(summary.totalSec)} over ${summary.sessionCount} ${if (summary.sessionCount == 1) "sit" else "sits"}" +
+                "  ·  Longest streak ${dayCount(summary.longestStreak)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Backup and restore: needed rarely, so they live at the bottom, with the automatic copy explained. */
+@Composable
+private fun DataCard(hasRecords: Boolean, onBackup: () -> Unit, onRestore: () -> Unit) {
+    GlassCard(Modifier.fillMaxWidth(), padding = 16.dp) {
+        Text("Your data", style = MaterialTheme.typography.titleMedium)
+        if (AutoBackup.supported) {
+            Text(
+                "Saved automatically, without journal notes, to ${AutoBackup.LOCATION}. " +
+                    "Back up saves everything, notes included, wherever you choose.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row {
+            if (hasRecords) TextButton(onClick = onBackup) { Text("Back up") }
+            TextButton(onClick = onRestore) { Text("Restore") }
+        }
+    }
+}
+
 @Composable
 private fun SessionLine(session: SessionRecord, zone: ZoneId) {
     val time = Instant.ofEpochMilli(session.startedAtMs).atZone(zone).toLocalTime().format(timeFormat)
     val parts = buildList {
         add(time)
         add(formatDuration(session.actualSec.toLong()))
-        if (!session.completed) add("ended early (of ${formatDuration(session.plannedSec.toLong())})")
+        if (!session.completed) add("of ${formatDuration(session.plannedSec.toLong())}, ended early")
         RATING_LABELS.getOrNull(session.rating - 1)?.let { add(it) }
     }
     Text(
@@ -179,15 +245,7 @@ private fun SessionLine(session: SessionRecord, zone: ZoneId) {
 
 private fun dayCount(days: Int) = if (days == 1) "1 day" else "$days days"
 
-@Composable
-private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
-    GlassCard(modifier, padding = 16.dp) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
-    }
-}
-
-/** 12 weeks x 7 days; each square darker the longer you sat that day. */
+/** Up to 12 weeks x 7 days; each square darker the longer you sat that day. */
 @Composable
 private fun Heatmap(weeks: List<List<Int?>>) {
     val primary = MaterialTheme.colorScheme.primary
@@ -201,7 +259,7 @@ private fun Heatmap(weeks: List<List<Int?>>) {
         else -> primary
     }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Last 12 weeks", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+        Text("Last ${weeks.size} weeks", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (d in 0 until 7) {

@@ -193,4 +193,21 @@ class HistoryTest {
         // Old backups without the line still restore sessions, with no settings.
         assertNull(History.settingsFrom(History.toCsv(records, zone)))
     }
+
+    @Test
+    fun weekRunsMondayToSundayWithFutureDaysUnknown() {
+        val wed = LocalDate.of(2026, 9, 30) // a Wednesday
+        val week = History.week(setOf(LocalDate.of(2026, 9, 28), wed), wed)
+        assertEquals(LocalDate.of(2026, 9, 28), week.first().first)
+        assertEquals(listOf(true, false, true, null, null, null, null), week.map { it.second })
+    }
+
+    @Test
+    fun calendarGrowsFromFirstSitWithinBounds() {
+        val wed = LocalDate.of(2026, 9, 30)
+        assertEquals(4, History.weeksToShow(null, wed))
+        assertEquals(4, History.weeksToShow(LocalDate.of(2026, 9, 28), wed)) // first week: minimum
+        assertEquals(7, History.weeksToShow(LocalDate.of(2026, 8, 20), wed)) // week of 17 Aug … week of 28 Sep
+        assertEquals(12, History.weeksToShow(LocalDate.of(2025, 1, 1), wed))
+    }
 }
