@@ -208,9 +208,9 @@ class ScreensTest {
         SessionLog.get(app).merge(listOf(SessionRecord(weekAgo, 1200, 1200, rating = 4, note = "Breath felt wide today")))
         launch()
         compose.onNodeWithText("A week ago today").assertExists()
-        compose.onNodeWithText("“Breath felt wide today”").assertExists()
+        compose.onNodeWithText("“Breath felt wide today”").performScrollTo()
         shot("13-on-this-day")
-        compose.onAllNodesWithText("Hide").onFirst().performClick()
+        compose.onAllNodesWithText("Hide").onFirst().performScrollTo().performClick()
         compose.onNodeWithText("A week ago today").assertDoesNotExist()
         assertEquals(LocalDate.now(zone).toString(), Prefs(app).memoryHiddenOn)
         // Still hidden after the screen is rebuilt the same day.
