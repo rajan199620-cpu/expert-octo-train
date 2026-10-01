@@ -17,4 +17,7 @@
     <string name="shortcut_sit_long">Start my usual sit</string>
     <string name="shortcut_breathe_short">Breathe</string>
     <string name="shortcut_mala_short">Mala</string>
+    <string name="reminder_channel">Daily reminder</string>
+    <string name="reminder_start">Sit %1$d min</string>
+    <string name="widget_description">This week at a glance and one tap to start your usual sit</string>
 </resources>

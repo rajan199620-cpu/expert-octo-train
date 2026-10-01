@@ -20,13 +20,15 @@ class SessionLog private constructor(private val context: Context, private val f
         _records.value = _records.value + record
         AutoBackup.write(context, _records.value)
         GoogleBackup.backupSoon(context)
+        ReminderScheduler.dismiss(context)
+        SitWidget.refresh(context)
     }
 
     /** Attaches the post-sit reflection to an already logged session. */
     @Synchronized
-    fun annotate(startedAtMs: Long, rating: Int, note: String) {
+    fun annotate(startedAtMs: Long, rating: Int, note: String, after: Int = 0) {
         val updated = _records.value.map {
-            if (it.startedAtMs == startedAtMs) it.copy(rating = rating, note = note.trim()) else it
+            if (it.startedAtMs == startedAtMs) it.copy(rating = rating, note = note.trim(), after = after) else it
         }
         rewrite(updated)
     }
@@ -55,6 +57,7 @@ class SessionLog private constructor(private val context: Context, private val f
         _records.value = records
         AutoBackup.write(context, records)
         GoogleBackup.backupSoon(context)
+        SitWidget.refresh(context)
     }
 
     private fun load(): List<SessionRecord> =

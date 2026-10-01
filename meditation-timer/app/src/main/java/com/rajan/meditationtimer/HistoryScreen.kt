@@ -61,6 +61,8 @@ fun HistoryTab() {
     val weeks = remember(activeDays) { History.weeksToShow(activeDays.minOrNull(), today) }
     val heatmap = remember(records, weeks) { History.heatmap(records, zone, today, weeks) }
     val mood = remember(records) { History.moodTrend(records, zone, today) }
+    val checkIns = remember(records) { History.checkInSummary(records) }
+    val noticing = remember(records) { History.noticing(records, zone, today) }
     LaunchedEffect(Unit) { GoogleBackup.load(context) }
     val cloud by GoogleBackup.state.collectAsStateWithLifecycle()
 
@@ -102,7 +104,9 @@ fun HistoryTab() {
             }
         } else {
             item { WeekCard(week, summary) }
+            checkIns?.let { item { CheckInCard(it) } }
             item { GlassCard(Modifier.fillMaxWidth()) { MoodChart(mood, zone) } }
+            if (noticing.isNotEmpty()) item { NoticingCard(noticing) }
             item { GlassCard(Modifier.fillMaxWidth()) { Heatmap(heatmap) } }
             item {
                 Text(
@@ -291,6 +295,10 @@ private fun SessionLine(session: SessionRecord, zone: ZoneId) {
         add(formatDuration(session.actualSec.toLong()))
         if (!session.completed) add("of ${formatDuration(session.plannedSec.toLong())}, ended early")
         RATING_LABELS.getOrNull(session.rating - 1)?.let { add(it) }
+        if (session.before in 1..5 && session.after in 1..5) {
+            add("${CHECK_IN_LABELS[session.before - 1]} → ${CHECK_IN_LABELS[session.after - 1]}")
+        }
+        if (session.noticed >= 0) add("noticed ${session.noticed}×")
     }
     Text(
         parts.joinToString("  ·  "),

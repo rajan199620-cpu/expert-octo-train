@@ -128,9 +128,9 @@ class HistoryTest {
             zone,
         )
         assertEquals(
-            "date,start,planned_min,actual_min,rating,note\n" +
-                "2026-09-26,07:00,15.0,7.0,,\n" +
-                "2026-09-27,07:00,20.0,20.0,5,\"deep, still\"\n",
+            "date,start,planned_min,actual_min,rating,note,before,after,noticed\n" +
+                "2026-09-26,07:00,15.0,7.0,,,,,\n" +
+                "2026-09-27,07:00,20.0,20.0,5,\"deep, still\",,,\n",
             csv,
         )
     }
@@ -140,8 +140,50 @@ class HistoryTest {
         val records = listOf(
             at(today.minusDays(3), minutes = 20).copy(rating = 4, note = "quiet, \"still\"\nand warm"),
             at(today, hour = 21, minutes = 15, actualMin = 9),
+            at(today.minusDays(1), hour = 6, minutes = 10).copy(before = 1, after = 4, noticed = 7),
+            at(today.minusDays(2), hour = 6, minutes = 10).copy(noticed = 0),
         )
-        assertEquals(records, History.fromCsv(History.toCsv(records, zone), zone))
+        assertEquals(records.sortedBy { it.startedAtMs }, History.fromCsv(History.toCsv(records, zone), zone))
+    }
+
+    @Test
+    fun checkInsAndCountsSurviveTheLogFormatAndOldLinesStillRead() {
+        val r = SessionRecord(1_000, 600, 540, rating = 3, note = "a, b", before = 2, after = 5, noticed = 9)
+        assertEquals(r, SessionRecord.decode(r.encode()))
+        // Lines written before this version: no check-ins, not counted.
+        assertEquals(SessionRecord(5, 60, 60, 4, "hi"), SessionRecord.decode("5,60,60,4,hi"))
+        assertEquals(-1, SessionRecord.decode("5,60,60,4,hi")!!.noticed)
+        assertNull(SessionRecord.decode("5,60,60,4,hi,9,1,2"))
+        assertNull(SessionRecord.decode("5,60,60,4,hi,1,1,-2"))
+    }
+
+    @Test
+    fun checkInSummaryAveragesTheShiftOverPairedSitsOnly() {
+        val records = listOf(
+            at(today.minusDays(3)).copy(before = 1, after = 4),
+            at(today.minusDays(2)).copy(before = 3, after = 3),
+            at(today.minusDays(1)).copy(before = 4, after = 2),
+            at(today).copy(before = 2), // no after: not paired
+        )
+        val s = History.checkInSummary(records)!!
+        assertEquals(3, s.sits)
+        assertEquals((3 + 0 - 2) / 3.0, s.averageShift, 1e-9)
+        assertEquals(1, s.better)
+        assertEquals(1, s.same)
+        assertEquals(1, s.worse)
+        assertNull(History.checkInSummary(listOf(at(today))))
+    }
+
+    @Test
+    fun noticingIsScaledToTenMinutesAndSkipsUncountedSits() {
+        val records = listOf(
+            at(today.minusDays(1), minutes = 20).copy(noticed = 8),
+            at(today, minutes = 10).copy(noticed = 3),
+            at(today, hour = 9, minutes = 10), // not counted
+        )
+        val points = History.noticing(records, zone, today)
+        assertEquals(listOf(8, 3), points.map { it.count })
+        assertEquals(listOf(4.0, 3.0), points.map { it.perTenMin })
     }
 
     @Test

@@ -101,6 +101,9 @@ class MainActivity : ComponentActivity() {
         if (pendingQuickStart) {
             pendingQuickStart = false
             if (SessionRepository.state.value !is SessionState.Running) {
+                // One tap means one tap: no check-in on the way in, counting as usual.
+                SessionRepository.pendingBefore = 0
+                SessionRepository.startCounting(prefs.countDistractions)
                 MeditationService.start(this, prefs.timerConfig, prefs.volume, prefs.alertMode, prefs.autoDnd)
             }
         }
@@ -156,11 +159,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private companion object {
-        const val KEY_TAB = "tab"
+    companion object {
+        private const val KEY_TAB = "tab"
+        /** Starts your usual sit at once: app shortcut, widget and reminder. */
         const val ACTION_QUICK_SIT = "com.rajan.meditationtimer.QUICK_SIT"
-        const val ACTION_OPEN_BREATHE = "com.rajan.meditationtimer.OPEN_BREATHE"
-        const val ACTION_OPEN_MALA = "com.rajan.meditationtimer.OPEN_MALA"
+        private const val ACTION_OPEN_BREATHE = "com.rajan.meditationtimer.OPEN_BREATHE"
+        private const val ACTION_OPEN_MALA = "com.rajan.meditationtimer.OPEN_MALA"
     }
 }
 

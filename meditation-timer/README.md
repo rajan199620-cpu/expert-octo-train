@@ -48,6 +48,16 @@ a line for the average of your last five ratings once you have five; tap to insp
 while it's alive), then the mood chart, a calendar that grows from your first week up to 12, one
 card for the session log, and backup/restore at the bottom.
 
+**Practice tools** (Sit → Practice tools, each optional):
+- **Count distractions**: during a sit, tap anywhere or press a volume key each time you notice the
+  mind has wandered. The screen stays on at minimum brightness. The finish screen and History
+  ("Catching the wandering mind", per 10 minutes) show the count, framed as a skill, not a score.
+- **Check in before and after**: one tap for how you feel going in (Tense → Calm) and coming out.
+  History shows "What a sit changes": the average shift and how often you came out calmer.
+- **Daily reminder**: a time plus a habit cue ("After morning tea"), an if-then plan. Skipped on
+  days you've already sat; the notification's button starts your usual sit.
+- **Home-screen widget**: this week as seven dots and a "Sit · N min" button.
+
 **Shortcuts**: long-press the app icon for *Start my usual sit* (starts your last settings
 with no screens in between), *Breathe* or *Mala*.
 

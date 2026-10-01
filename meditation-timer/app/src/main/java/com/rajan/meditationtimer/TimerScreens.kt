@@ -1,6 +1,10 @@
 package com.rajan.meditationtimer
 
 import android.Manifest
+import android.app.Activity
+import android.app.TimePickerDialog
+import android.view.HapticFeedbackConstants
+import android.view.WindowManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
@@ -19,6 +23,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +52,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -66,12 +72,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -113,7 +122,7 @@ fun TimerTab(
             // Re-created when settings are restored, so the restored values show at once.
             SessionState.Idle -> key(settingsVersion) { SetupScreen(
                 prefs, streak, hasHistory = records.isNotEmpty(), onTestBell, onHistory, onRestore = restore, onPrinciples,
-            ) { config, volume, mode, dnd ->
+            ) { config, volume, mode, dnd, before ->
                 // Only for the lock-screen countdown; the session runs either way.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -121,14 +130,17 @@ fun TimerTab(
                 ) {
                     askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
+                SessionRepository.pendingBefore = before
+                SessionRepository.startCounting(prefs.countDistractions)
                 MeditationService.start(context, config, volume, mode, dnd)
+                SitWidget.refresh(context)
             } }
             is SessionState.Running -> RunningScreen(state)
             is SessionState.Finished -> FinishedScreen(
                 state,
                 streak,
-                onSave = { rating, note ->
-                    if (rating > 0 || note.isNotBlank()) log.annotate(state.startedAtMs, rating, note)
+                onSave = { rating, note, after ->
+                    if (rating > 0 || note.isNotBlank() || after > 0) log.annotate(state.startedAtMs, rating, note, after)
                     SessionRepository.reset()
                 },
             )
@@ -152,10 +164,12 @@ private fun SetupScreen(
     onHistory: () -> Unit,
     onRestore: () -> Unit,
     onPrinciples: () -> Unit,
-    onBegin: (SessionConfig, Float, AlertMode, Boolean) -> Unit,
+    onBegin: (SessionConfig, Float, AlertMode, Boolean, Int) -> Unit,
 ) {
     val context = LocalContext.current
     val saved = remember { prefs.timerConfig }
+    // Set while the "how do you feel right now?" check-in is showing on the way into a sit.
+    var checkingIn by remember { mutableStateOf<SessionConfig?>(null) }
     var minutes by rememberSaveable { mutableIntStateOf(saved.durationSec / 60) }
     var opening by rememberSaveable { mutableIntStateOf(saved.openingBellSec) }
     var closing by rememberSaveable { mutableIntStateOf(saved.closingBellSec) }
@@ -239,6 +253,8 @@ private fun SetupScreen(
             }
         }
 
+        PracticeToolsCard(prefs)
+
         Spacer(Modifier.height(8.dp))
     }
     GradientButton(
@@ -246,10 +262,116 @@ private fun SetupScreen(
         onClick = {
             val config = SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval)
             prefs.saveTimer(config, volume, alertMode, autoDnd)
-            onBegin(config, volume, alertMode, autoDnd)
+            if (prefs.checkIns) checkingIn = config else onBegin(config, volume, alertMode, autoDnd, 0)
         },
         modifier = Modifier.padding(vertical = 8.dp),
     )
+    }
+    checkingIn?.let { config ->
+        CheckInDialog(
+            title = "Before you begin",
+            question = "How do you feel right now?",
+            onDismiss = { checkingIn = null },
+        ) { before ->
+            checkingIn = null
+            onBegin(config, volume, alertMode, autoDnd, before)
+        }
+    }
+}
+
+/** One tap on the way in (or out): how you feel right now. Skipping is always fine. */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun CheckInDialog(title: String, question: String, onDismiss: () -> Unit, onAnswer: (Int) -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        GlassCard(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(24.dp))) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Text(question, style = MaterialTheme.typography.headlineSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CHECK_IN_LABELS.forEachIndexed { i, label ->
+                    FilterChip(selected = false, onClick = { onAnswer(i + 1) }, label = { Text(label) })
+                }
+            }
+            TextButton(onClick = { onAnswer(0) }, modifier = Modifier.align(Alignment.End)) { Text("Skip") }
+        }
+    }
+}
+
+/** Optional tools around the sit: distraction counting, check-ins and the daily reminder. */
+@Composable
+private fun PracticeToolsCard(prefs: Prefs) {
+    val context = LocalContext.current
+    val focus = LocalFocusManager.current
+    var counting by remember { mutableStateOf(prefs.countDistractions) }
+    var checkIns by remember { mutableStateOf(prefs.checkIns) }
+    var reminder by remember { mutableStateOf(prefs.reminder) }
+    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    fun saveReminder(updated: Reminder) {
+        reminder = updated
+        prefs.reminder = updated
+        ReminderScheduler.schedule(context)
+    }
+
+    GlassCard(Modifier.fillMaxWidth()) {
+        CardTitle("Practice tools")
+        ToggleRow(
+            "Count distractions",
+            "Each time you notice the mind has wandered, tap the screen or press a volume key, then return. " +
+                "The screen stays on, dimmed, while you sit.",
+            counting,
+        ) { counting = it; prefs.countDistractions = it }
+        ToggleRow(
+            "Check in before and after",
+            "One tap: how you feel going in and coming out. History shows what your sits change.",
+            checkIns,
+        ) { checkIns = it; prefs.checkIns = it }
+        ToggleRow(
+            "Daily reminder",
+            "Tie it to a habit you already have; skipped on days you've already sat.",
+            reminder.enabled,
+        ) { on ->
+            if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            saveReminder(reminder.copy(enabled = on))
+        }
+        if (reminder.enabled) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Around", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = {
+                    TimePickerDialog(
+                        context,
+                        { _, hour, minute -> saveReminder(reminder.copy(minuteOfDay = hour * 60 + minute)) },
+                        reminder.minuteOfDay / 60,
+                        reminder.minuteOfDay % 60,
+                        false,
+                    ).show()
+                }) { Text(reminder.timeLabel) }
+            }
+            OutlinedTextField(
+                value = reminder.cue,
+                onValueChange = { saveReminder(reminder.copy(cue = it.take(60))) },
+                label = { Text("Right after…") },
+                placeholder = { Text("After morning tea") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 
@@ -344,8 +466,47 @@ private fun RunningScreen(session: SessionState.Running) {
     val still = session.clock.isPaused
     val ringAlpha by animateFloatAsState(if (still) 0.4f else 1f, tween(600), label = "dim")
 
+    // Distraction counting: a tap anywhere (not on a button) or a volume key, with a light buzz
+    // so it registers with eyes closed. Taps closer than half a second count once.
+    val counting = SessionRepository.counting
+    val countingNow = counting && !still
+    val view = LocalView.current
+    var lastNotice by remember { mutableLongStateOf(0L) }
+    val notice: () -> Unit = {
+        val t = SystemClock.elapsedRealtime()
+        if (t - lastNotice > 500) {
+            lastNotice = t
+            SessionRepository.noticedOnce()
+            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        }
+    }
+    DisposableEffect(countingNow) {
+        if (countingNow) VolumeKeys.handler = { notice() }
+        onDispose { if (countingNow) VolumeKeys.handler = null }
+    }
+    // The screen has to stay on to take taps, so it stays on as dim as the phone allows.
+    val window = (LocalContext.current as? Activity)?.window
+    DisposableEffect(counting, window) {
+        if (counting && window != null) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            val attrs = window.attributes
+            val previous = attrs.screenBrightness
+            attrs.screenBrightness = 0.02f
+            window.attributes = attrs
+            onDispose {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                window.attributes = window.attributes.also { it.screenBrightness = previous }
+            }
+        } else {
+            onDispose { }
+        }
+    }
+
     Column(
-        Modifier.widthIn(max = 480.dp).fillMaxSize(),
+        Modifier
+            .widthIn(max = 480.dp)
+            .fillMaxSize()
+            .pointerInput(countingNow) { if (countingNow) detectTapGestures { notice() } },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterVertically),
     ) {
@@ -412,7 +573,11 @@ private fun RunningScreen(session: SessionState.Running) {
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            "Close your eyes. The bell will call you back.",
+                            if (counting) {
+                                "Mind wandered? Tap anywhere or press a volume key, then come back to the breath."
+                            } else {
+                                "Close your eyes. The bell will call you back."
+                            },
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -474,8 +639,9 @@ private fun EndingPrompt(endingAtMs: Long, now: Long, satMs: Long, onKeepSitting
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: (Int, String) -> Unit) {
+private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: (Int, String, Int) -> Unit) {
     var rating by rememberSaveable { mutableIntStateOf(0) }
+    var after by rememberSaveable { mutableIntStateOf(0) }
     var note by rememberSaveable { mutableStateOf("") }
     val accent = LocalAccent.current
     val focus = LocalFocusManager.current
@@ -498,6 +664,29 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
             )
         }
         if (streak > 0) Pill("✦ ${streakLabel(streak)}")
+        if (session.noticed >= 0) {
+            Text(
+                when (session.noticed) {
+                    0 -> "No wandering noticed this time."
+                    1 -> "You caught the mind wandering once, and came back."
+                    else -> "You caught the mind wandering ${session.noticed} times, and came back each time."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+        // The "after" half of the check-in, asked only when the "before" half was answered.
+        if (session.before > 0) {
+            GlassCard(Modifier.fillMaxWidth()) {
+                SectionLabel("And how do you feel now?", "Before the sit: ${CHECK_IN_LABELS[session.before - 1]}")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CHECK_IN_LABELS.forEachIndexed { i, label ->
+                        FilterChip(selected = after == i + 1, onClick = { after = if (after == i + 1) 0 else i + 1 }, label = { Text(label) })
+                    }
+                }
+            }
+        }
 
         // Optional and judgement-free: noticing, not scoring.
         GlassCard(Modifier.fillMaxWidth()) {
@@ -521,7 +710,7 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
                 keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
             )
         }
-        GradientButton(if (rating > 0 || note.isNotBlank()) "Save" else "Done", onClick = { onSave(rating, note) })
+        GradientButton(if (rating > 0 || note.isNotBlank() || after > 0) "Save" else "Done", onClick = { onSave(rating, note, after) })
     }
 }
 

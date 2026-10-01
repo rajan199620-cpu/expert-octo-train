@@ -22,32 +22,52 @@ data class SessionRecord(
     /** Post-sit reflection: 1 (restless) .. 5 (deeply settled); 0 = not rated. */
     val rating: Int = 0,
     val note: String = "",
+    /** Check-in just before the sit: 1 (tense) .. 5 (calm), see [CHECK_IN_LABELS]; 0 = skipped. */
+    val before: Int = 0,
+    /** The same check-in just after the sit; 0 = skipped. */
+    val after: Int = 0,
+    /** Times you noticed the mind had wandered and tapped; -1 = not counted this sit. */
+    val noticed: Int = -1,
 ) {
     val completed: Boolean get() = actualSec >= plannedSec
 
     fun day(zone: ZoneId): LocalDate = Instant.ofEpochMilli(startedAtMs).atZone(zone).toLocalDate()
 
     // The note is URL-encoded so commas and newlines in it can't break the line format.
-    fun encode(): String = "$startedAtMs,$plannedSec,$actualSec,$rating,${URLEncoder.encode(note, "UTF-8")}"
+    fun encode(): String =
+        "$startedAtMs,$plannedSec,$actualSec,$rating,${URLEncoder.encode(note, "UTF-8")},$before,$after,$noticed"
 
     companion object {
         /**
          * Returns null for a corrupt line so one bad write never loses the whole history.
-         * Accepts the original 3-field lines (before reflections existed) as well as 5-field ones.
+         * Accepts the original 3-field lines (before reflections existed), 5-field ones (before
+         * check-ins and the distraction count) and the current 8-field ones.
          */
         fun decode(line: String): SessionRecord? {
             val parts = line.trim().split(',')
-            if (parts.size != 3 && parts.size != 5) return null
+            if (parts.size != 3 && parts.size != 5 && parts.size != 8) return null
             return SessionRecord(
                 startedAtMs = parts[0].toLongOrNull() ?: return null,
                 plannedSec = parts[1].toIntOrNull() ?: return null,
                 actualSec = parts[2].toIntOrNull() ?: return null,
-                rating = if (parts.size == 5) parts[3].toIntOrNull() ?: return null else 0,
-                note = if (parts.size == 5) runCatching { URLDecoder.decode(parts[4], "UTF-8") }.getOrNull() ?: return null else "",
+                rating = if (parts.size >= 5) parts[3].toIntOrNull() ?: return null else 0,
+                note = if (parts.size >= 5) runCatching { URLDecoder.decode(parts[4], "UTF-8") }.getOrNull() ?: return null else "",
+                before = if (parts.size == 8) parts[5].toIntOrNull()?.takeIf { it in 0..5 } ?: return null else 0,
+                after = if (parts.size == 8) parts[6].toIntOrNull()?.takeIf { it in 0..5 } ?: return null else 0,
+                noticed = if (parts.size == 8) parts[7].toIntOrNull()?.takeIf { it >= -1 } ?: return null else -1,
             )
         }
     }
 }
+
+/** How you feel right now, asked just before and just after a sit. */
+val CHECK_IN_LABELS = listOf("Tense", "Restless", "Okay", "Settled", "Calm")
+
+/** What sits did to how you felt: after minus before, over the sits where both were answered. */
+data class CheckInSummary(val sits: Int, val averageShift: Double, val better: Int, val same: Int, val worse: Int)
+
+/** One counted sit: how often you caught the mind wandering, per 10 minutes so sits compare. */
+data class NoticingPoint(val startedAtMs: Long, val count: Int, val perTenMin: Double)
 
 data class MoodPoint(val startedAtMs: Long, val date: LocalDate, val rating: Int, val rollingAverage: Double)
 
@@ -154,6 +174,29 @@ object History {
         }
     }
 
+    /** Before/after shift over the last [limit] sits that have both check-ins; null if none. */
+    fun checkInSummary(records: List<SessionRecord>, limit: Int = 30): CheckInSummary? {
+        val paired = records.filter { it.before in 1..5 && it.after in 1..5 }.sortedBy { it.startedAtMs }.takeLast(limit)
+        if (paired.isEmpty()) return null
+        val shifts = paired.map { it.after - it.before }
+        return CheckInSummary(
+            sits = paired.size,
+            averageShift = shifts.average(),
+            better = shifts.count { it > 0 },
+            same = shifts.count { it == 0 },
+            worse = shifts.count { it < 0 },
+        )
+    }
+
+    /** Counted sits in the last [days] days, oldest first. Very short sits are left out. */
+    fun noticing(records: List<SessionRecord>, zone: ZoneId, today: LocalDate, days: Long = 84): List<NoticingPoint> {
+        val from = today.minusDays(days - 1)
+        return records
+            .filter { it.noticed >= 0 && it.actualSec >= MIN_LOGGED_SEC && !it.day(zone).isBefore(from) && !it.day(zone).isAfter(today) }
+            .sortedBy { it.startedAtMs }
+            .map { NoticingPoint(it.startedAtMs, it.noticed, it.noticed * 600.0 / it.actualSec) }
+    }
+
     /** The feeling rated most often; ties go to the more recent one. Null with no ratings. */
     fun mostCommonRating(points: List<MoodPoint>): Int? {
         val counts = points.groupingBy { it.rating }.eachCount()
@@ -188,9 +231,12 @@ object History {
                 "%.1f".format(java.util.Locale.ROOT, r.actualSec / 60.0),
                 if (r.rating > 0) r.rating.toString() else "",
                 csvField(r.note),
+                if (r.before > 0) r.before.toString() else "",
+                if (r.after > 0) r.after.toString() else "",
+                if (r.noticed >= 0) r.noticed.toString() else "",
             ).joinToString(",")
         }
-        val header = listOfNotNull(settings?.let(::settingsLine), "date,start,planned_min,actual_min,rating,note")
+        val header = listOfNotNull(settings?.let(::settingsLine), "date,start,planned_min,actual_min,rating,note,before,after,noticed")
         return (header + rows).joinToString("\n", postfix = "\n")
     }
 
@@ -211,6 +257,9 @@ object History {
             actualSec = Math.round(actual * 60).toInt(),
             rating = row.getOrNull(4)?.trim()?.toIntOrNull()?.takeIf { it in 1..5 } ?: 0,
             note = row.getOrNull(5) ?: "",
+            before = row.getOrNull(6)?.trim()?.toIntOrNull()?.takeIf { it in 1..5 } ?: 0,
+            after = row.getOrNull(7)?.trim()?.toIntOrNull()?.takeIf { it in 1..5 } ?: 0,
+            noticed = row.getOrNull(8)?.trim()?.toIntOrNull()?.takeIf { it >= 0 } ?: -1,
         )
     }
 

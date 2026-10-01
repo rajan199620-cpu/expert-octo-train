@@ -32,6 +32,8 @@ class MeditationService : Service() {
     private var volume = 0.6f
     private var alertMode = AlertMode.BELL
     private var autoDnd = false
+    /** The before-sit check-in, captured at start so a later sit can't overwrite it. */
+    private var before = 0
 
     private val running: SessionState.Running?
         get() = SessionRepository.state.value as? SessionState.Running
@@ -72,6 +74,7 @@ class MeditationService : Service() {
         this.volume = volume
         this.alertMode = alertMode
         this.autoDnd = autoDnd
+        before = SessionRepository.pendingBefore.also { SessionRepository.pendingBefore = 0 }
         startedAtWallMs = System.currentTimeMillis()
         val session = SessionState.Running(SessionClock(SystemClock.elapsedRealtime()), config)
         val notification = buildNotification(session)
@@ -135,8 +138,8 @@ class MeditationService : Service() {
     }
 
     private fun complete(config: SessionConfig) {
-        SessionLog.get(this).add(SessionRecord(startedAtWallMs, config.durationSec, config.durationSec))
-        SessionRepository.finished(config, startedAtWallMs, config.durationSec)
+        SessionLog.get(this).add(record(config, config.durationSec))
+        SessionRepository.finished(config, startedAtWallMs, config.durationSec, before, noticedCount())
         dnd.restore()
         stopForeground(STOP_FOREGROUND_REMOVE)
         // Let a ringing bell fade out naturally before tearing down.
@@ -149,15 +152,20 @@ class MeditationService : Service() {
         val satSec = (session.clock.elapsedAt(SystemClock.elapsedRealtime()) / 1000)
             .coerceAtMost(session.config.durationSec.toLong()).toInt()
         if (satSec >= MIN_LOGGED_SEC) {
-            SessionLog.get(this).add(SessionRecord(startedAtWallMs, session.config.durationSec, satSec))
+            SessionLog.get(this).add(record(session.config, satSec))
             // Early sits get the same reflection screen: the rough ones are the most worth noting.
-            SessionRepository.finished(session.config, startedAtWallMs, satSec)
+            SessionRepository.finished(session.config, startedAtWallMs, satSec, before, noticedCount())
         } else {
             SessionRepository.reset()
             Toast.makeText(this, R.string.too_short_to_log, Toast.LENGTH_SHORT).show()
         }
         shutdown()
     }
+
+    private fun noticedCount(): Int = if (SessionRepository.counting) SessionRepository.noticed.value else -1
+
+    private fun record(config: SessionConfig, satSec: Int) =
+        SessionRecord(startedAtWallMs, config.durationSec, satSec, before = before, noticed = noticedCount())
 
     private fun shutdown() {
         handler.removeCallbacksAndMessages(null)

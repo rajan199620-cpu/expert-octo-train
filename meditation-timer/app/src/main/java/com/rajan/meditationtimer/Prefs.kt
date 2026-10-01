@@ -37,7 +37,12 @@ class Prefs(context: Context) {
         for (key in listOf(KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET)) {
             if (sp.contains(key)) put(key, sp.getInt(key, 0).toString())
         }
-        for (key in listOf(KEY_END, KEY_DND)) if (sp.contains(key)) put(key, sp.getBoolean(key, false).toString())
+        for (key in listOf(KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON)) {
+            if (sp.contains(key)) put(key, sp.getBoolean(key, false).toString())
+        }
+        if (sp.contains(KEY_REMINDER_TIME)) put(KEY_REMINDER_TIME, sp.getInt(KEY_REMINDER_TIME, 0).toString())
+        // The settings line is "key=value;..." so free text is URL-encoded.
+        sp.getString(KEY_REMINDER_CUE, null)?.let { put(KEY_REMINDER_CUE, java.net.URLEncoder.encode(it, "UTF-8")) }
         if (sp.contains(KEY_VOLUME)) put(KEY_VOLUME, sp.getFloat(KEY_VOLUME, 0.6f).toString())
         for (key in listOf(KEY_ALERT, KEY_BREATH_PATTERN)) sp.getString(key, null)?.let { put(key, it) }
     }
@@ -49,7 +54,10 @@ class Prefs(context: Context) {
                 when (key) {
                     KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET ->
                         value.toIntOrNull()?.let { putInt(key, it) }
-                    KEY_END, KEY_DND -> value.toBooleanStrictOrNull()?.let { putBoolean(key, it) }
+                    KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON ->
+                        value.toBooleanStrictOrNull()?.let { putBoolean(key, it) }
+                    KEY_REMINDER_TIME -> value.toIntOrNull()?.takeIf { it in 0 until 24 * 60 }?.let { putInt(key, it) }
+                    KEY_REMINDER_CUE -> runCatching { java.net.URLDecoder.decode(value, "UTF-8") }.getOrNull()?.let { putString(key, it.take(60)) }
                     KEY_VOLUME -> value.toFloatOrNull()?.let { putFloat(key, it.coerceIn(0f, 1f)) }
                     KEY_ALERT, KEY_BREATH_PATTERN -> putString(key, value)
                 }
@@ -73,6 +81,29 @@ class Prefs(context: Context) {
     fun addBreathCheck(check: BreathCheck) {
         sp.edit { putString(KEY_BREATH_CHECKS, (breathChecks + check).joinToString("\n") { it.encode() }) }
     }
+
+    /** Tap or press a volume key during a sit each time you notice the mind has wandered. */
+    var countDistractions: Boolean
+        get() = sp.getBoolean(KEY_COUNT, true)
+        set(value) = sp.edit { putBoolean(KEY_COUNT, value) }
+
+    /** One-tap "how do you feel?" just before and just after each sit. */
+    var checkIns: Boolean
+        get() = sp.getBoolean(KEY_CHECK_INS, true)
+        set(value) = sp.edit { putBoolean(KEY_CHECK_INS, value) }
+
+    /** Daily reminder, anchored to a habit you already have ("After morning tea"). */
+    var reminder: Reminder
+        get() = Reminder(
+            enabled = sp.getBoolean(KEY_REMINDER_ON, false),
+            minuteOfDay = sp.getInt(KEY_REMINDER_TIME, 7 * 60),
+            cue = sp.getString(KEY_REMINDER_CUE, "") ?: "",
+        )
+        set(value) = sp.edit {
+            putBoolean(KEY_REMINDER_ON, value.enabled)
+            putInt(KEY_REMINDER_TIME, value.minuteOfDay)
+            putString(KEY_REMINDER_CUE, value.cue)
+        }
 
     var mala: MalaCount
         get() = MalaCount(sp.getInt(KEY_MALA_BEADS, 0), sp.getInt(KEY_MALA_ROUNDS, 0), sp.getInt(KEY_MALA_TARGET, 108))
@@ -103,5 +134,10 @@ class Prefs(context: Context) {
         private const val KEY_MALA_ROUNDS = "mala_rounds"
         private const val KEY_MALA_TARGET = "mala_target"
         private const val KEY_BREATH_CHECKS = "breath_checks"
+        private const val KEY_COUNT = "count_distractions"
+        private const val KEY_CHECK_INS = "check_ins"
+        private const val KEY_REMINDER_ON = "reminder_on"
+        private const val KEY_REMINDER_TIME = "reminder_minute"
+        private const val KEY_REMINDER_CUE = "reminder_cue"
     }
 }
