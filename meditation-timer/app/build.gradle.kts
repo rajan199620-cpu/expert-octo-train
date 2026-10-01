@@ -60,6 +60,16 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // Robolectric runs the real Android code (service, storage, widget, screens) on the JVM.
+        unitTests.isIncludeAndroidResources = true
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    // Roborazzi: write screenshots of the real screens for review instead of comparing.
+    systemProperty("roborazzi.test.record", "true")
+    maxHeapSize = "2g"
 }
 
 dependencies {
@@ -75,4 +85,12 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.40.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.40.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

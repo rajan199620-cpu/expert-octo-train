@@ -57,7 +57,7 @@ class Prefs(context: Context) {
                     KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON ->
                         value.toBooleanStrictOrNull()?.let { putBoolean(key, it) }
                     KEY_REMINDER_TIME -> value.toIntOrNull()?.takeIf { it in 0 until 24 * 60 }?.let { putInt(key, it) }
-                    KEY_REMINDER_CUE -> runCatching { java.net.URLDecoder.decode(value, "UTF-8") }.getOrNull()?.let { putString(key, it.take(60)) }
+                    KEY_REMINDER_CUE -> runCatching { java.net.URLDecoder.decode(value, "UTF-8") }.getOrNull()?.let { putString(key, it.limitText(60)) }
                     KEY_VOLUME -> value.toFloatOrNull()?.let { putFloat(key, it.coerceIn(0f, 1f)) }
                     KEY_ALERT, KEY_BREATH_PATTERN -> putString(key, value)
                 }

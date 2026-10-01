@@ -352,7 +352,7 @@ private fun PracticeToolsCard(prefs: Prefs) {
             }
             OutlinedTextField(
                 value = reminder.cue,
-                onValueChange = { saveReminder(reminder.copy(cue = it.take(60))) },
+                onValueChange = { saveReminder(reminder.copy(cue = it.limitText(60))) },
                 label = { Text("Right after…") },
                 placeholder = { Text("After morning tea") },
                 singleLine = true,
@@ -471,7 +471,7 @@ private fun RunningScreen(session: SessionState.Running) {
     val counting = SessionRepository.counting
     val countingNow = counting && !still
     val view = LocalView.current
-    var lastNotice by remember { mutableLongStateOf(0L) }
+    var lastNotice by remember { mutableLongStateOf(Long.MIN_VALUE / 2) }
     val notice: () -> Unit = {
         val t = SystemClock.elapsedRealtime()
         if (t - lastNotice > 500) {
@@ -702,7 +702,7 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
             }
             OutlinedTextField(
                 value = note,
-                onValueChange = { note = it.take(500) },
+                onValueChange = { note = it.limitText(500) },
                 label = { Text("A line for your journal") },
                 modifier = Modifier.fillMaxWidth(),
                 // Capital first letter, and a Done key that closes the keyboard so Save is reachable.

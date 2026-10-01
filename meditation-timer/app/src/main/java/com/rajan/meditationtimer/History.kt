@@ -316,3 +316,10 @@ fun formatDuration(sec: Long): String {
         else -> "${h}h ${m}m"
     }
 }
+
+/** [String.take] for user text: never leaves half an emoji (a lone surrogate) at the cut. */
+fun String.limitText(max: Int): String {
+    if (length <= max) return this
+    val cut = take(max)
+    return if (cut.last().isHighSurrogate()) cut.dropLast(1) else cut
+}

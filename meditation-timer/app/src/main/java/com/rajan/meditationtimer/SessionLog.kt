@@ -67,6 +67,11 @@ class SessionLog private constructor(private val context: Context, private val f
         @Volatile
         private var instance: SessionLog? = null
 
+        /** Tests only: forget the instance so the next [get] reads a fresh file. */
+        internal fun resetForTests() {
+            instance = null
+        }
+
         fun get(context: Context): SessionLog = instance ?: synchronized(this) {
             instance ?: context.applicationContext.let { app ->
                 SessionLog(app, File(app.filesDir, "sessions.csv")).also { instance = it }
