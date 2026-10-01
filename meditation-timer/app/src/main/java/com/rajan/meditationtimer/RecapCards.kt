@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.LocalDate
@@ -31,7 +32,7 @@ import java.util.Locale
 import kotlin.math.abs
 
 private val shortDay = DateTimeFormatter.ofPattern("d MMM")
-private val longDay = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")
+private val longDay = DateTimeFormatter.ofPattern("d MMM yyyy")
 
 private fun monthName(m: YearMonth, today: LocalDate): String {
     val name = m.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
@@ -45,9 +46,16 @@ fun MemoryCard(memory: Memory, zone: ZoneId, onHide: () -> Unit) {
     val date = Instant.ofEpochMilli(r.startedAtMs).atZone(zone).toLocalDate()
     GlassCard(Modifier.fillMaxWidth(), padding = 16.dp) {
         Text(memory.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-        Text("“${r.note}”", style = MaterialTheme.typography.titleMedium, fontStyle = FontStyle.Italic)
+        // Long notes are cut at three lines: this is a glimpse, the full note is in History.
+        Text(
+            "“${r.note}”",
+            style = MaterialTheme.typography.bodyLarge,
+            fontStyle = FontStyle.Italic,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
         val parts = buildList {
-            add(date.format(longDay))
+            add(date.format(if (date.year == LocalDate.now().year) shortDay else longDay))
             add(formatDuration(r.actualSec.toLong()))
             RATING_LABELS.getOrNull(r.rating - 1)?.let { add(it) }
         }
