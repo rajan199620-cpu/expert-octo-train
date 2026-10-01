@@ -61,6 +61,8 @@ fun HistoryTab() {
     val weeks = remember(activeDays) { History.weeksToShow(activeDays.minOrNull(), today) }
     val heatmap = remember(records, weeks) { History.heatmap(records, zone, today, weeks) }
     val mood = remember(records) { History.moodTrend(records, zone, today) }
+    LaunchedEffect(Unit) { GoogleBackup.load(context) }
+    val cloud by GoogleBackup.state.collectAsStateWithLifecycle()
 
     // Back up = save a CSV file you keep (Drive, Downloads...); Restore = read one back.
     // Together they carry your history to a new phone or across a reinstall.
@@ -129,7 +131,8 @@ fun HistoryTab() {
             }
         }
         item { GoogleCard() }
-        item { DataCard(hasRecords = records.isNotEmpty(), onBackup = { backup.launch("meditation-history-$today.csv") }, onRestore = restore) }
+        // Once Google backup is on, the file backup card is redundant; it returns if you disconnect.
+        if (cloud.email == null) item { DataCard(hasRecords = records.isNotEmpty(), onBackup = { backup.launch("meditation-history-$today.csv") }, onRestore = restore) }
         // Which build is installed, so "is this the new APK?" has an answer.
         item {
             val version = remember {
