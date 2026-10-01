@@ -68,7 +68,7 @@ private val Glass = Color.White.copy(alpha = 0.06f)
 private val GlassEdge = Color.White.copy(alpha = 0.09f)
 
 /** Deep dusk sky: indigo at the top fading to night teal. */
-private val NightSky = Brush.verticalGradient(listOf(Color(0xFF1B1535), Color(0xFF151E38), Color(0xFF0D1823)))
+internal val NightSky = Brush.verticalGradient(listOf(Color(0xFF1B1535), Color(0xFF151E38), Color(0xFF0D1823)))
 
 /** Each part of the app has its own light, so it never looks like one grey screen. */
 data class Accent(val main: Color, val second: Color)

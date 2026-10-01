@@ -284,7 +284,7 @@ private fun SetupScreen(
 @Composable
 private fun CheckInDialog(title: String, question: String, onDismiss: () -> Unit, onAnswer: (Int) -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
-        GlassCard(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background, RoundedCornerShape(24.dp))) {
+        GlassCard(Modifier.fillMaxWidth().background(NightSky, RoundedCornerShape(24.dp))) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Text(question, style = MaterialTheme.typography.headlineSmall)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

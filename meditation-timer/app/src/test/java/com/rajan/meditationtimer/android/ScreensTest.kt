@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.platform.app.InstrumentationRegistry
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import org.junit.After
@@ -100,6 +101,9 @@ class ScreensTest {
     }
 
     private fun launch() {
+        // A phone is in touch mode; without it the first control takes keyboard focus and the
+        // screen opens scrolled to it, which no user would see.
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitForIdle()
     }
@@ -217,9 +221,10 @@ class ScreensTest {
         val host = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
         val density = host.resources.displayMetrics.density
         val frame = FrameLayout(host).apply { setBackgroundColor(Color.rgb(28, 32, 40)) }
-        frame.addView(manager.getViewFor(id), FrameLayout.LayoutParams((340 * density).toInt(), (150 * density).toInt()))
+        val widget = manager.getViewFor(id)
+        frame.addView(widget, FrameLayout.LayoutParams((340 * density).toInt(), (150 * density).toInt()))
         host.setContentView(frame)
         shadowOf(Looper.getMainLooper()).idle()
-        frame.captureRoboImage("build/outputs/roborazzi/12-widget.png")
+        widget.captureRoboImage("build/outputs/roborazzi/12-widget.png")
     }
 }
