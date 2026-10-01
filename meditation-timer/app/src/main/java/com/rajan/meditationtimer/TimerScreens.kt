@@ -12,6 +12,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -26,6 +27,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -87,6 +89,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.ZoneId
 
 val RATING_LABELS = listOf("Restless", "Scattered", "Okay", "Calm", "Deep")
@@ -105,6 +108,10 @@ fun TimerTab(
     val streak = remember(records) {
         History.currentStreak(records.map { it.day(ZoneId.systemDefault()) }.toSet(), LocalDate.now())
     }
+    // Looking back: a note from this date a while ago, and last month's review once it's ready.
+    val today = LocalDate.now()
+    val memory = remember(records, today) { Recap.onThisDay(records, ZoneId.systemDefault(), today) }
+    val recapReady = remember(records, today) { Recap.recapReady(records, ZoneId.systemDefault(), today) }
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val restore = rememberRestoreAction()
     val settingsVersion by Prefs.version.collectAsStateWithLifecycle()
@@ -121,7 +128,7 @@ fun TimerTab(
         when (state) {
             // Re-created when settings are restored, so the restored values show at once.
             SessionState.Idle -> key(settingsVersion) { SetupScreen(
-                prefs, streak, hasHistory = records.isNotEmpty(), onTestBell, onHistory, onRestore = restore, onPrinciples,
+                prefs, streak, hasHistory = records.isNotEmpty(), memory, recapReady, onTestBell, onHistory, onRestore = restore, onPrinciples,
             ) { config, volume, mode, dnd, before ->
                 // Only for the lock-screen countdown; the session runs either way.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -160,6 +167,8 @@ private fun SetupScreen(
     prefs: Prefs,
     streak: Int,
     hasHistory: Boolean,
+    memory: Memory?,
+    recapReady: YearMonth?,
     onTestBell: (Float, AlertMode) -> Unit,
     onHistory: () -> Unit,
     onRestore: () -> Unit,
@@ -217,43 +226,79 @@ private fun SetupScreen(
             }
         }
 
+        val today = remember { LocalDate.now() }
+        var memoryHidden by remember { mutableStateOf(prefs.memoryHiddenOn == today.toString()) }
+        if (memory != null && !memoryHidden) {
+            MemoryCard(memory, ZoneId.systemDefault()) { memoryHidden = true; prefs.memoryHiddenOn = today.toString() }
+        }
+        var recapSeen by remember { mutableStateOf(prefs.recapSeen) }
+        if (recapReady != null && recapSeen != recapReady.toString()) {
+            fun seen() { recapSeen = recapReady.toString(); prefs.recapSeen = recapSeen }
+            RecapReadyCard(recapReady, today, onOpen = { seen(); onHistory() }, onHide = { seen() })
+        }
+
         PrincipleCard(lesson, onOpenAll = onPrinciples)
 
         DurationDial(minutes, onMinus = { minutes = (minutes - 1).coerceAtLeast(1) }, onPlus = { minutes = (minutes + 1).coerceAtMost(180) })
         ChipRow(listOf(5, 10, 15, 20, 30, 45, 60), minutes, { "$it" }, center = true) { minutes = it }
 
-        GlassCard(Modifier.fillMaxWidth()) {
-            CardTitle("Bells")
-            SectionLabel("Opening bell", "Rings this long after you tap Begin")
-            ChipRow(listOf(5, 10, 15, 30), opening, { "${it}s" }) { opening = it }
-            SectionLabel("Closing bell", "Rings this long before the session ends")
-            ChipRow(listOf(5, 10, 30, 60), closing, ::secondsLabel) { closing = it }
-            SectionLabel("Interval bells", "A soft reminder to come back to the breath")
-            ChipRow(listOf(0, 5, 10, 15), interval, { if (it == 0) "Off" else "Every $it min" }) { interval = it }
-            SwitchRow("Also ring when time is up", bellAtEnd) { bellAtEnd = it }
-        }
-
-        GlassCard(Modifier.fillMaxWidth()) {
-            CardTitle("Sound & stillness")
-            SectionLabel("How cues reach you", "Vibrate only is for sitting next to someone")
-            ChipRow(AlertMode.entries, alertMode, { it.label }) { alertMode = it }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Volume")
-                Slider(value = volume, onValueChange = { volume = it }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-                TextButton(onClick = { onTestBell(volume, alertMode) }) { Text("Test") }
-            }
-            SwitchRow("Silence notifications while I sit", autoDnd) {
-                autoDnd = it
-                if (it && !dndAccess) context.startActivity(Dnd.accessSettings)
-            }
-            if (autoDnd && !dndAccess) {
-                TextButton(onClick = { context.startActivity(Dnd.accessSettings) }) {
-                    Text("Needs Do Not Disturb access — tap to allow")
+        // Bells, sound and tools are set once and rarely changed: they fold into one line, so the
+        // screen is about the sit itself (Insight Timer and Oak do the same). One tap opens them.
+        var showSettings by rememberSaveable { mutableStateOf(false) }
+        GlassCard(Modifier.fillMaxWidth().clickable { showSettings = !showSettings }, padding = 16.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Bells, sound & tools", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        settingsSummary(opening, closing, interval, bellAtEnd, alertMode, autoDnd, prefs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                Text(
+                    if (showSettings) "Done" else "Change",
+                    Modifier.padding(start = 12.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
         }
+        AnimatedVisibility(showSettings) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    CardTitle("Bells")
+                    SectionLabel("Opening bell", "Rings this long after you tap Begin")
+                    ChipRow(listOf(5, 10, 15, 30), opening, { "${it}s" }) { opening = it }
+                    SectionLabel("Closing bell", "Rings this long before the session ends")
+                    ChipRow(listOf(5, 10, 30, 60), closing, ::secondsLabel) { closing = it }
+                    SectionLabel("Interval bells", "A soft reminder to come back to the breath")
+                    ChipRow(listOf(0, 5, 10, 15), interval, { if (it == 0) "Off" else "Every $it min" }) { interval = it }
+                    SwitchRow("Also ring when time is up", bellAtEnd) { bellAtEnd = it }
+                }
 
-        PracticeToolsCard(prefs)
+                GlassCard(Modifier.fillMaxWidth()) {
+                    CardTitle("Sound & stillness")
+                    SectionLabel("How cues reach you", "Vibrate only is for sitting next to someone")
+                    ChipRow(AlertMode.entries, alertMode, { it.label }) { alertMode = it }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Volume")
+                        Slider(value = volume, onValueChange = { volume = it }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
+                        TextButton(onClick = { onTestBell(volume, alertMode) }) { Text("Test") }
+                    }
+                    SwitchRow("Silence notifications while I sit", autoDnd) {
+                        autoDnd = it
+                        if (it && !dndAccess) context.startActivity(Dnd.accessSettings)
+                    }
+                    if (autoDnd && !dndAccess) {
+                        TextButton(onClick = { context.startActivity(Dnd.accessSettings) }) {
+                            Text("Needs Do Not Disturb access — tap to allow")
+                        }
+                    }
+                }
+
+                PracticeToolsCard(prefs)
+            }
+        }
 
         Spacer(Modifier.height(8.dp))
     }
@@ -679,7 +724,7 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
         // The "after" half of the check-in, asked only when the "before" half was answered.
         if (session.before > 0) {
             GlassCard(Modifier.fillMaxWidth()) {
-                SectionLabel("And how do you feel now?", "Before the sit: ${CHECK_IN_LABELS[session.before - 1]}")
+                SectionLabel("How do you feel now?", "Before the sit you felt ${CHECK_IN_LABELS[session.before - 1].lowercase()}")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CHECK_IN_LABELS.forEachIndexed { i, label ->
                         FilterChip(selected = after == i + 1, onClick = { after = if (after == i + 1) 0 else i + 1 }, label = { Text(label) })
@@ -690,7 +735,8 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
 
         // Optional and judgement-free: noticing, not scoring.
         GlassCard(Modifier.fillMaxWidth()) {
-            SectionLabel("How did the mind feel?", "Optional — helps you spot patterns later")
+            // Distinct from the check-in above: that is how you feel now, this is how the sit went.
+            SectionLabel("How was the sit itself?", "Your attention while sitting. Optional, helps you spot patterns later")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 RATING_LABELS.forEachIndexed { i, label ->
                     FilterChip(
@@ -718,6 +764,22 @@ fun streakLabel(days: Int) = when (days) {
     0 -> "No streak yet"
     1 -> "1-day streak"
     else -> "$days-day streak"
+}
+
+/** One line saying how the sit is set up, shown while the settings are folded away. */
+private fun settingsSummary(opening: Int, closing: Int, interval: Int, bellAtEnd: Boolean, mode: AlertMode, dnd: Boolean, prefs: Prefs): String {
+    val reminder = prefs.reminder
+    return buildList {
+        add(mode.label)
+        add("opening ${opening}s")
+        add("closing ${secondsLabel(closing)}")
+        if (interval > 0) add("every $interval min")
+        if (bellAtEnd) add("bell at the end")
+        if (dnd) add("notifications silenced")
+        if (prefs.countDistractions) add("counting")
+        if (prefs.checkIns) add("check-ins")
+        if (reminder.enabled) add("reminder ${reminder.timeLabel}")
+    }.joinToString(" · ")
 }
 
 private fun secondsLabel(sec: Int) = if (sec % 60 == 0) "${sec / 60} min" else "${sec}s"

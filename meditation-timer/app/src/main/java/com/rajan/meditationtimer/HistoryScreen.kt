@@ -111,6 +111,7 @@ fun HistoryTab() {
             }
         } else {
             item { WeekCard(week, summary) }
+            item { MonthRecapCard(records, zone, today) }
             checkIns?.let { item { CheckInCard(it) } }
             item { GlassCard(Modifier.fillMaxWidth()) { MoodChart(mood, zone) } }
             if (noticing.isNotEmpty()) item { NoticingCard(noticing) }

@@ -105,6 +105,16 @@ class Prefs(context: Context) {
             putString(KEY_REMINDER_CUE, value.cue)
         }
 
+    /** The day the "on this day" note was put away: it stays hidden until tomorrow. */
+    var memoryHiddenOn: String?
+        get() = sp.getString(KEY_MEMORY_HIDDEN, null)
+        set(value) = sp.edit { putString(KEY_MEMORY_HIDDEN, value) }
+
+    /** The last month whose "your month in review is ready" nudge was opened or put away. */
+    var recapSeen: String?
+        get() = sp.getString(KEY_RECAP_SEEN, null)
+        set(value) = sp.edit { putString(KEY_RECAP_SEEN, value) }
+
     var mala: MalaCount
         get() = MalaCount(sp.getInt(KEY_MALA_BEADS, 0), sp.getInt(KEY_MALA_ROUNDS, 0), sp.getInt(KEY_MALA_TARGET, 108))
         set(value) = sp.edit {
@@ -120,6 +130,8 @@ class Prefs(context: Context) {
         /** Bumped when settings are restored, so open screens reload them. */
         val version = kotlinx.coroutines.flow.MutableStateFlow(0)
 
+        private const val KEY_MEMORY_HIDDEN = "memory_hidden_on"
+        private const val KEY_RECAP_SEEN = "recap_seen"
         private const val KEY_DURATION = "duration_min"
         private const val KEY_OPENING = "opening_bell_sec"
         private const val KEY_CLOSING = "closing_bell_sec"

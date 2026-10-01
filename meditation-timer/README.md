@@ -45,10 +45,22 @@ mindfulness (Levinson et al., 2014). Results are kept to compare over weeks.
 a line for the average of your last five ratings once you have five; tap to inspect a sit.
 
 **History layout**: this week as seven dots at the top (resets each Monday; the streak shows only
-while it's alive), then the mood chart, a calendar that grows from your first week up to 12, one
-card for the session log, and backup/restore at the bottom.
+while it's alive), the month in review, then the mood chart, a calendar that grows from your first
+week up to 12, one card for the session log (latest 30 days, older on request), and backup/restore
+at the bottom.
 
-**Practice tools** (Sit → Practice tools, each optional):
+**Looking back**:
+- **On this day**: the Sit screen shows a journal note you wrote on this date a year, six months,
+  three months, a month or a week ago (longest ago first). Hide puts it away until tomorrow.
+- **Month in review** (History): time sat, days sat, best week, longest sit, what the sits changed
+  (check-ins), the feeling rated most often, wandering caught per 10 minutes, and notes written,
+  compared with the month before. Opens on last month; ‹ › step through months with sits. For the
+  first three days of a month the Sit screen says last month's review is ready.
+
+**Sit screen**: the lesson, the duration, and Begin. Bells, sound and practice tools are set once,
+so they fold into one summary line; "Change" opens them.
+
+**Practice tools** (Sit → Change → Practice tools, each optional):
 - **Count distractions**: during a sit, tap anywhere or press a volume key each time you notice the
   mind has wandered. The screen stays on at minimum brightness. The finish screen and History
   ("Catching the wandering mind", per 10 minutes) show the count, framed as a skill, not a score.

@@ -39,6 +39,9 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 import java.time.Duration
 import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.TextStyle
+import java.util.Locale
 import java.time.ZoneId
 import kotlin.random.Random
 
@@ -114,6 +117,9 @@ class ScreensTest {
         seed()
         launch()
         shot("01-sit")
+        // Set-once settings start folded into one line; "Change" opens them.
+        compose.onNodeWithText("Practice tools").assertDoesNotExist()
+        compose.onNodeWithText("Change").performScrollTo().performClick()
         compose.onNodeWithText("Practice tools").performScrollTo()
         compose.onNodeWithText("Count distractions").assertExists()
         shot("02-practice-tools")
@@ -168,7 +174,8 @@ class ScreensTest {
         SessionRepository.finished(SessionConfig(1200, 5, 10, true, 0), start, 1200, before = 1, noticed = 7)
         compose.waitForIdle()
         compose.onNodeWithText("You caught the mind wandering 7 times", substring = true).assertExists()
-        compose.onNodeWithText("And how do you feel now?").assertExists()
+        compose.onNodeWithText("How do you feel now?").assertExists()
+        compose.onNodeWithText("How was the sit itself?").assertExists()
         shot("06-finished")
         // The after check-in comes first on this screen; its "Calm" is the first one.
         compose.onAllNodesWithText("Calm").onFirst().performScrollTo().performClick()
@@ -193,6 +200,44 @@ class ScreensTest {
         shot("10-history-log")
         list.performScrollToNode(hasText("Google account"))
         shot("11-history-google")
+    }
+
+    @Test
+    fun `a note from a week ago comes back on the sit screen and can be put away until tomorrow`() {
+        val weekAgo = LocalDate.now(zone).minusWeeks(1).atTime(7, 0).atZone(zone).toInstant().toEpochMilli()
+        SessionLog.get(app).merge(listOf(SessionRecord(weekAgo, 1200, 1200, rating = 4, note = "Breath felt wide today")))
+        launch()
+        compose.onNodeWithText("A week ago today").assertExists()
+        compose.onNodeWithText("“Breath felt wide today”").assertExists()
+        shot("13-on-this-day")
+        compose.onAllNodesWithText("Hide").onFirst().performClick()
+        compose.onNodeWithText("A week ago today").assertDoesNotExist()
+        assertEquals(LocalDate.now(zone).toString(), Prefs(app).memoryHiddenOn)
+        // Still hidden after the screen is rebuilt the same day.
+        scenario!!.recreate()
+        compose.waitForIdle()
+        compose.onNodeWithText("A week ago today").assertDoesNotExist()
+    }
+
+    @Test
+    fun `month in review opens on last month and steps back through months with sits`() {
+        seed(days = 75)
+        launch()
+        compose.onAllNodesWithText("History").onLast().performClick()
+        compose.waitForIdle()
+        val now = YearMonth.now(zone)
+        fun title(m: YearMonth) = m.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) + (if (m.year == now.year) "" else " ${m.year}")
+        val list = compose.onNode(hasScrollToNodeAction())
+        list.performScrollToNode(hasText("in review", substring = true))
+        compose.onNodeWithText("${title(now.minusMonths(1))} in review").assertExists()
+        compose.onNodeWithText("Days sat").assertExists()
+        compose.onNodeWithText("Best week").assertExists()
+        shot("14-month-review")
+        compose.onNodeWithText("‹").performClick()
+        compose.onNodeWithText("${title(now.minusMonths(2))} in review").assertExists()
+        compose.onNodeWithText("›").performClick()
+        compose.onNodeWithText("›").performClick()
+        compose.onNodeWithText("${title(now)} so far").assertExists()
     }
 
     @Test
