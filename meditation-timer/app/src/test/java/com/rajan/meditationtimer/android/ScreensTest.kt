@@ -1,6 +1,9 @@
 package com.rajan.meditationtimer
 
 import android.app.Application
+import android.graphics.Color
+import android.widget.FrameLayout
+import androidx.activity.ComponentActivity
 import android.appwidget.AppWidgetManager
 import android.os.Looper
 import android.os.SystemClock
@@ -27,6 +30,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -100,6 +104,7 @@ class ScreensTest {
         compose.waitForIdle()
     }
 
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
     @Test
     fun `sit screen, practice tools, and the check-in on Begin`() {
         seed()
@@ -109,7 +114,7 @@ class ScreensTest {
         compose.onNodeWithText("Count distractions").assertExists()
         shot("02-practice-tools")
 
-        compose.onNodeWithText("Begin", substring = true).performClick()
+        compose.onNodeWithText("Begin  ·", substring = true).performClick()
         compose.onNodeWithText("How do you feel right now?").assertExists()
         captureScreenRoboImage("build/outputs/roborazzi/03-check-in.png")
         compose.onNodeWithText("Tense").performClick()
@@ -208,6 +213,13 @@ class ScreensTest {
         val manager = shadowOf(AppWidgetManager.getInstance(app))
         val id = manager.createWidget(SitWidget::class.java, R.layout.widget_sit)
         SitWidget.refresh(app)
-        manager.getViewFor(id).captureRoboImage("build/outputs/roborazzi/12-widget.png")
+        // Host it in a window at a typical 4x2 home-screen size so it lays out as on a launcher.
+        val host = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
+        val density = host.resources.displayMetrics.density
+        val frame = FrameLayout(host).apply { setBackgroundColor(Color.rgb(28, 32, 40)) }
+        frame.addView(manager.getViewFor(id), FrameLayout.LayoutParams((340 * density).toInt(), (150 * density).toInt()))
+        host.setContentView(frame)
+        shadowOf(Looper.getMainLooper()).idle()
+        frame.captureRoboImage("build/outputs/roborazzi/12-widget.png")
     }
 }

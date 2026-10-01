@@ -70,6 +70,11 @@ tasks.withType<Test>().configureEach {
     // Roborazzi: write screenshots of the real screens for review instead of comparing.
     systemProperty("roborazzi.test.record", "true")
     maxHeapSize = "2g"
+    // Print why a test failed in the CI log, not only in the HTML report.
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
 }
 
 dependencies {
