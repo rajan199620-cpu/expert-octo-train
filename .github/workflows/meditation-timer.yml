@@ -35,12 +35,20 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
             echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
           else
-            echo "::warning::No SIGNING_KEYSTORE_BASE64 secret: using a throwaway key, so this APK cannot update an installed one."
+            echo "No private signing key: using the committed test key (meditation-timer/app/meditation-debug.keystore)."
           fi
       - name: Build APK
         env:
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease
+      # Google sign-in is registered against this certificate; a different one breaks sign-in.
+      - name: Check the APK is signed with the fixed key
+        if: env.SIGNING_KEYSTORE_PATH == ''
+        run: |
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          digest=$("$apksigner" verify --print-certs app/build/outputs/apk/release/*.apk | grep -m1 'SHA-256 digest' | awk '{print $NF}')
+          echo "Signing certificate SHA-256: $digest"
+          test "$digest" = "003742e471aea573ca5f75c12f4780f154322e47a16461cf1b7e2f753acaa9d7"
       - uses: actions/upload-artifact@v4
         with:
           name: meditation-timer-apk

@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -45,6 +46,7 @@ import java.util.Locale
 
 private val dayFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
 private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+private val syncFormat = DateTimeFormatter.ofPattern("d MMM, h:mm a")
 
 @Composable
 fun HistoryTab() {
@@ -126,6 +128,7 @@ fun HistoryTab() {
                 }
             }
         }
+        item { GoogleCard() }
         item { DataCard(hasRecords = records.isNotEmpty(), onBackup = { backup.launch("meditation-history-$today.csv") }, onRestore = restore) }
         // Which build is installed, so "is this the new APK?" has an answer.
         item {
@@ -196,6 +199,64 @@ private fun WeekCard(week: List<Pair<LocalDate, Boolean?>>, summary: HistorySumm
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * Optional Google account backup. Connecting restores any earlier backup (a reinstall or a new
+ * phone), then every change is uploaded to a private app folder in the user's Google Drive.
+ */
+@Composable
+private fun GoogleCard() {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { GoogleBackup.load(context) }
+    val cloud by GoogleBackup.state.collectAsStateWithLifecycle()
+    val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        GoogleBackup.onConsentResult(context, result.data)
+    }
+    GlassCard(Modifier.fillMaxWidth(), padding = 16.dp) {
+        Text("Google account", style = MaterialTheme.typography.titleMedium)
+        val email = cloud.email
+        if (email == null) {
+            Text(
+                "Back up your sits, journal notes and settings to your Google Drive, in a private folder only " +
+                    "this app can see. After a reinstall or on a new phone, connect again to get everything back.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(email, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                if (cloud.lastSyncMs > 0) {
+                    val at = Instant.ofEpochMilli(cloud.lastSyncMs).atZone(ZoneId.systemDefault())
+                    "Backed up ${at.format(syncFormat)}. New sits are saved automatically."
+                } else {
+                    "Connected. New sits are saved automatically."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        cloud.message?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            when {
+                cloud.busy -> Text(
+                    "Working…",
+                    Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                email == null -> TextButton(onClick = { GoogleBackup.connect(context) { consent.launch(it) } }) {
+                    Text("Connect Google account")
+                }
+                else -> {
+                    TextButton(onClick = { GoogleBackup.syncNow(context) }) { Text("Back up now") }
+                    TextButton(onClick = { GoogleBackup.disconnect(context) }) { Text("Disconnect") }
+                }
+            }
+        }
     }
 }
 

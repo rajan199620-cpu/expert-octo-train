@@ -19,6 +19,7 @@ class SessionLog private constructor(private val context: Context, private val f
         file.appendText(record.encode() + "\n")
         _records.value = _records.value + record
         AutoBackup.write(context, _records.value)
+        GoogleBackup.backupSoon(context)
     }
 
     /** Attaches the post-sit reflection to an already logged session. */
@@ -53,6 +54,7 @@ class SessionLog private constructor(private val context: Context, private val f
         }
         _records.value = records
         AutoBackup.write(context, records)
+        GoogleBackup.backupSoon(context)
     }
 
     private fun load(): List<SessionRecord> =

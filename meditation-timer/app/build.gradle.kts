@@ -18,25 +18,35 @@ android {
         versionName = "1.$build"
     }
 
-    // One permanent key, so each update installs over the old app and keeps its history
-    // (a different key forces an uninstall, which wipes the app's data). CI decodes it from
-    // GitHub Actions secrets; without them the build falls back to a throwaway debug key.
-    val keystore = System.getenv("SIGNING_KEYSTORE_PATH")?.let { file(it) }?.takeIf { it.exists() }
+    // One fixed key, so each update installs over the old app and keeps its history (a different
+    // key forces an uninstall, which wipes the app's data), and so Google sign-in, which is tied
+    // to the key's SHA-1, keeps working. A private key from GitHub secrets wins when present;
+    // otherwise the committed test key is used. Its password is the public Android debug
+    // default: it identifies these test builds, it protects nothing.
+    val privateKeystore = System.getenv("SIGNING_KEYSTORE_PATH")?.let { file(it) }?.takeIf { it.exists() }
     signingConfigs {
-        if (keystore != null) {
-            create("release") {
-                storeFile = keystore
+        create("fixed") {
+            if (privateKeystore != null) {
+                storeFile = privateKeystore
                 storePassword = System.getenv("SIGNING_PASSWORD")
                 keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "meditation"
                 keyPassword = System.getenv("SIGNING_PASSWORD")
+            } else {
+                storeFile = file("meditation-debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
             }
         }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("fixed")
+        }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName(if (keystore != null) "release" else "debug")
+            signingConfig = signingConfigs.getByName("fixed")
         }
     }
 
@@ -61,6 +71,8 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
+    // Google sign-in and the Drive permission for the private backup (Authorization API).
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
 
     testImplementation("junit:junit:4.13.2")
 }

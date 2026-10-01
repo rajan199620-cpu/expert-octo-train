@@ -56,21 +56,33 @@ day is missed, so sitting yesterday but not yet today still shows your streak.
 
 ## Get the APK
 
-Every push that touches `meditation-timer/` builds an APK in GitHub Actions
-(**Actions → Meditation Timer APK → latest run → Artifacts → meditation-timer-apk**).
-Unzip it, copy `app-release.apk` to the phone and open it (allow "install unknown apps").
+Every push that touches `meditation-timer/` builds an APK and publishes it to the permanent
+download link above.
 
 ### Keeping your history across updates
 
-Android only installs an update over the existing app if both are signed with the same key;
-otherwise you must uninstall first, which deletes the app's data. So CI signs with a permanent
-key kept in two **GitHub Actions secrets** (repo Settings → Secrets and variables → Actions):
+Android only installs an update over the existing app if both are signed with the same key.
+Builds are signed with the committed test key `app/meditation-debug.keystore` (public Android
+debug password, so it protects nothing: it only keeps the signature stable), and CI checks every
+APK carries it. A private key in GitHub secrets (`SIGNING_KEYSTORE_BASE64`, `SIGNING_PASSWORD`,
+alias `meditation`) replaces it if present, but changing keys breaks Google sign-in until that
+key's SHA-1 is registered too. Every build gets a higher version number, so it installs as an update.
 
-- `SIGNING_KEYSTORE_BASE64`: the keystore file, base64-encoded
-- `SIGNING_PASSWORD`: its password (key alias `meditation`)
+### Google account backup (History → Google account)
 
-Without them the build still works but uses a throwaway key (the run shows a warning).
-Every build also gets a higher version number, so it installs as an update.
+Backs up sits, journal notes and settings to a hidden app folder in your Google Drive
+(`drive.appdata`, a non-sensitive permission: the app can't see anything else in Drive).
+Connecting on a fresh install merges the backup back in. Google needs the app registered once:
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → create a project (any name).
+2. **APIs & Services → Library** → enable **Google Drive API**.
+3. **OAuth consent screen** → External → app name, your email → add your own Google account
+   under **Test users** (Testing mode is fine for personal use).
+4. **Credentials → Create credentials → OAuth client ID → Android**:
+   package `com.rajan.meditationtimer`, SHA-1
+   `06:AD:C4:19:CC:57:0D:B0:55:46:A3:F6:D1:62:E1:F0:92:42:44:2F`.
+
+No client ID goes into the app: Google recognises it by package name and signing certificate.
 
 Safety net that needs no setup: after every change the app mirrors the history — without
 journal notes, since Downloads is shared storage — to
