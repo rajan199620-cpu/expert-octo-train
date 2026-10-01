@@ -553,7 +553,8 @@ private fun RunningScreen(session: SessionState.Running) {
     // On a short screen or with large text the ring shrinks and the screen scrolls, so Pause and
     // End are always reachable; on a normal phone it is centred exactly as before.
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-    val ring = minOf(300.dp, maxHeight * 0.45f)
+    val ring = minOf(300.dp, maxHeight * 0.38f)
+    val gap = if (maxHeight < 720.dp) 16.dp else 28.dp
     Column(
         Modifier
             .widthIn(max = 480.dp)
@@ -562,7 +563,7 @@ private fun RunningScreen(session: SessionState.Running) {
             .heightIn(min = maxHeight)
             .pointerInput(countingNow) { if (countingNow) detectTapGestures { notice() } },
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically),
     ) {
         Box(Modifier.size(ring).glow(accent.main, if (still) 0.3f else pulse), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize().padding(16.dp).alpha(ringAlpha)) {
@@ -610,7 +611,7 @@ private fun RunningScreen(session: SessionState.Running) {
                 )
                 else -> Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                    verticalArrangement = Arrangement.spacedBy(gap),
                 ) {
                     if (mode == 1) {
                         Text(
