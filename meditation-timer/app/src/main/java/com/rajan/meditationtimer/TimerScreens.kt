@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -205,7 +207,7 @@ private fun SetupScreen(
             Column(Modifier.weight(1f)) {
                 Text(greeting(), style = MaterialTheme.typography.headlineMedium)
                 Text(
-                    if (streak > 0) "✦ ${streakLabel(streak)}" else "Settle in whenever you're ready",
+                    if (streak > 0) "✦\u00A0${streakLabel(streak)}" else "Settle in whenever you're ready",
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (streak > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -226,6 +228,12 @@ private fun SetupScreen(
             }
         }
 
+        DurationDial(minutes, onMinus = { minutes = (minutes - 1).coerceAtLeast(1) }, onPlus = { minutes = (minutes + 1).coerceAtMost(180) })
+        ChipRow(listOf(5, 10, 15, 20, 30, 45, 60), minutes, { "$it" }, center = true) { minutes = it }
+
+        // The sit comes first; today's lesson and anything from the past follow below it.
+        PrincipleCard(lesson, onOpenAll = onPrinciples)
+
         val today = remember { LocalDate.now() }
         var memoryHidden by remember { mutableStateOf(prefs.memoryHiddenOn == today.toString()) }
         if (memory != null && !memoryHidden) {
@@ -236,11 +244,6 @@ private fun SetupScreen(
             fun seen() { recapSeen = recapReady.toString(); prefs.recapSeen = recapSeen }
             RecapReadyCard(recapReady, today, onOpen = { seen(); onHistory() }, onHide = { seen() })
         }
-
-        PrincipleCard(lesson, onOpenAll = onPrinciples)
-
-        DurationDial(minutes, onMinus = { minutes = (minutes - 1).coerceAtLeast(1) }, onPlus = { minutes = (minutes + 1).coerceAtMost(180) })
-        ChipRow(listOf(5, 10, 15, 20, 30, 45, 60), minutes, { "$it" }, center = true) { minutes = it }
 
         // Bells, sound and tools are set once and rarely changed: they fold into one line, so the
         // screen is about the sit itself (Insight Timer and Oak do the same). One tap opens them.
@@ -547,15 +550,21 @@ private fun RunningScreen(session: SessionState.Running) {
         }
     }
 
+    // On a short screen or with large text the ring shrinks and the screen scrolls, so Pause and
+    // End are always reachable; on a normal phone it is centred exactly as before.
+    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    val ring = minOf(300.dp, maxHeight * 0.45f)
     Column(
         Modifier
             .widthIn(max = 480.dp)
-            .fillMaxSize()
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .heightIn(min = maxHeight)
             .pointerInput(countingNow) { if (countingNow) detectTapGestures { notice() } },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterVertically),
     ) {
-        Box(Modifier.size(300.dp).glow(accent.main, if (still) 0.3f else pulse), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(ring).glow(accent.main, if (still) 0.3f else pulse), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize().padding(16.dp).alpha(ringAlpha)) {
                 val stroke = 6.dp.toPx()
                 drawCircle(Color.White.copy(alpha = 0.08f), style = Stroke(stroke))
@@ -640,6 +649,7 @@ private fun RunningScreen(session: SessionState.Running) {
             }
         }
     }
+    }
 }
 
 /** The few seconds after tapping End: the sit is paused, and doing nothing lets it end. */
@@ -708,7 +718,7 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (streak > 0) Pill("✦ ${streakLabel(streak)}")
+        if (streak > 0) Pill("✦\u00A0${streakLabel(streak)}")
         if (session.noticed >= 0) {
             Text(
                 when (session.noticed) {

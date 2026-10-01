@@ -94,7 +94,10 @@ fun MoodChart(points: List<MoodPoint>, zone: ZoneId) {
                 },
         ) {
             val top = 8.dp.toPx()
-            val axisBand = 22.dp.toPx() // x-axis labels live inside the chart's own height
+            // x-axis dates live inside the chart's own height, below the half of the bottom row's
+            // label that hangs under its line; measured, so large system text never collides.
+            val labelH = labels.maxOf { it.size.height }.toFloat()
+            val axisBand = labelH * 1.5f + 4.dp.toPx()
             val plotW = size.width - gutterPx - 2 * insetPx
             val plotH = size.height - top - axisBand
             fun x(p: MoodPoint) = gutterPx + insetPx + plotW * (p.startedAtMs - firstMs) / spanMs

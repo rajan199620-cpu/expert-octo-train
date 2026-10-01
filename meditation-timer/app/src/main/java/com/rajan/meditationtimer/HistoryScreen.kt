@@ -211,7 +211,7 @@ private fun WeekCard(week: List<Pair<LocalDate, Boolean?>>, summary: HistorySumm
         }
         val parts = buildList {
             add("${formatDuration(summary.last7DaysSec)} in the last 7 days")
-            if (summary.currentStreak >= 2) add("✦ ${streakLabel(summary.currentStreak)}")
+            if (summary.currentStreak >= 2) add("✦\u00A0${streakLabel(summary.currentStreak)}")
         }
         Text(parts.joinToString("  ·  "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
