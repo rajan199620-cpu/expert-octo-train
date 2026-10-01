@@ -26,7 +26,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +50,8 @@ import java.util.Locale
 private val dayFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
 private val timeFormat = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 private val syncFormat = DateTimeFormatter.ofPattern("d MMM, h:mm a")
+
+private const val LOG_PAGE_DAYS = 30
 
 @Composable
 fun HistoryTab() {
@@ -78,6 +83,8 @@ fun HistoryTab() {
         Toast.makeText(context, if (ok) "Saved ${records.size} sessions" else "Couldn't save the backup", Toast.LENGTH_SHORT).show()
     }
     val restore = rememberRestoreAction()
+    // Years of sits would be thousands of rows drawn at once: show recent days, older on request.
+    var daysShown by rememberSaveable { mutableIntStateOf(LOG_PAGE_DAYS) }
 
     // Order follows what you come here for: how this week is going, how sits felt, the calendar,
     // then the log. Rarely used backup controls sit at the bottom (progressive disclosure).
@@ -119,7 +126,7 @@ fun HistoryTab() {
             // One card for the whole log, days separated by hairlines rather than a card each.
             item {
                 GlassCard(Modifier.fillMaxWidth(), padding = 16.dp) {
-                    summary.days.forEachIndexed { i, day ->
+                    summary.days.take(daysShown).forEachIndexed { i, day ->
                         if (i > 0) HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
                         Row(Modifier.fillMaxWidth()) {
                             Text(day.date.format(dayFormat), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
@@ -130,6 +137,12 @@ fun HistoryTab() {
                             )
                         }
                         for (session in day.sessions) SessionLine(session, zone)
+                    }
+                    val hidden = summary.days.size - daysShown
+                    if (hidden > 0) {
+                        TextButton(onClick = { daysShown += LOG_PAGE_DAYS * 2 }) {
+                            Text(if (hidden == 1) "Show 1 earlier day" else "Show earlier days ($hidden more)")
+                        }
                     }
                 }
             }

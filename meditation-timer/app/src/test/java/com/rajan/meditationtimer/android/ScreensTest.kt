@@ -5,7 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.os.Looper
 import android.os.SystemClock
 import android.view.KeyEvent
-import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -175,7 +175,7 @@ class ScreensTest {
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.waitForIdle()
         shot("07-history-top")
-        val list = compose.onNode(hasScrollAction())
+        val list = compose.onNode(hasScrollToNodeAction())
         list.performScrollToNode(hasText("What a sit changes"))
         shot("08-history-check-ins")
         list.performScrollToNode(hasText("Catching the wandering mind"))
@@ -193,7 +193,11 @@ class ScreensTest {
         launch()
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.waitForIdle()
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Meditation Timer", substring = true))
+        val list = compose.onNode(hasScrollToNodeAction())
+        // The log shows recent days first; older ones load on request instead of all at once.
+        list.performScrollToNode(hasText("Show earlier days", substring = true))
+        compose.onNodeWithText("Show earlier days", substring = true).performClick()
+        list.performScrollToNode(hasText("version", substring = true))
         val ms = (System.nanoTime() - started) / 1_000_000
         assertTrue("took $ms ms", ms < 60_000)
     }

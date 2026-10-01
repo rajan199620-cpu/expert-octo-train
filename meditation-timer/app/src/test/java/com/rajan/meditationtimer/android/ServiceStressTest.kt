@@ -82,7 +82,7 @@ class ServiceStressTest {
     }
 
     @Test
-    fun `pause holds the clock and the finish; resume carries on where it stopped`() {
+    fun `pause holds the clock and the finish, resume carries on where it stopped`() {
         val s = begin(minutes = 10)
         idle(120)
         s.deliver(MeditationService::pause)
@@ -99,7 +99,7 @@ class ServiceStressTest {
     }
 
     @Test
-    fun `End opens a 5-second window; keep sitting cancels it, doing nothing ends and logs`() {
+    fun `End opens a 5-second window, keep sitting cancels it, doing nothing ends and logs`() {
         val s = begin(minutes = 20)
         idle(300)
         s.deliver(MeditationService::end)
