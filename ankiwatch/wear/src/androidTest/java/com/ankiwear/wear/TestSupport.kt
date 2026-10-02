@@ -42,6 +42,13 @@ fun ComposeTestRule.allText(): String {
     return sb.toString()
 }
 
+/**
+ * Nodes matching [matcher] that are laid out on screen. A lazy list also composes the next
+ * row ahead of time without placing it; such a row has no real position.
+ */
+fun ComposeTestRule.placedNodes(matcher: SemanticsMatcher): List<SemanticsNode> =
+    onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes().filter { it.layoutInfo.isPlaced }
+
 /** Where the card list draws on screen; rows outside it are clipped. */
 fun ComposeTestRule.contentViewport(): Rect =
     onNodeWithTag(ReviewTags.CONTENT, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
@@ -64,7 +71,7 @@ fun ComposeTestRule.scrollContentBy(dy: Float) {
  * existing says nothing about what the user can see or tap.
  */
 fun ComposeTestRule.scrollContentTo(matcher: SemanticsMatcher) {
-    fun node() = onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
+    fun node() = placedNodes(matcher).firstOrNull()
     if (node() == null) {
         contentScroller().performScrollToIndex(0)
         waitForIdle()
@@ -102,8 +109,8 @@ fun ComposeTestRule.scrollContentTo(matcher: SemanticsMatcher) {
  */
 fun ComposeTestRule.assertRowInView(tag: String, what: String = tag) {
     val view = contentViewport()
-    val node = onAllNodes(hasTestTag(tag), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
-    assertTrue("$what is not even composed", node != null)
+    val node = placedNodes(hasTestTag(tag)).firstOrNull()
+    assertTrue("$what is not even laid out", node != null)
     val top = node!!.positionInRoot.y
     val bottom = top + node.size.height
     val whole = top >= view.top - 1f && bottom <= view.bottom + 1f
@@ -122,9 +129,9 @@ fun isRoundScreen(): Boolean =
  */
 fun ComposeTestRule.assertOnScreen(needle: String) {
     val inList = hasAnyAncestor(hasTestTag(ReviewTags.CONTENT))
-    val node = onAllNodes(hasText(needle, substring = true), useUnmergedTree = true).fetchSemanticsNodes()
+    val node = placedNodes(hasText(needle, substring = true))
         .firstOrNull { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
-    assertTrue("'$needle' is not even composed:\n${allText()}", node != null)
+    assertTrue("'$needle' is not even laid out:\n${allText()}", node != null)
     val layouts = mutableListOf<TextLayoutResult>()
     node!!.config[SemanticsActions.GetTextLayoutResult].action!!.invoke(layouts)
     val layout = layouts.first()

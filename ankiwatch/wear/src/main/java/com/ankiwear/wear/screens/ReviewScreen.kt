@@ -31,6 +31,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
@@ -387,7 +388,11 @@ private fun CardBody(
     }
 
     ScalingLazyColumn(
-        modifier = modifier.testTag(ReviewTags.CONTENT),
+        // ScalingLazyColumn lays rows out a little beyond its own edges; clip there so a
+        // scrolled row never draws over the counter or the buttons.
+        modifier = modifier
+            .testTag(ReviewTags.CONTENT)
+            .clipToBounds(),
         state = listState,
         anchorType = ScalingLazyListAnchorType.ItemStart,
         autoCentering = null,
