@@ -2,9 +2,12 @@ name: AnkiWatch
 
 on:
   push:
+    # Docs-only pushes don't rebuild (and so don't cancel a running emulator job).
     paths:
       - "ankiwatch/**"
+      - "!ankiwatch/**/*.md"
       - ".github/workflows/ankiwatch.yml"
+      - ".github/scripts/**"
   workflow_dispatch:
 
 permissions:

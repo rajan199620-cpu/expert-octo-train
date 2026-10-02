@@ -16,7 +16,7 @@ Based on [AnkiWatch](https://github.com/OleksandrShabaldas/AnkiWatch) by Oleksan
 | Plain text from a `#` cloze | Your anchor statement, shown as context on sibling cards (tested on its own card). |
 | **Show answer** | Opens the tested cloze and shows the note's Note / Mnemonics / Extra. |
 | **Again** / **Good** | Grade the card. **Hold Again = Hard**, **hold Good = Easy**. |
-| **Bottom side button** | Press: show the answer, then press again for **Good**. Hold (½ s): **Again**. |
+| **Bottom side button** | Press: show the answer, then press again for **Good**. Hold (½ s): **Again**. Ignored while the next cards load; on *Done!* it returns to the decks. |
 | Whole note / Focus on cloze | Focus mode (default) shows only the part of a long note holding the tested cloze, plus its heading or parent list item. |
 | Bezel / swipe | Scroll. Swipe right to leave the review. |
 
