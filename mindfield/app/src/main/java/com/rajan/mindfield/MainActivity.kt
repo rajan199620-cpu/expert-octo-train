@@ -1,6 +1,7 @@
 package com.rajan.mindfield
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -35,7 +36,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -53,6 +53,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import com.rajan.mindfield.core.Entry
 import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.ThemeMode
@@ -87,16 +91,19 @@ class MainActivity : ComponentActivity() {
         concept = savedInstanceState?.getString(KEY_CONCEPT)
         if (savedInstanceState == null) handle(intent)
 
+        // System bar icons follow the app's theme (which can differ from the phone's); set before
+        // the first frame and again whenever the theme setting changes, never from inside composition.
+        edgeToEdge(store.state.value.settings.theme)
+        lifecycleScope.launch {
+            store.state.map { it.settings.theme }.distinctUntilChanged().collect { edgeToEdge(it) }
+        }
+
         setContent {
             val state by Store.state.collectAsStateWithLifecycle()
             val dark = when (state.settings.theme) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
-            }
-            LaunchedEffect(dark) {
-                val bar = if (dark) SystemBarStyle.dark(AndroidColor.TRANSPARENT) else SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
-                enableEdgeToEdge(statusBarStyle = bar, navigationBarStyle = bar)
             }
             MindfieldTheme(dark) {
                 if (!state.settings.onboarded) {
@@ -118,6 +125,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private var barsTheme: ThemeMode? = null
+
+    private fun edgeToEdge(theme: ThemeMode) {
+        if (theme == barsTheme) return
+        barsTheme = theme
+        val dark = when (theme) {
+            ThemeMode.SYSTEM -> (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+        }
+        val bar = if (dark) SystemBarStyle.dark(AndroidColor.TRANSPARENT) else SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
+        enableEdgeToEdge(statusBarStyle = bar, navigationBarStyle = bar)
     }
 
     override fun onResume() {

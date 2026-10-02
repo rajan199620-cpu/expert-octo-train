@@ -454,7 +454,13 @@ private fun SeeAlso(concept: Concept, state: AppState, nav: Nav) {
 // --- The field-report sheet --------------------------------------------------------------------
 
 @Composable
-fun LogSheet(req: LogRequest, state: AppState, today: LocalDate, onClose: () -> Unit) = key(req) {
+fun LogSheet(req: LogRequest, state: AppState, today: LocalDate, onClose: () -> Unit) {
+    // A new request (another concept, or an entry to edit) starts a fresh sheet.
+    key(req) { LogSheetContent(req, state, today, onClose) }
+}
+
+@Composable
+private fun LogSheetContent(req: LogRequest, state: AppState, today: LocalDate, onClose: () -> Unit) {
     val p = palette
     val view = LocalView.current
     val edit = req.edit
@@ -463,7 +469,7 @@ fun LogSheet(req: LogRequest, state: AppState, today: LocalDate, onClose: () -> 
     var note by rememberSaveable { mutableStateOf(edit?.note.orEmpty()) }
     var outcome by rememberSaveable { mutableStateOf(edit?.outcome) }
     var confirmDelete by remember { mutableStateOf(false) }
-    val concept = Store.library[conceptId] ?: return@key
+    val concept = Store.library[conceptId] ?: return
     val accent = concept.category.accent(p.dark)
     // Recent concepts to switch between: today's first, then the last few days'.
     val recent = remember(state.assignments) {
