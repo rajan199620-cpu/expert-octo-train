@@ -404,3 +404,40 @@ class ScheduleTest {
         assertEquals("9:00 pm", Schedule.label(21 * 60))
     }
 }
+
+class TextsTest {
+    @Test
+    fun `a shared concept carries the idea, the mission, the evidence and the source`() {
+        val c = library["anchoring"]!!
+        val t = Texts.share(c)
+        for (part in listOf(c.title, c.hook, c.missionLine, c.evidence.label, c.source)) assertTrue(part, t.contains(part))
+    }
+
+    @Test
+    fun `the journal export groups by day, newest first, and skips deleted notes`() {
+        var s = AppState()
+        s = s.upsert(entry("a", "anchoring", day0, Mode.USED).copy(note = "line one\nline two"))
+        s = s.upsert(entry("b", "reciprocity", day0.minusDays(1), Mode.SPOTTED))
+        s = s.upsert(entry("c", "reciprocity", day0.minusDays(1), Mode.SPOTTED, deleted = true))
+        val t = Texts.journal(s, library, day0)
+        assertTrue(t.contains("2 notes"))
+        assertTrue(t.indexOf("Anchoring") < t.indexOf("Reciprocity"))
+        assertTrue(t.contains("🎯 Used it · Anchoring (worked)"))
+        assertTrue(t.contains("  line one\n  line two"))
+        assertFalse(t.contains("note c"))
+        assertEquals(2, Regex("^## ", RegexOption.MULTILINE).findAll(t).count())
+    }
+
+    @Test
+    fun `delivery looks blocked only after two missed mornings`() {
+        val m = 8 * 60
+        assertFalse(Delivery.looksBlocked(true, day0.minusDays(1), day0, 9 * 60, m))
+        assertFalse(Delivery.looksBlocked(true, day0.minusDays(2), day0, 7 * 60, m))
+        assertTrue(Delivery.looksBlocked(true, day0.minusDays(2), day0, 9 * 60, m))
+        assertTrue(Delivery.looksBlocked(true, day0.minusDays(5), day0, 6 * 60, m))
+        assertFalse(Delivery.looksBlocked(false, day0.minusDays(5), day0, 9 * 60, m))
+        assertFalse(Delivery.looksBlocked(true, null, day0, 9 * 60, m))
+        // Half an hour's slack on the day itself.
+        assertFalse(Delivery.looksBlocked(true, day0.minusDays(2), day0, 8 * 60 + 20, m))
+    }
+}

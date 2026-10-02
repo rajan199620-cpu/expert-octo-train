@@ -237,6 +237,17 @@ private fun NotificationSettings(state: AppState) {
         if (s.eveningOn) SoftButton("Change evening time (${Schedule.label(s.eveningMinute)})") {
             pickTime(context, s.eveningMinute) { m -> Store.settings { it.copy(eveningMinute = m) } }
         }
+        var unrestricted by remember { mutableStateOf(Health.ignoringBatteryOptimizations(context)) }
+        androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+            unrestricted = Health.ignoringBatteryOptimizations(context)
+            allowed = Notifier.allowed(context)
+            onPauseOrDispose { }
+        }
+        SettingRow(
+            "Run in the background",
+            if (unrestricted) "Allowed ✓ Reminders arrive on time." else "Battery optimisation is on. On some phones (Xiaomi, OnePlus, Samsung, Oppo, Vivo…) it stops daily reminders. Tap to allow.",
+            null,
+        ) { if (!unrestricted) Health.requestUnrestricted(context) }
         SettingRow(
             "Surprise spot checks",
             "A nudge at a random time between noon and 6 pm: seen it yet? Skipped once you've logged.",
@@ -306,6 +317,9 @@ fun GoogleCard(cloud: CloudState, compact: Boolean = false) {
                 SoftButton(if (cloud.busy) "Syncing…" else "Sync now") { if (!cloud.busy) GoogleSync.syncNow(context) }
                 SoftButton("Unlink", color = p.muted) { GoogleSync.disconnect(context) }
             }
+            if (cloud.problem && !cloud.busy) {
+                PrimaryButton("Sign in again", p.brand) { GoogleSync.connect(context) { consent.launch(it) } }
+            }
         } else {
             Text(
                 "Link your Google account to keep your field journal safe and bring it back on a new phone. It's stored in a hidden app folder in your Drive that only this app can read.",
@@ -336,7 +350,11 @@ private fun SetupHelp() {
         )
         CopyRow("Package name", GoogleSync.PACKAGE, context)
         CopyRow("SHA-1", GoogleSync.SHA1, context)
-        Text("Drive API and the consent screen are already set up from the Meditation Timer, so nothing else is needed.", style = MaterialTheme.typography.bodySmall, color = p.muted)
+        Text(
+            "Then, so Google doesn't ask you to sign in again every 7 days: OAuth consent screen → Publish app → In production. No review is needed, because the app only asks for its own hidden Drive folder (a non-sensitive permission).",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text("Drive API and the consent screen are already set up from the Meditation Timer.", style = MaterialTheme.typography.bodySmall, color = p.muted)
     }
 }
 
@@ -385,7 +403,10 @@ private fun BackupCard() {
     }
     Panel {
         SectionLabel("Backup file", "💾")
-        Text("Save everything to a file you choose, or merge one back in. Restoring never deletes what's already here.", style = MaterialTheme.typography.bodySmall, color = p.muted)
+        Text(
+            "Save everything to a file you choose, or merge one back in. Restoring never deletes what's already here. Android's own phone backup also keeps a copy of the app's data in your Google account, if backup is on in your phone's settings.",
+            style = MaterialTheme.typography.bodySmall, color = p.muted,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SoftButton("Save backup") { export.launch("mindfield-backup-${LocalDate.now()}.json") }
             SoftButton("Restore") { import.launch(arrayOf("application/json", "text/plain", "*/*")) }

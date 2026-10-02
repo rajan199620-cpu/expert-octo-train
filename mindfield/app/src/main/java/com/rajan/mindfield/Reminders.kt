@@ -25,6 +25,9 @@ object Effects {
     fun onChanged(context: Context, before: AppState, after: AppState) {
         TodayWidget.refresh(context)
         if (before.settings != after.settings) Scheduler.scheduleAll(context)
+        val b = before.settings
+        val a = after.settings
+        if (b.morningOn != a.morningOn || b.morningMinute != a.morningMinute) Health.resetBaseline(context, Store.today())
         // Logging today's concept from the app clears the evening nudge if it's still showing.
         val today = Store.today()
         if (before.entriesOn(today).isEmpty() && after.entriesOn(today).isNotEmpty()) Notifier.clearNudges(context)
@@ -60,7 +63,16 @@ object Scheduler {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         alarms.cancel(pending)
-        if (on) alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at().toInstant().toEpochMilli(), pending)
+        if (!on) return
+        val ms = at().toInstant().toEpochMilli()
+        // On time when Android allows it (it does for this app unless the user revokes it);
+        // otherwise a few minutes late is still fine for a nudge.
+        val exact = Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms()
+        val set = runCatching {
+            if (exact) alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pending)
+            else alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pending)
+        }
+        if (set.isFailure) alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pending)
     }
 }
 
@@ -68,7 +80,10 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val store = Store.init(context)
         when (intent.action) {
-            Scheduler.ACTION_MORNING -> Notifier.morning(context)
+            Scheduler.ACTION_MORNING -> {
+                Notifier.morning(context)
+                Health.morningFired(context, store.today())
+            }
             Scheduler.ACTION_EVENING -> Notifier.evening(context)
             Scheduler.ACTION_SPOT -> Notifier.spot(context)
         }
@@ -84,7 +99,9 @@ object Notifier {
     private const val CH_DAILY = "daily"
     private const val CH_REPORT = "report"
     private const val CH_SPOT = "spot"
+    private const val CH_BACKUP = "backup"
     const val ID_MORNING = 1
+    const val ID_BACKUP = 4
     const val ID_EVENING = 2
     const val ID_SPOT = 3
 
@@ -106,6 +123,22 @@ object Notifier {
         m.createNotificationChannel(NotificationChannel(CH_SPOT, "Spot checks", NotificationManager.IMPORTANCE_LOW).apply {
             description = "An optional surprise nudge during the day."
         })
+        m.createNotificationChannel(NotificationChannel(CH_BACKUP, "Backup problems", NotificationManager.IMPORTANCE_LOW).apply {
+            description = "Tells you if the Google backup stops, so it never fails silently."
+        })
+    }
+
+    fun backupProblem(context: Context, message: String) {
+        channels(context)
+        val n = Notification.Builder(context, CH_BACKUP)
+            .setSmallIcon(R.drawable.ic_stat_mindfield)
+            .setContentTitle("Google backup paused")
+            .setContentText(message)
+            .setStyle(Notification.BigTextStyle().bigText(message))
+            .setContentIntent(open(context, 50, MainActivity.ACTION_ACCOUNT))
+            .setAutoCancel(true)
+            .build()
+        post(context, ID_BACKUP, n)
     }
 
     fun allowed(context: Context): Boolean =
@@ -141,7 +174,9 @@ object Notifier {
         val due = Spacing.due(store.state.value, store.library, store.today()).size
         val big = buildString {
             append(c.hook)
-            append("\n\n🎯 Today's mission: ").append(c.missionLine)
+            // The guess starts on the lock screen: just thinking of an answer primes the memory.
+            append("\n\n🔮 Predict first: ").append(c.predict.question)
+            append("\n🎯 Today's mission: ").append(c.missionLine)
             if (due > 0) append("\n🃏 ").append(if (due == 1) "1 quick review" else "$due quick reviews").append(" waiting")
         }
         val n = builder(context, CH_DAILY, c)

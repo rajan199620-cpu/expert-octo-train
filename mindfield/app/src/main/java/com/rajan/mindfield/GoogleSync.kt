@@ -34,6 +34,8 @@ data class CloudState(
     val message: String? = null,
     /** True when Google says this build isn't registered yet, so the setup steps should show. */
     val needsSetup: Boolean = false,
+    /** True when backups have stopped (sign-in expired, an error) rather than just a note to show. */
+    val problem: Boolean = false,
 )
 
 /**
@@ -124,13 +126,13 @@ object GoogleSync {
                         .addOnSuccessListener { result ->
                             val token = result.accessToken
                             if (result.hasResolution() || token == null) {
-                                needsReconnect()
+                                needsReconnect(app)
                             } else {
-                                worker.execute { runCatching { upload(token) }.onSuccess { synced(app, null) }.onFailure { fail(it) } }
+                                worker.execute { runCatching { upload(token) }.onSuccess { synced(app, null) }.onFailure { fail(it, app) } }
                             }
                         }
-                        .addOnFailureListener { fail(it) }
-                }.onFailure { fail(it) }
+                        .addOnFailureListener { fail(it, app) }
+                }.onFailure { fail(it, app) }
             }, UPLOAD_DELAY_SEC, TimeUnit.SECONDS)
         }
     }
@@ -175,17 +177,26 @@ object GoogleSync {
             putLong(KEY_LAST, now)
         }
         _state.value = _state.value.copy(
-            email = email ?: _state.value.email, lastSyncMs = now, busy = false, message = message, needsSetup = false,
+            email = email ?: _state.value.email, lastSyncMs = now, busy = false, message = message, needsSetup = false, problem = false,
         )
     }
 
-    private fun needsReconnect() {
-        _state.value = _state.value.copy(busy = false, message = "Google needs you to sign in again: tap Connect.")
+    /**
+     * Google wants a fresh sign-in (in "Testing" mode it asks every 7 days). Backups made in the
+     * background then stop, so say so: on the card, with a banner, and once a day as a notification.
+     */
+    private fun needsReconnect(app: Context? = null) {
+        val message = "Google backup is paused: Google needs you to sign in again. Tap Sync now or Connect."
+        _state.value = _state.value.copy(busy = false, message = message, problem = true)
+        if (app != null && Health.shouldNotifyBackup(app)) Notifier.backupProblem(app, message)
     }
 
-    private fun fail(e: Throwable) {
+    private fun fail(e: Throwable, app: Context? = null) {
         val setup = e is ApiException && e.statusCode == CommonStatusCodes.DEVELOPER_ERROR
-        _state.value = _state.value.copy(busy = false, message = explain(e), needsSetup = setup)
+        val message = explain(e)
+        _state.value = _state.value.copy(busy = false, message = message, needsSetup = setup, problem = true)
+        // Being offline is normal; only tell the user about failures they can do something about.
+        if (app != null && e !is java.io.IOException && Health.shouldNotifyBackup(app)) Notifier.backupProblem(app, message)
     }
 
     /** Plain-language reasons for the failures a new setup actually hits. */

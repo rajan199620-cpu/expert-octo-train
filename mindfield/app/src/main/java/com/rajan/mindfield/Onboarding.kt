@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -126,9 +127,18 @@ fun Onboarding(onDone: () -> Unit) {
                             }
                         }
                         3 -> {
-                            Headline("When should it reach you?", "Two notifications a day at most. Change them any time.")
+                            Headline("When should it reach you?", "Two notifications a day, three with spot checks. Change them any time.")
                             TimeChoice("🌅 Morning concept", s.morningMinute) { m -> Store.settings { it.copy(morningMinute = m) } }
                             TimeChoice("🌙 Evening field report", s.eveningMinute) { m -> Store.settings { it.copy(eveningMinute = m) } }
+                            Panel(onClick = { Store.settings { it.copy(spotCheckOn = !it.spotCheckOn) } }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text("🔍 Surprise spot check", style = MaterialTheme.typography.titleMedium)
+                                        Text("Optional: one nudge at a random moment between noon and 6 pm. Seen it yet?", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                                    }
+                                    Switch(checked = s.spotCheckOn, onCheckedChange = { on -> Store.settings { it.copy(spotCheckOn = on) } })
+                                }
+                            }
                             if (Build.VERSION.SDK_INT >= 33 && !Notifier.allowed(context)) {
                                 Text("Android will ask if Mindfield may send notifications.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
                             }

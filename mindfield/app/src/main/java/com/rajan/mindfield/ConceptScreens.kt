@@ -47,12 +47,15 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rajan.mindfield.core.AppState
 import com.rajan.mindfield.core.Concept
 import com.rajan.mindfield.core.Entry
@@ -60,6 +63,7 @@ import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.Outcome
 import com.rajan.mindfield.core.Spacing
 import com.rajan.mindfield.core.Stats
+import com.rajan.mindfield.core.Texts
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -72,9 +76,19 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
     LaunchedEffect(today, concept == null) { if (concept == null) Store.todayConcept() }
     if (concept == null) return
     val p = palette
+    val context = LocalContext.current
     val days = Stats.checkInDays(state)
     val streak = Stats.streak(days, today)
     val due = Spacing.due(state, Store.library, today).size
+    val cloud by GoogleSync.state.collectAsStateWithLifecycle()
+    // Re-checked whenever the screen comes back (e.g. after allowing background use in settings).
+    var blocked by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(today) {
+        blocked = Health.remindersBlocked(context) && !Health.ignoringBatteryOptimizations(context)
+        onPauseOrDispose { }
+    }
+    val loggedToday = state.entriesOn(today).isNotEmpty()
+    Box(Modifier.fillMaxSize()) {
     ConceptPage(concept, state, today, isToday = true, nav = nav) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -82,6 +96,24 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
                 Text("Day ${Stats.dayNumber(state, today)} in the field", style = MaterialTheme.typography.headlineSmall)
             }
             if (streak > 0) Pill("🔥 $streak", concept.category.accent(p.dark))
+        }
+        if (blocked) {
+            Banner(
+                "🔕",
+                "Your reminders seem to be blocked",
+                "Two mornings passed without the daily notification. Phones with strict battery savers stop apps' alarms; allow Mindfield to run in the background.",
+                "Allow", { Health.requestUnrestricted(context) },
+                "Not now", { Health.snoozeBanner(context); blocked = false },
+            )
+        }
+        if (Health.backupStale(cloud, System.currentTimeMillis())) {
+            Banner(
+                "☁️",
+                "Google backup is paused",
+                cloud.message ?: "Your journal hasn't been backed up for a few days.",
+                "Fix", { nav.tab(Tab.ME) },
+                null, null,
+            )
         }
         if (due > 0) {
             Panel(onClick = { nav.tab(Tab.REVIEW) }, padding = 14.dp) {
@@ -94,6 +126,41 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
                     Text("→", style = MaterialTheme.typography.titleMedium, color = p.muted)
                 }
             }
+        }
+    }
+    // Always within reach, so logging never means scrolling to the bottom.
+    val accent = concept.category.accent(p.dark)
+    Text(
+        if (loggedToday) "✓ Logged · add more" else "📓  Log today",
+        Modifier
+            .align(Alignment.BottomEnd)
+            .padding(16.dp)
+            .clip(RoundedCornerShape(50))
+            .background(if (loggedToday) p.surface else accent)
+            .border(1.dp, if (loggedToday) p.line else accent, RoundedCornerShape(50))
+            .clickable(role = Role.Button) { nav.log(LogRequest(concept.id)) }
+            .padding(horizontal = 20.dp, vertical = 13.dp),
+        color = if (loggedToday) p.ink else Color.White,
+        style = MaterialTheme.typography.titleSmall,
+    )
+    }
+}
+
+/** A notice that needs attention, with up to two actions. */
+@Composable
+fun Banner(emoji: String, title: String, text: String, action: String, onAction: () -> Unit, second: String?, onSecond: (() -> Unit)?) {
+    val p = palette
+    Panel(border = p.bad.copy(alpha = 0.45f), background = p.bad.copy(alpha = if (p.dark) 0.12f else 0.06f), padding = 14.dp) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(emoji, fontSize = 20.sp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(text, style = MaterialTheme.typography.bodySmall, color = p.muted)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            SoftButton(action, color = p.bad, onClick = onAction)
+            if (second != null && onSecond != null) SoftButton(second, color = p.muted, onClick = onSecond)
         }
     }
 }
@@ -139,13 +206,35 @@ fun ConceptPage(
         Section("Watch out", "⚠️") { Body(concept.guard) }
         FieldReport(concept, state, today, isToday, nav)
         SeeAlso(concept, state, nav)
+        ShareCard(concept)
         Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Source", style = MaterialTheme.typography.labelMedium, color = p.faint)
             Text(concept.source, style = MaterialTheme.typography.bodySmall, color = p.muted)
             Text("${concept.numberLabel} · ${concept.category.label}", style = MaterialTheme.typography.bodySmall, color = accent)
         }
-        Spacer(Modifier.size(24.dp))
+        // Room for the floating "Log today" button.
+        Spacer(Modifier.size(80.dp))
     }
+}
+
+/** Teach it to someone: explaining an idea is one of the best ways to keep it. */
+@Composable
+private fun ShareCard(concept: Concept) {
+    val p = palette
+    val context = LocalContext.current
+    Panel {
+        SectionLabel("Teach it to someone", "💬")
+        Text("Explaining an idea to a friend is one of the surest ways to remember it.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+        SoftButton("Share this concept", color = concept.category.accent(p.dark)) { shareText(context, concept.title, Texts.share(concept)) }
+    }
+}
+
+fun shareText(context: android.content.Context, subject: String, text: String) {
+    val send = android.content.Intent(android.content.Intent.ACTION_SEND)
+        .setType("text/plain")
+        .putExtra(android.content.Intent.EXTRA_SUBJECT, subject)
+        .putExtra(android.content.Intent.EXTRA_TEXT, text)
+    runCatching { context.startActivity(android.content.Intent.createChooser(send, "Share").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
 }
 
 /** The specimen plate: the concept's colour, its emblem and its one-line hook. */

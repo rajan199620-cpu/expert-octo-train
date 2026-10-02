@@ -171,6 +171,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             ACTION_JOURNAL -> { tab = Tab.JOURNAL; concept = null }
+            ACTION_ACCOUNT -> { tab = Tab.ME; concept = null }
             ACTION_SHORTCUT_REVIEW -> { tab = Tab.REVIEW; concept = null }
         }
     }
@@ -181,6 +182,7 @@ class MainActivity : ComponentActivity() {
         const val ACTION_TODAY = "com.rajan.mindfield.OPEN_TODAY"
         const val ACTION_LOG = "com.rajan.mindfield.OPEN_LOG_FOR"
         const val ACTION_JOURNAL = "com.rajan.mindfield.OPEN_JOURNAL"
+        const val ACTION_ACCOUNT = "com.rajan.mindfield.OPEN_ACCOUNT"
         const val ACTION_SHORTCUT_LOG = "com.rajan.mindfield.OPEN_LOG"
         const val ACTION_SHORTCUT_REVIEW = "com.rajan.mindfield.OPEN_REVIEW"
     }

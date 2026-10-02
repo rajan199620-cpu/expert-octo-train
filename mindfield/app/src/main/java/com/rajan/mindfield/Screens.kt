@@ -54,6 +54,7 @@ import com.rajan.mindfield.core.Question
 import com.rajan.mindfield.core.Quiz
 import com.rajan.mindfield.core.Spacing
 import com.rajan.mindfield.core.Stats
+import com.rajan.mindfield.core.Texts
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -371,6 +372,7 @@ fun relativeDay(day: LocalDate, today: LocalDate): String = when (val d = Chrono
 @Composable
 fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
     val p = palette
+    val context = androidx.compose.ui.platform.LocalContext.current
     var filter by rememberSaveable { mutableStateOf<Mode?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var limit by rememberSaveable { mutableIntStateOf(60) }
@@ -389,7 +391,12 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Headline("Field journal", "${all.size} ${if (all.size == 1) "note" else "notes"} · how psychology showed up in your days")
+                Row(verticalAlignment = Alignment.Top) {
+                    Headline("Field journal", "${all.size} ${if (all.size == 1) "note" else "notes"} · how psychology showed up in your days", Modifier.weight(1f))
+                    if (all.isNotEmpty()) {
+                        Pill("Export", p.brand, onClick = { shareText(context, "Mindfield field journal", Texts.journal(state, Store.library, today)) })
+                    }
+                }
             }
             val looks = Stats.onThisDay(state, today)
             if (looks.isNotEmpty() && filter == null && q.isEmpty()) {

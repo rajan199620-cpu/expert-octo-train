@@ -29,6 +29,20 @@ jobs:
       # widget and screens, with screenshots).
       - name: Tests
         run: ./gradlew --no-daemon testDebugUnitTest
+      # A short list of what failed and where, at the end of the log where it's easy to find.
+      - name: Summarise test failures
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob, re, html
+          for f in sorted(glob.glob('app/build/test-results/testDebugUnitTest/*.xml')):
+              s = open(f, encoding='utf-8').read()
+              for m in re.finditer(r'<testcase name="([^"]*)" classname="([^"]*)"[^>]*>\s*<failure message="([^"]*)"[^>]*>([^<]*)', s):
+                  print('FAILED', m.group(2).split('.')[-1], '>', html.unescape(m.group(1)))
+                  print('    ', html.unescape(m.group(3))[:600].replace('\n', ' | '))
+                  for line in [l.strip() for l in html.unescape(m.group(4)).splitlines() if 'com.rajan' in l][:5]:
+                      print('        ', line)
+          PY
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
