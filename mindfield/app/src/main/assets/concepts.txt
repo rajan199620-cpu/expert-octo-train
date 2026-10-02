@@ -2542,7 +2542,7 @@ category: habits
 evidence: good
 hook: Fifty years on, the researchers flipped their own theory: passivity isn't learned. What's learned is control.
 what: The original theory said that after repeated uncontrollable bad events, animals and people learn that nothing they do matters, and give up. In 2016 the same researchers concluded, from neuroscience evidence, that passivity is the brain's default response to prolonged bad events. What can be learned is that we have control, and that lesson protects against future helplessness.
-study: In 1967 Martin Seligman and Steven Maier found that dogs given inescapable shocks later failed to escape shocks they could avoid. In 2016, reviewing decades of brain research, Maier and Seligman concluded the original theory "got it backwards": passivity is the default, and detecting control activates brain circuits that inhibit it.
+study: In 1967 Martin Seligman and Steven Maier found that dogs given inescapable shocks later failed to escape shocks they could avoid. In 2016, reviewing decades of brain research, Maier and Seligman concluded the original theory had it backwards: passivity is the default, and detecting control activates brain circuits that inhibit it.
 proof: Supported by decades of research; the revised version is the original researchers' own update.
 spot: Notice when someone who has faced repeated setbacks stops trying, and when small wins reignite their effort.
 use: Give yourself one small, controllable win today: pick a task you can definitely finish, and finish it.

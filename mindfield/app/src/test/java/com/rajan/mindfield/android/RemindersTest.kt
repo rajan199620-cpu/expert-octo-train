@@ -77,7 +77,7 @@ class RemindersTest {
     @Test
     fun `boot, app updates and clock changes re-arm everything`() {
         for (action in listOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED)) {
-            alarms.scheduledAlarms.toList().forEach { app.getSystemService(AlarmManager::class.java).cancel(it.operation) }
+            alarms.scheduledAlarms.toList().forEach { app.getSystemService(AlarmManager::class.java).cancel(it.operation!!) }
             assertEquals(0, alarms.scheduledAlarms.size)
             fire(action)
             assertEquals(action, 2, alarms.scheduledAlarms.size)

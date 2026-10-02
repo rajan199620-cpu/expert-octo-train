@@ -1,0 +1,96 @@
+# Mindfield: a field guide to the human mind (Android)
+
+One psychology concept every morning. Spot it in the wild by evening. Log how it showed up.
+
+**Download:** [mindfield.apk](https://github.com/rajan199620-cpu/expert-octo-train/releases/download/mindfield-apk/mindfield.apk)
+always serves the newest build (CI republishes it on every push). Screenshots of every screen
+are in [`docs/screenshots`](docs/screenshots).
+
+## A day with Mindfield
+
+| When | What happens | Why (the research) |
+|---|---|---|
+| Morning notification | Today's concept, its one-line hook and today's mission | Spaced, bite-sized exposure; the notification puts the idea "on your radar" (the frequency illusion is Day 1 on purpose) |
+| Open the app | **Predict first**: guess the study's result. The study stays locked until you guess | Pretesting: guessing, even wrongly, improves memory for the answer (meta-analyses 2023) |
+| | **Today's mission** + an **if-then plan** box ("When …, I'll …") | Implementation intentions (Gollwitzer & Sheeran 2006, d = 0.65) |
+| Evening notification | **Field report** in one tap from the notification: 👀 Spotted it · 🪞 Caught myself · 🎯 Used it. Then a reply box to add a line without opening the app | Low-friction logging (Daylio-style); linking ideas to your own life (self-reference effect) |
+| Optional, mid-day | A **surprise spot check** at a random time between noon and 6 pm | BeReal-style unpredictability keeps attention fresh; off by default (max 2 nudges/day otherwise) |
+| Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", returning after 1, 3, 7, 16, 35, 90 days | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
+
+## The library: 151 concepts, honestly labelled
+
+Nine areas, dealt round-robin so neighbouring days differ (interleaving): memory & perception,
+the self, thinking traps, influence & persuasion, emotions & wellbeing, relationships, choices &
+money, motivation & habits, groups & society.
+
+Every concept has: a hook, what's going on, **the key study with its numbers**, an **evidence
+label**, how to spot it, a mission, a "watch out", a predict-first question, an everyday scenario
+for review, sources and "see also" links.
+
+Evidence labels come from the replication literature (Many Labs, registered replication reports,
+meta-analyses): **Solid** (51) · **Good** (78) · **Debated** (12) · **Busted** (10). The busted
+ones are taught as myths with a "plot twist" card: ego depletion, power posing, the Stanford
+Prison Experiment, the hungry-judge effect, learning styles, the Mozart effect, the backfire
+effect, the 7-38-55 rule, the Hawthorne effect, the Zeigarnik memory effect. Several famous
+findings are shown with their modern corrections (the bystander effect vs. CCTV footage, the
+"hot hand" maths error, the marshmallow test with family background controlled, Dunning-Kruger's
+statistical debate).
+
+After about five months every concept has been seen; the app then brings back the ones you've
+spotted least.
+
+## Screens
+
+- **Today**: the specimen plate (each concept has its own generative emblem in its area's
+  colour), predict first, the study, mission + plan, field report, review nudge.
+- **Guide**: the collection. Undiscovered concepts stay sealed until their day (or turn on
+  "show undiscovered"). Search, filter by area, myths, or what you've spotted.
+- **Review**: spaced questions, with a "how well they're sticking" chart.
+- **Journal**: every field note, filters, search, "On this day" (a week, a month, three and six
+  months, a year ago), edit and delete.
+- **You**: day count, streak, this week, discovered/spotted counts, prediction score, how
+  concepts show up (spotted/in me/used), where you notice psychology (radar by area), most
+  spotted, how deliberate uses went (worked/mixed/backfired), a 12-week heatmap, and settings.
+- **Widget**: today's concept on the home screen with a "Log it" button.
+- Long-press the app icon: *Log a sighting*, *Review*.
+
+## Google account (like the Meditation Timer)
+
+You → Settings → **Google account → Connect**. Your journal, predictions, review schedule and
+settings are backed up to the hidden app-data folder in your Google Drive (`drive.appdata`,
+which can't see the rest of your Drive), and restored automatically on a new phone or after a
+reinstall. Every change uploads a few seconds later.
+
+**One-time step** (2 minutes), because Google identifies apps by package name and signing key:
+in the same Google Cloud project you set up for the Meditation Timer, go to
+**APIs & Services → Credentials → Create credentials → OAuth client ID → Android** and enter:
+
+- Package name: `com.rajan.mindfield`
+- SHA-1: `06:AD:C4:19:CC:57:0D:B0:55:46:A3:F6:D1:62:E1:F0:92:42:44:2F`
+
+That's the same signing key as the Meditation Timer, so the Drive API and consent screen (with
+you as a test user) are already in place. If you connect before doing this, the app shows these
+exact values with copy buttons.
+
+Without Google: You → Settings → **Backup file** saves or merges a JSON file you keep yourself.
+Restores and syncs always merge, never delete: two phones that sync at different times end up
+with the same journal (merging is tested to be order-independent).
+
+## Building and testing
+
+CI (`.github/workflows/mindfield.yml`) runs every test, builds a release APK signed with the
+committed test key (`app/mindfield-debug.keystore`, public debug password, which keeps the
+signature stable so updates install over each other and Google sign-in keeps working), checks
+the certificate, publishes the APK to the link above and commits screenshots.
+
+- `core/` is pure Kotlin (library parsing, daily scheduling, spaced review, stats, merge,
+  backup format) with content checks on all 151 concepts and randomised stress tests: years of
+  irregular use never repeat a concept early; merges are commutative, idempotent and
+  associative over hundreds of random states; backups round-trip awkward text; alarms keep the
+  wall-clock time across daylight-saving changes.
+- `android/` tests run the real alarms, notifications (one-tap logging, the reply box,
+  after-midnight taps), widget, storage through simulated process death and a corrupt file, a
+  year of random use, and every screen at normal size and at 150% font on a small phone, with
+  screenshots.
+
+Fonts: Fraunces and Inter (SIL Open Font License).
