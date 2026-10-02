@@ -78,7 +78,11 @@ private fun DemoWearApp(prefs: ReviewPrefs?) {
                         focusMode = it
                         prefs?.focusMode = it
                     },
-                    onAnswer = { _, _, _, _ -> currentCardIndex++ },
+                    onAnswer = { _, _, ease, _ ->
+                        // Like a real session, a card marked Again comes back later.
+                        if (ease == 1 && currentCard != null) demoCards = demoCards + currentCard
+                        currentCardIndex++
+                    },
                     onFinished = { navController.popBackStack() }
                 )
             }

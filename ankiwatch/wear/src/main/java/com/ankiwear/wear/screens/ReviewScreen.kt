@@ -412,7 +412,7 @@ private fun BlockView(
     val accent = accentColor(block.accent)
     val indent = (block.depth * 8 + if (block.continuation) 12 else 0).dp
     val text = remember(block) { blockText(block, onToggle) }
-    var textModifier = modifier
+    var textModifier = Modifier
         .fillMaxWidth()
         .padding(start = indent)
     if (block.boxed) {
@@ -421,6 +421,8 @@ private fun BlockView(
             .padding(horizontal = 6.dp, vertical = 3.dp)
     }
     if (onTap != null) textModifier = textModifier.clickable(onClick = onTap)
+    // Caller modifiers (test tags) go last so they share the text's own coordinates.
+    textModifier = textModifier.then(modifier)
     Text(
         text = text,
         modifier = textModifier,
