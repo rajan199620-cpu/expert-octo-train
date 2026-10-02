@@ -1,0 +1,10 @@
+<resources>
+    <color name="background">#FFF5EFE4</color>
+    <color name="ic_launcher_background">#FF20255C</color>
+
+    <style name="Theme.Mindfield" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
