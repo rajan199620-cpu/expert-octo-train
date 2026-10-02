@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +31,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,10 +48,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInWindow
@@ -93,10 +100,24 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
         onPauseOrDispose { }
     }
     val loggedToday = state.entriesOn(today).isNotEmpty()
-    // The floating button steps aside while the field report's own buttons are on screen.
+    // The floating button steps aside while the field report's own buttons are on screen, and while
+    // scrolling down through the text (it would cover the line being read); scrolling up brings it back.
     var reportShown by remember { mutableStateOf(false) }
+    val scroll = rememberScrollState()
+    var readingDown by remember { mutableStateOf(false) }
+    LaunchedEffect(scroll) {
+        var last = scroll.value
+        snapshotFlow { scroll.value }.collect { v ->
+            when {
+                v <= 0 || v >= scroll.maxValue -> readingDown = false
+                v - last > 8 -> readingDown = true
+                last - v > 8 -> readingDown = false
+            }
+            last = v
+        }
+    }
     Box(Modifier.fillMaxSize()) {
-    ConceptPage(concept, state, today, isToday = true, nav = nav, onReportShown = { reportShown = it }) {
+    ConceptPage(concept, state, today, isToday = true, nav = nav, scroll = scroll, onReportShown = { reportShown = it }) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault())), style = MaterialTheme.typography.labelLarge, color = p.muted)
@@ -137,7 +158,7 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
     }
     // Always within reach, so logging never means scrolling to the bottom.
     val accent = concept.category.accent(p.dark)
-    AnimatedVisibility(!reportShown, Modifier.align(Alignment.BottomEnd), enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut() + scaleOut(targetScale = 0.8f)) {
+    AnimatedVisibility(!reportShown && !readingDown, Modifier.align(Alignment.BottomEnd), enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut() + scaleOut(targetScale = 0.8f)) {
     Text(
         if (loggedToday) "✓ Logged · add more" else "📓  Log today",
         Modifier
@@ -195,6 +216,7 @@ fun ConceptPage(
     today: LocalDate,
     isToday: Boolean,
     nav: Nav,
+    scroll: ScrollState = rememberScrollState(),
     onReportShown: (Boolean) -> Unit = {},
     header: @Composable () -> Unit,
 ) {
@@ -202,7 +224,7 @@ fun ConceptPage(
     val accent = concept.category.accent(p.dark)
     val guess = state.guesses[concept.id]
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 10.dp),
+        Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 18.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         header()
@@ -447,14 +469,17 @@ private fun MissionSection(concept: Concept, state: AppState, today: LocalDate, 
         Body(concept.use)
         if (isToday) {
             val saved = state.plans[today]?.text.orEmpty()
-            var editing by rememberSaveable(today) { mutableStateOf(saved.isEmpty()) }
+            // The box opens on request: an empty field shown up front takes focus when the app starts,
+            // which scrolls Today past its own concept and raises the keyboard.
+            var editing by rememberSaveable(today) { mutableStateOf(false) }
             var text by rememberSaveable(today) { mutableStateOf(saved) }
             if (editing) {
-                Text("Make it an if-then plan: people who decide when and where follow through far more often.", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                val focus = remember { FocusRequester() }
+                LaunchedEffect(Unit) { focus.requestFocus() }
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it.take(200) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
                     placeholder = { Text("When … , I'll …", color = p.faint) },
                     textStyle = MaterialTheme.typography.bodyMedium,
                     shape = RoundedCornerShape(14.dp),
@@ -462,11 +487,14 @@ private fun MissionSection(concept: Concept, state: AppState, today: LocalDate, 
                 )
                 SoftButton("Save my plan", color = accent) {
                     Store.plan(today, text)
-                    editing = text.isBlank()
+                    editing = false
                 }
+            } else if (saved.isEmpty()) {
+                Text("Make it an if-then plan: people who decide when and where follow through far more often.", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                SoftButton("✍️  Make an if-then plan", color = accent) { text = ""; editing = true }
             } else {
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha = 0.10f)).clickable { editing = true }.padding(14.dp),
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha = 0.10f)).clickable { text = saved; editing = true }.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -503,7 +531,8 @@ private fun FieldReport(concept: Concept, state: AppState, today: LocalDate, isT
         entries.forEach { e -> EntryRow(e, showConcept = false) { nav.log(LogRequest(concept.id, edit = e)) } }
         val modes = Mode.entries.filter { isToday || it != Mode.NOT_TODAY }
         modes.chunked(2).forEach { pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Equal heights when a long label wraps (large text).
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 pair.forEach { m -> ModeButton(m, accent, Modifier.weight(1f)) { nav.log(LogRequest(concept.id, mode = m)) } }
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
@@ -518,16 +547,17 @@ fun ModeButton(mode: Mode, accent: Color, modifier: Modifier = Modifier, selecte
     val shape = RoundedCornerShape(16.dp)
     Column(
         modifier
+            .fillMaxHeight()
             .clip(shape)
             .background(if (selected) accent else p.bg)
             .border(1.dp, if (selected) accent else p.line, shape)
             .clickable(role = Role.Button) { view.tick(); onClick() }
             .padding(vertical = 12.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
         Text(mode.emoji, fontSize = 22.sp)
-        Text(mode.label, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else p.ink, maxLines = 1)
+        Text(mode.label, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else p.ink, maxLines = 2, textAlign = TextAlign.Center)
     }
 }
 
@@ -627,7 +657,7 @@ private fun LogSheetContent(req: LogRequest, state: AppState, today: LocalDate, 
             }
             Text("How did it show up?", style = MaterialTheme.typography.titleMedium)
             Mode.entries.chunked(2).forEach { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     pair.forEach { m -> ModeButton(m, accent, Modifier.weight(1f), selected = m == mode) { mode = m } }
                 }
             }

@@ -112,9 +112,9 @@ object Palettes {
 
     private val sets = mapOf(
         Category.MEMORY to Tones(0xFF3D6FA3, 0xFF8DBBEA, 0xFF1D3757, 0xFF2F5C8C, "👁"),
-        Category.SELF to Tones(0xFF8A4C9C, 0xFFD6A1EA, 0xFF3A1F45, 0xFF6B3B7E, "🪞"),
+        Category.SELF to Tones(0xFF8A4C9C, 0xFFD6A1EA, 0xFF3A1F45, 0xFF6B3B7E, "👤"),
         Category.THINKING to Tones(0xFF4A55B5, 0xFFA3ABF7, 0xFF20255C, 0xFF3A44A0, "🧩"),
-        Category.INFLUENCE to Tones(0xFFC0533A, 0xFFF2967E, 0xFF55200F, 0xFFA3442D, "🪝"),
+        Category.INFLUENCE to Tones(0xFFC0533A, 0xFFF2967E, 0xFF55200F, 0xFFA3442D, "📣"),
         Category.FEELINGS to Tones(0xFFC2456E, 0xFFF59AB8, 0xFF561731, 0xFF9E3559, "🌊"),
         Category.CONNECTION to Tones(0xFFC07016, 0xFFF6B25E, 0xFF553006, 0xFFA2600F, "🤝"),
         Category.DECISIONS to Tones(0xFF1D817A, 0xFF67D4C9, 0xFF0C3936, 0xFF18706A, "⚖️"),

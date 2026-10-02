@@ -13,7 +13,7 @@ are in [`docs/screenshots`](docs/screenshots).
 | Morning notification | Today's concept, its one-line hook and today's mission | Spaced, bite-sized exposure; the notification puts the idea "on your radar" (the frequency illusion is Day 1 on purpose) |
 | Open the app | **Predict first**: guess the study's result. The study stays locked until you guess | Pretesting: guessing, even wrongly, improves memory for the answer (meta-analyses 2023) |
 | | **Today's mission** + an **if-then plan** box ("When …, I'll …") | Implementation intentions (Gollwitzer & Sheeran 2006, d = 0.65) |
-| Evening notification | **Field report** in one tap from the notification: 👀 Spotted it · 🪞 Caught myself · 🎯 Used it. Then a reply box to add a line without opening the app | Low-friction logging (Daylio-style); linking ideas to your own life (self-reference effect) |
+| Evening notification | **Field report** in one tap from the notification: 👀 Spotted it · 🙋 Caught myself · 🎯 Used it. Then a reply box to add a line without opening the app | Low-friction logging (Daylio-style); linking ideas to your own life (self-reference effect) |
 | Optional, mid-day | A **surprise spot check** at a random time between noon and 6 pm | BeReal-style unpredictability keeps attention fresh; off by default (max 2 nudges/day otherwise) |
 | Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", returning after 1, 3, 7, 16, 35, 90 days | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
 

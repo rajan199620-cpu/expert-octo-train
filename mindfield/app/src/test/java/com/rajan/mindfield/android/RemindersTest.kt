@@ -110,9 +110,9 @@ class RemindersTest {
         val evening = notifications.getNotification(Notifier.ID_EVENING)!!
         val concept = Store.todayConcept()
         assertEquals("Field report · ${concept.title}", title(evening))
-        assertEquals(listOf("👀 Spotted", "🪞 In me", "🎯 Used"), evening.actions.map { it.title.toString() })
+        assertEquals(listOf("👀 Spotted", "🙋 In me", "🎯 Used"), evening.actions.map { it.title.toString() })
 
-        // Tap "🪞 In me".
+        // Tap "🙋 In me".
         val tap = shadowOf(evening.actions[1].actionIntent).savedIntent
         ActionReceiver().onReceive(app, tap)
         val entry = Store.state.value.liveEntries.single()

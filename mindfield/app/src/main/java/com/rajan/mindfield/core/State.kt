@@ -5,7 +5,7 @@ import java.time.LocalDate
 /** How a concept showed up in your day. */
 enum class Mode(val key: String, val label: String, val short: String, val emoji: String, val prompt: String) {
     SPOTTED("spotted", "Spotted it", "Spotted", "👀", "Where did you see it? Who was doing it?"),
-    MYSELF("myself", "Caught myself", "In me", "🪞", "What were you thinking or doing when it happened?"),
+    MYSELF("myself", "Caught myself", "In me", "🙋", "What were you thinking or doing when it happened?"),
     USED("used", "Used it", "Used", "🎯", "What did you try, and how did it go?"),
     NOT_TODAY("none", "Not today", "Not today", "🌙", "Anything close? Why didn't it come up?");
 

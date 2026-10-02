@@ -102,7 +102,7 @@ class LargeTextScreensTest {
         shot("10-today")
         val c = Store.todayConcept()
         compose.onNodeWithText(c.predict.options[c.predict.answer]).performScrollTo().performClick()
-        scrollTo("Save my plan")
+        scrollTo("Make an if-then plan", substring = true)
         shot("11-today-mission")
         scrollTo(Mode.NOT_TODAY.label)
         shot("12-today-report")

@@ -2,8 +2,10 @@ package com.rajan.mindfield
 
 import android.app.Application
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -113,6 +115,8 @@ class ScreensTest {
         launch()
         val c = Store.todayConcept()
         shot("10-today")
+        // Today opens at the top, on the concept itself.
+        compose.onAllNodesWithText(c.title).onFirst().assertIsDisplayed()
         compose.onNodeWithText("🔒  Make your prediction above to unlock the study.").assertExists()
         // The real-world case opens with the study, so it can't give the answer away.
         compose.onAllNodesWithText("In the real world".uppercase()).assertCountEquals(0)
@@ -132,9 +136,13 @@ class ScreensTest {
         }
 
         // An if-then plan for the mission.
-        scrollTo("Save my plan")
+        // Nothing on Today may take focus by itself: the screen must open at the top, with no keyboard.
+        assertEquals(0, compose.onAllNodes(hasSetTextAction() and isFocused()).fetchSemanticsNodes().size)
+        scrollTo("Make an if-then plan", substring = true)
+        compose.onNodeWithText("Make an if-then plan", substring = true).performClick()
+        compose.waitForIdle()
         compose.onAllNodes(hasSetTextAction()).onFirst().performTextInput("At the 3 pm meeting, I'll make the first offer")
-        compose.onNodeWithText("Save my plan").performClick()
+        compose.onNodeWithText("Save my plan").performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals("At the 3 pm meeting, I'll make the first offer", Store.state.value.plans[Store.today()]?.text)
         scrollTo("How did it show up in your day?")
