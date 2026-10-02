@@ -80,16 +80,19 @@ class AnkiDroidIntegrationTest {
         // Started from the shell: a background app can't start another app's activity.
         device.executeShellCommand("monkey -p ${AnkiDroidHelper.ANKIDROID_PACKAGE} -c android.intent.category.LAUNCHER 1")
         device.wait(Until.hasObject(By.pkg(AnkiDroidHelper.ANKIDROID_PACKAGE).depth(0)), 15_000)
-        // Click through first-run screens: intro, permission prompts, "get started".
+        // Click through first-run screens: intro, permission prompts, "get started". CI has
+        // already granted "All files access", which is what enables AnkiDroid's Continue.
         val buttons = Pattern.compile("(?i)(get started|continue|ok|allow|accept|skip|next|done)")
-        repeat(8) {
+        repeat(12) { step ->
             if (providerWorks()) return
-            val button = device.findObject(By.text(buttons))
+            val onScreen = device.findObjects(By.text(Pattern.compile(".+"))).joinToString(" | ") { it.text }
+            Log.i(TAG, "first-run step $step, screen: $onScreen")
+            val button = device.findObject(By.text(buttons).enabled(true))
             if (button != null) {
                 Log.i(TAG, "tapping '${button.text}'")
                 button.click()
             }
-            SystemClock.sleep(2_000)
+            SystemClock.sleep(2_500)
         }
     }
 

@@ -14,7 +14,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ankiwear.wear.screens.ReviewTags
-import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,6 +55,16 @@ class SideButtonKeyTest {
         rule.waitForIdle()
     }
 
+    /**
+     * Back on the root screen: Android 12+ moves the task to the background (CREATED)
+     * instead of finishing it (DESTROYED). Either way the app has left the screen.
+     */
+    private fun assertLeftTheForeground(scenario: ActivityScenario<MainActivity>) {
+        SystemClock.sleep(800)
+        val state = scenario.state
+        assertTrue("activity still $state", state == Lifecycle.State.CREATED || state == Lifecycle.State.DESTROYED)
+    }
+
     @Test
     fun pressRevealsThenPressGradesGood() {
         val scenario = launchDemo()
@@ -68,8 +78,7 @@ class SideButtonKeyTest {
         press() // from "Done!" back to the deck list …
         rule.onNodeWithText("Basics").assertExists()
         press() // … where it is the ordinary Back again and leaves the app
-        SystemClock.sleep(500)
-        assertEquals(Lifecycle.State.DESTROYED, scenario.state)
+        assertLeftTheForeground(scenario)
     }
 
     @Test
@@ -91,7 +100,6 @@ class SideButtonKeyTest {
         val scenario = launchDemo()
         rule.onNodeWithText("Basics").assertExists()
         press()
-        SystemClock.sleep(500)
-        assertEquals(Lifecycle.State.DESTROYED, scenario.state)
+        assertLeftTheForeground(scenario)
     }
 }

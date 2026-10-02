@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,11 +32,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -174,6 +177,7 @@ fun ReviewScreen(
         }
     }
 
+    val insets = rememberScreenInsets()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -201,6 +205,7 @@ fun ReviewScreen(
             // Cards without any tappable cloze keep the original "tap anywhere" reveal.
             onTapContent = if (!showAnswer && !rendered.hasTappableCloze) reveal else null,
             onFocusModeChange = onFocusModeChange,
+            insets = insets,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -213,10 +218,11 @@ fun ReviewScreen(
                 layout = layout,
                 nextReviewTimes = card.nextReviewTimes,
                 enabled = !hasAnswered,
-                onEase = grade
+                onEase = grade,
+                sidePadding = insets.controlsSide
             )
         }
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(insets.bottom))
     }
 }
 
@@ -279,6 +285,28 @@ class CardView(
     val hasTappableCloze: Boolean = body.blocks.any { b -> b.runs.any { it.cloze?.toggleable == true } }
 }
 
+/**
+ * Insets that keep content inside a round display. On a round watch the bottom corners do
+ * not exist, so the answer buttons sit higher and narrower, and long text gets wider side
+ * margins. Fractions of the screen width, so 40 mm and 44 mm watches both fit.
+ */
+@Immutable
+class ScreenInsets(val listSide: Dp, val listTop: Dp, val controlsSide: Dp, val bottom: Dp)
+
+@Composable
+fun rememberScreenInsets(): ScreenInsets {
+    val config = LocalConfiguration.current
+    val width = config.screenWidthDp.dp
+    val round = config.isScreenRound
+    return remember(width, round) {
+        if (round) {
+            ScreenInsets(listSide = width * 0.08f, listTop = 10.dp, controlsSide = width * 0.19f, bottom = width * 0.09f)
+        } else {
+            ScreenInsets(listSide = 8.dp, listTop = 4.dp, controlsSide = 12.dp, bottom = 8.dp)
+        }
+    }
+}
+
 /** One line of the scrolling card body. */
 private sealed class Line {
     class Body(val block: Block) : Line()
@@ -298,6 +326,7 @@ private fun CardBody(
     onToggle: (Int) -> Unit,
     onTapContent: (() -> Unit)?,
     onFocusModeChange: (Boolean) -> Unit,
+    insets: ScreenInsets,
     modifier: Modifier = Modifier
 ) {
     val body = rendered.body
@@ -346,7 +375,7 @@ private fun CardBody(
         state = listState,
         anchorType = ScalingLazyListAnchorType.ItemStart,
         autoCentering = null,
-        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 16.dp),
+        contentPadding = PaddingValues(start = insets.listSide, end = insets.listSide, top = insets.listTop, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
         scalingParams = ScalingLazyColumnDefaults.scalingParams(edgeScale = 0.9f, edgeAlpha = 0.6f)
     ) {
@@ -469,7 +498,8 @@ private fun GradeButtons(
     layout: GradeLayout,
     nextReviewTimes: List<String>,
     enabled: Boolean,
-    onEase: (Int) -> Unit
+    onEase: (Int) -> Unit,
+    sidePadding: Dp
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -488,7 +518,7 @@ private fun GradeButtons(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = sidePadding),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             val hard = layout.hard

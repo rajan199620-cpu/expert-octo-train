@@ -15,8 +15,8 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.text.TextLayoutResult
 import com.ankiwear.wear.screens.ReviewTags
@@ -33,19 +33,22 @@ fun ComposeTestRule.allText(): String {
     return sb.toString()
 }
 
-/** Brings a node into the card list's viewport, by semantics scroll or by swiping. */
+/**
+ * Brings a node into the card list's viewport: back towards the top first, then down. The
+ * list may have opened scrolled to the tested cloze, so the target can be on either side.
+ */
 fun ComposeTestRule.scrollContentTo(matcher: SemanticsMatcher) {
-    try {
-        onNodeWithTag(ReviewTags.CONTENT).performScrollToNode(matcher)
+    fun found() = onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+    if (found()) return
+    repeat(15) {
+        onNodeWithTag(ReviewTags.CONTENT).performTouchInput { swipeDown() }
         waitForIdle()
-        return
-    } catch (_: Throwable) {
-        // Fall back to swiping below.
+        if (found()) return
     }
     repeat(40) {
-        if (onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) return
         onNodeWithTag(ReviewTags.CONTENT).performTouchInput { swipeUp() }
         waitForIdle()
+        if (found()) return
     }
 }
 

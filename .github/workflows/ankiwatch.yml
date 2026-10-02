@@ -172,7 +172,7 @@ jobs:
           echo "AnkiDroid release: $tag"
           gh release view "$tag" --repo ankidroid/Anki-Android --json assets --jq '.assets[].name'
           asset=$(gh release view "$tag" --repo ankidroid/Anki-Android --json assets \
-            --jq '[.assets[].name | select(endswith(".apk"))] | (map(select(test("x86_64") and test("full"))) + map(select(test("x86_64"))) + map(select(test("universal")))) | .[0] // empty')
+            --jq '[.assets[].name | select(endswith(".apk"))] | (map(select(test("^AnkiDroid-[0-9.]+-full-universal[.]apk$"))) + map(select(test("x86_64")))) | .[0] // empty')
           if [ -z "$asset" ]; then echo "::error::No emulator-compatible AnkiDroid APK in $tag"; exit 1; fi
           echo "Using $asset"
           gh release download "$tag" --repo ankidroid/Anki-Android --pattern "$asset" --output ankidroid.apk
@@ -189,15 +189,23 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          # The full build asks for "All files access" on first run (its Continue button stays
+          # disabled until then); grant it the way the Settings toggle would.
           script: |
             adb install -r ankidroid.apk
+            adb shell appops set --uid com.ichi2.anki MANAGE_EXTERNAL_STORAGE allow
+            adb shell pm grant com.ichi2.anki android.permission.POST_NOTIFICATIONS || true
             ./ankiwatch/gradlew -p ankiwatch --no-daemon :mobile:connectedDebugAndroidTest || touch phone-failed
             adb logcat -d -s AnkiWatchIT:* AnkiDroidHelper:* TestRunner:I AndroidRuntime:E > phone-logcat.log || true
+            adb logcat -d > full-logcat.log || true
             test ! -f phone-failed
 
       - name: Logs
         if: always()
-        run: cat phone-logcat.log || true
+        run: |
+          cat phone-logcat.log || true
+          echo "----- AnkiDroid log lines -----"
+          grep -iE "ichi2|AnkiDroid" full-logcat.log | grep -viE "chatty|AnkiWatchIT" | tail -150 || true
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -205,5 +213,6 @@ jobs:
           name: phone-ankidroid-results
           path: |
             phone-logcat.log
+            full-logcat.log
             ankiwatch/mobile/build/reports/androidTests/
             ankiwatch/mobile/build/outputs/androidTest-results/

@@ -14,10 +14,12 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.ankiwatch.core.CardRenderer
 import com.ankiwatch.core.RenderOptions
 import com.ankiwear.wear.model.CardData
@@ -30,9 +32,11 @@ import com.ankiwear.wear.theme.AnkiWearTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
@@ -258,6 +262,45 @@ class ReviewScreenTest {
         rule.runOnIdle { SideButtons.handler!!.invoke(Press.LONG) } // Again
         rule.waitForIdle()
         assertEquals(listOf(3, 1), answers)
+    }
+
+    /**
+     * On a round watch the screen's corners don't exist. Every control must sit inside the
+     * display circle: checked at the 45° points of each pill's rounded corners (the parts
+     * nearest the circle's edge) and at its side midpoints.
+     */
+    @Test
+    fun controlsFitTheRoundScreen() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        assumeTrue("not a round display", context.resources.configuration.isScreenRound)
+        show(lawC3)
+        val root = rule.onRoot().fetchSemanticsNode().boundsInRoot
+        val cx = root.center.x
+        val cy = root.center.y
+        val radius = minOf(root.width, root.height) / 2f
+
+        fun assertInsideCircle(tag: String) {
+            val b = rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+            val r = minOf(b.height, b.width) / 2f
+            val inset = r * (1f - 1f / sqrt(2f))
+            val points = listOf(
+                b.left + inset to b.top + inset, b.right - inset to b.top + inset,
+                b.left + inset to b.bottom - inset, b.right - inset to b.bottom - inset,
+                b.left to b.center.y, b.right to b.center.y
+            )
+            for ((x, y) in points) {
+                val d = sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy))
+                assertTrue("$tag point ($x, $y) is ${d - radius}px outside the round screen (bounds $b, screen $root)", d <= radius)
+            }
+        }
+
+        assertInsideCircle(ReviewTags.SHOW_ANSWER)
+        rule.screenshot("round-question")
+        rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+        rule.waitForIdle()
+        assertInsideCircle(ReviewTags.ease(1))
+        assertInsideCircle(ReviewTags.ease(3))
+        rule.screenshot("round-answer")
     }
 
     @Test
