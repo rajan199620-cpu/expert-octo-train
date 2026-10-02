@@ -48,6 +48,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -271,7 +272,16 @@ private fun TabBar(selected: Tab, tint: Color, onTab: (Tab) -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 TabIcon(t, color)
-                Text(t.label, style = MaterialTheme.typography.labelSmall, color = if (on) tint else p.muted, maxLines = 1)
+                // Five labels share the width: let them grow with the system font, but only so far.
+                val scale = LocalDensity.current.fontScale
+                val style = MaterialTheme.typography.labelSmall
+                Text(
+                    t.label,
+                    style = style.copy(fontSize = style.fontSize * (minOf(scale, 1.15f) / scale)),
+                    color = if (on) tint else p.muted,
+                    maxLines = 1,
+                    softWrap = false,
+                )
             }
         }
     }
