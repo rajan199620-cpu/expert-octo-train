@@ -64,6 +64,21 @@ class NotePlannerTest {
     }
 
     @Test
+    fun imageOcclusionKeepsItsTemplate() {
+        // AnkiDroid's stock Image Occlusion type, as listed by its provider.
+        val plan = NotePlanner.plan(
+            NotePlanner.MODEL_TYPE_CLOZE,
+            listOf("Occlusion", "Image", "Header", "Back Extra", "Comments"),
+            listOf(
+                "{{c1::image-occlusion:rect:left=.1:top=.2:width=.3:height=.1:oi=1}}",
+                "<img src=\"diagram.png\">", "Organs", "", ""
+            ),
+            cardOrd = 0
+        )
+        assertTrue(plan is NotePlanner.Plan.Text)
+    }
+
+    @Test
     fun clozeTypeWithoutAnyClozeIsText() {
         assertTrue(NotePlanner.plan(1, listOf("Content"), listOf("no clozes"), 0) is NotePlanner.Plan.Text)
     }

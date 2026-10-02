@@ -3,11 +3,10 @@ package com.ankiwear.wear
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -51,6 +50,7 @@ class ReviewScreenTest {
 
     private val answers = mutableListOf<Int>()
     private lateinit var cardState: MutableState<CardData?>
+    private lateinit var focusState: MutableState<Boolean>
 
     private val lawC3 get() = DemoContent.cards(1L)[0] // tests c3 ("second mode" + "condition")
     private val lawC5 get() = DemoContent.cards(1L)[1] // ord 4 → c5 (punishment)
@@ -65,14 +65,15 @@ class ReviewScreenTest {
         rule.setContent {
             val state = remember { mutableStateOf<CardData?>(card) }
             cardState = state
-            var focusMode by remember { mutableStateOf(focus) }
+            val focusMode = remember { mutableStateOf(focus) }
+            focusState = focusMode
             val current = state.value
             AnkiWearTheme {
                 ReviewScreen(
                     card = current,
                     revisionKey = "${current?.noteId}:${current?.cardOrd}:${current?.hashCode()}",
-                    focusMode = focusMode,
-                    onFocusModeChange = { focusMode = it },
+                    focusMode = focusMode.value,
+                    onFocusModeChange = { focusMode.value = it },
                     onAnswer = { _, _, ease, _ -> answers.add(ease) },
                     onFinished = {}
                 )
@@ -84,6 +85,12 @@ class ReviewScreenTest {
     private fun switchTo(card: CardData) {
         rule.runOnIdle { cardState.value = card }
         rule.waitForIdle()
+    }
+
+    /** Index of the first block holding the tested cloze on the given side, or -1. */
+    private fun firstTestedBlock(card: CardData, answer: Boolean): Int {
+        val cloze = card.cloze!!
+        return CardRenderer.render(cloze.content, RenderOptions(activeOrd = cloze.clozeNumber, showAnswer = answer)).firstGenuineBlock()
     }
 
     private fun blockIndexContaining(card: CardData, text: String, answer: Boolean = false): Int {
@@ -113,7 +120,7 @@ class ReviewScreenTest {
         // The '#' anchor is context on sibling cards …
         switchTo(lawC3)
         rule.scrollContentTo(hasText("A person commits the example offence", substring = true))
-        assertTrue(rule.allText().contains("A person commits the example offence"))
+        rule.assertOnScreen("A person commits the example offence")
         // … but tested (covered) on its own card.
         switchTo(lawC1)
         assertFalse(rule.allText().contains("A person commits the example offence"))
@@ -124,18 +131,43 @@ class ReviewScreenTest {
     fun focusModeShowsTestedClozeWithItsContext() {
         show(lawC5, focus = true)
         val text = rule.allText()
-        assertTrue(text, text.contains("Act §999 — Example offence"))
-        assertTrue(text, text.contains("Punishment"))
-        assertTrue(text, text.contains("[punishment]"))
         assertFalse("focus mode should hide the limbs:\n$text", text.contains("First limb"))
+        // Heading, column title and the tested cloze all readable at once, without scrolling.
+        rule.assertOnScreen("Act §999")
+        rule.assertOnScreen("Punishment")
+        rule.assertOnScreen("[punishment]")
         rule.screenshot("law-c5-focus-question")
 
         rule.scrollContentTo(hasTestTag(ReviewTags.FOCUS_TOGGLE))
         rule.onNodeWithTag(ReviewTags.FOCUS_TOGGLE).performClick()
         rule.waitForIdle()
-        rule.scrollContentTo(hasText("First limb", substring = true))
-        assertTrue(rule.allText().contains("First limb"))
+        // The whole note opens on the tested cloze …
+        rule.assertOnScreen("[punishment]")
         rule.screenshot("law-c5-whole-note")
+        // … and the rest is a scroll away.
+        rule.scrollContentTo(hasText("First limb", substring = true))
+        rule.assertOnScreen("First limb")
+    }
+
+    /**
+     * Whatever the note's length, each side opens with the tested cloze on screen: covered on
+     * the question side, its answer on the answer side. Checked by geometry, not by text
+     * merely existing in the composition.
+     */
+    @Test
+    fun testedClozeIsInViewWhenEachSideOpens() {
+        show(lawC3, focus = true)
+        for (focus in listOf(true, false)) {
+            rule.runOnIdle { focusState.value = focus }
+            for (card in listOf(lawC3, lawC5, lawC1, anthroC4)) {
+                val name = "c${card.cloze!!.clozeNumber} of note ${card.noteId}, focus=$focus"
+                switchTo(card)
+                rule.assertRowInView(ReviewTags.block(firstTestedBlock(card, answer = false)), "$name question")
+                rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+                rule.waitForIdle()
+                rule.assertRowInView(ReviewTags.block(firstTestedBlock(card, answer = true)), "$name answer")
+            }
+        }
     }
 
     @Test
@@ -162,9 +194,9 @@ class ReviewScreenTest {
         rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
         rule.waitForIdle()
         val text = rule.allText()
-        assertTrue(text, text.contains("by agreeing with others"))
-        assertTrue(text, text.contains("an act in pursuance must follow"))
         assertFalse(text, text.contains("persuading"))
+        rule.assertOnScreen("by agreeing with others")
+        rule.assertOnScreen("an act in pursuance must follow")
     }
 
     @Test
@@ -174,10 +206,14 @@ class ReviewScreenTest {
         rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
         rule.waitForIdle()
         rule.screenshot("law-c3-focus-answer")
+        rule.assertOnScreen("an act in pursuance must follow")
         rule.scrollContentTo(hasText("Definitional section", substring = true))
-        assertTrue(rule.allText().contains("Definitional section"))
+        rule.assertOnScreen("Definitional section")
         rule.scrollContentTo(hasText("Memory: P-A-H", substring = true))
-        assertTrue(rule.allText().contains("Memory: P-A-H"))
+        rule.assertOnScreen("Memory: P-A-H")
+        // The hold grades' intervals close the answer side.
+        rule.scrollContentTo(hasText("hold: Hard 6m · Easy 4d"))
+        rule.assertOnScreen("hold: Hard 6m · Easy 4d")
         rule.screenshot("law-c3-extras")
     }
 
@@ -186,13 +222,14 @@ class ReviewScreenTest {
         show(anthroC4, focus = true)
         val text = rule.allText()
         assertTrue(text, text.contains("Theories of the origin of the institution"))
-        assertTrue(text, text.contains("Occupational theory"))
-        assertTrue(text, text.contains("Critique: […]"))
+        assertFalse(text, text.contains("Racial theory"))
         assertFalse(text, text.contains("ignores ritual status"))
+        rule.assertOnScreen("Occupational theory")
+        rule.assertOnScreen("Critique: […]")
         rule.screenshot("anthro-c4-question")
         rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
         rule.waitForIdle()
-        assertTrue(rule.allText().contains("ignores ritual status"))
+        rule.assertOnScreen("ignores ritual status")
         rule.screenshot("anthro-c4-answer")
     }
 
@@ -203,6 +240,11 @@ class ReviewScreenTest {
         show(lawC3)
         rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
         rule.waitForIdle()
+        // Each pill carries its own next interval.
+        rule.onNode(hasText("<1m") and hasAnyAncestor(hasTestTag(ReviewTags.ease(1))), useUnmergedTree = true).assertExists()
+        rule.onNode(hasText("1d") and hasAnyAncestor(hasTestTag(ReviewTags.ease(3))), useUnmergedTree = true).assertExists()
+        rule.assertOnScreen("Again")
+        rule.assertOnScreen("Good")
         rule.onNodeWithTag(ReviewTags.ease(3)).performClick()
         rule.waitForIdle()
         assertEquals(listOf(3), answers)
@@ -336,7 +378,7 @@ class ReviewScreenTest {
         rule.onNodeWithTag(ReviewTags.block(0)).performClick()
         rule.waitForIdle()
         rule.onNodeWithTag(ReviewTags.ease(3)).assertExists()
-        assertTrue(rule.allText().contains("When each card is due next"))
+        rule.assertOnScreen("When each card is due next")
         rule.screenshot("basic-answer")
     }
 
@@ -395,8 +437,12 @@ class ReviewScreenTest {
             for ((_, list) in secrets) for (s in list) {
                 assertFalse("card $i leaked $s\n${card.cloze!!.content}\n$text", text.contains(s))
             }
+            val question = firstTestedBlock(card, answer = false)
+            if (question >= 0) rule.assertRowInView(ReviewTags.block(question), "card $i question\n${card.cloze!!.content}")
             rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
             rule.waitForIdle()
+            val answer = firstTestedBlock(card, answer = true)
+            if (answer >= 0) rule.assertRowInView(ReviewTags.block(answer), "card $i answer\n${card.cloze!!.content}")
             val before = answers.size
             rule.onNodeWithTag(if (i % 3 == 0) ReviewTags.ease(1) else ReviewTags.ease(3)).performClick()
             rule.waitForIdle()

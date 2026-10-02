@@ -66,6 +66,10 @@ object NotePlanner {
         if (contentIndex < 0) contentIndex = values.indexOfFirst { it.contains("{{c$clozeNumber::") }
         if (contentIndex < 0) contentIndex = values.indexOfFirst { ANY_CLOZE.containsMatchIn(it) }
         if (contentIndex < 0) return Plan.Text
+        // Image Occlusion notes are cloze notes whose "answers" are shape coordinates
+        // ({{c1::image-occlusion:rect:left=…}}); laying those out as text means nothing, so
+        // they keep their template (header + image placeholder).
+        if (values[contentIndex].contains("image-occlusion:")) return Plan.Text
 
         val extras = ArrayList<Pair<String, String>>()
         for (k in 0 until count) {

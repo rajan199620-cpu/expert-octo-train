@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumnDefaults
 import androidx.wear.compose.foundation.lazy.ScalingLazyListAnchorType
+import androidx.wear.compose.foundation.lazy.ScalingLazyListState
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
@@ -68,6 +70,7 @@ import com.ankiwear.wear.theme.DeckNewColor
 import com.ankiwear.wear.theme.DeckReviewColor
 import com.ankiwear.wear.theme.EaseAgainColor
 import com.ankiwear.wear.theme.EaseGoodColor
+import kotlinx.coroutines.flow.first
 
 /** Test tags used by the instrumented UI tests. */
 object ReviewTags {
@@ -193,7 +196,7 @@ fun ReviewScreen(
             activeType = currentCardType,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 14.dp)
+                .padding(top = 10.dp)
         )
 
         CardBody(
@@ -206,6 +209,8 @@ fun ReviewScreen(
             onTapContent = if (!showAnswer && !rendered.hasTappableCloze) reveal else null,
             onFocusModeChange = onFocusModeChange,
             insets = insets,
+            // Under the answer rather than above the buttons: the card keeps the room.
+            footer = if (showAnswer) layout.holdCaption(card.nextReviewTimes) else null,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -300,7 +305,7 @@ fun rememberScreenInsets(): ScreenInsets {
     val round = config.isScreenRound
     return remember(width, round) {
         if (round) {
-            ScreenInsets(listSide = width * 0.08f, listTop = 10.dp, controlsSide = width * 0.19f, bottom = width * 0.09f)
+            ScreenInsets(listSide = width * 0.08f, listTop = 10.dp, controlsSide = width * 0.19f, bottom = width * 0.06f)
         } else {
             ScreenInsets(listSide = 8.dp, listTop = 4.dp, controlsSide = 12.dp, bottom = 8.dp)
         }
@@ -314,6 +319,7 @@ private sealed class Line {
     class FocusToggle(val hiddenCount: Int, val focused: Boolean) : Line()
     class ExtraHeader(val label: String) : Line()
     class Extra(val extraIndex: Int, val block: Block) : Line()
+    class Footer(val text: String) : Line()
     object Empty : Line()
 }
 
@@ -327,6 +333,7 @@ private fun CardBody(
     onTapContent: (() -> Unit)?,
     onFocusModeChange: (Boolean) -> Unit,
     insets: ScreenInsets,
+    footer: String?,
     modifier: Modifier = Modifier
 ) {
     val body = rendered.body
@@ -334,7 +341,7 @@ private fun CardBody(
     val canFocus = focus != null && focus.size < body.blocks.size
     val focused = focusMode && canFocus
 
-    val rows = remember(rendered, focused) {
+    val rows = remember(rendered, focused, footer) {
         buildList {
             if (body.blocks.isEmpty()) add(Line.Empty)
             if (focused) {
@@ -352,22 +359,31 @@ private fun CardBody(
                 add(Line.ExtraHeader(label))
                 field.blocks.forEach { add(Line.Extra(k, it)) }
             }
+            if (footer != null) add(Line.Footer(footer))
         }
     }
 
-    // Where to start reading: the tested cloze in a full note, Anki's answer divider on the
-    // answer side of a template card, otherwise the top.
-    val target = remember(rows, showAnswer) {
+    // The rows that must be on screen when a side opens: those holding the tested cloze
+    // (covered or open), or on a template card's answer side everything after Anki's answer
+    // divider. Null: read from the top.
+    val span = remember(rows, showAnswer) {
         val answerStart = if (!rendered.isCloze && showAnswer) body.answerStartBlock() else -1
-        val index = rows.indexOfFirst { row ->
-            row is Line.Body && (if (answerStart >= 0) row.block.index == answerStart else row.block.containsGenuine && !focused)
-        }
-        index.coerceAtLeast(0)
+        fun isTarget(row: Line) = row is Line.Body &&
+            (if (answerStart >= 0) row.block.index >= answerStart else rendered.isCloze && row.block.containsGenuine)
+        val first = rows.indexOfFirst(::isTarget)
+        if (first < 0) null else first..rows.indexOfLast(::isTarget)
     }
 
+    val currentSpan by rememberUpdatedState(span)
     val listState = rememberScalingLazyListState(initialCenterItemIndex = 0)
+    // Each new card, side or mode opens at the top and then scrolls only as far as it takes
+    // to show the span. Tapping clozes open or shut never moves the list.
     LaunchedEffect(revisionKey, showAnswer, focused) {
-        listState.scrollToItem(target)
+        listState.scrollToItem(0)
+        // A list that was just created lays itself out once before it can scroll; until then
+        // its rows report zero alpha.
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.any { it.alpha > 0f } }.first { it }
+        currentSpan?.let { listState.bringIntoView(it) }
     }
 
     ScalingLazyColumn(
@@ -375,9 +391,11 @@ private fun CardBody(
         state = listState,
         anchorType = ScalingLazyListAnchorType.ItemStart,
         autoCentering = null,
-        contentPadding = PaddingValues(start = insets.listSide, end = insets.listSide, top = insets.listTop, bottom = 16.dp),
+        contentPadding = PaddingValues(start = insets.listSide, end = insets.listSide, top = insets.listTop, bottom = 8.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
-        scalingParams = ScalingLazyColumnDefaults.scalingParams(edgeScale = 0.9f, edgeAlpha = 0.6f)
+        // No shrinking or fading towards the edges: this is text to read, and the tested
+        // cloze often sits at the bottom of the screen.
+        scalingParams = ScalingLazyColumnDefaults.scalingParams(edgeScale = 1f, edgeAlpha = 1f)
     ) {
         items(rows) { row ->
             when (row) {
@@ -386,6 +404,8 @@ private fun CardBody(
                 Line.Gap -> Text(
                     text = "⋯",
                     color = MaterialTheme.colors.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 12.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -412,6 +432,15 @@ private fun CardBody(
                         .padding(top = 4.dp)
                         .testTag(ReviewTags.FOCUS_TOGGLE)
                 )
+                is Line.Footer -> Text(
+                    text = row.text,
+                    color = MaterialTheme.colors.onSurfaceVariant,
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp)
+                )
                 Line.Empty -> Text(
                     text = "(empty card)",
                     color = MaterialTheme.colors.onSurfaceVariant,
@@ -421,6 +450,32 @@ private fun CardBody(
             }
         }
     }
+}
+
+/**
+ * Scrolls the least distance that shows rows [span] whole, so as much as fits of what comes
+ * before them (the note's heading, the parent list item) stays in view. A span taller than
+ * the list is shown from its first line. Expects the list laid out from the top.
+ */
+private suspend fun ScalingLazyListState.bringIntoView(span: IntRange) {
+    val info = layoutInfo
+    val center = info.viewportSize.height / 2
+    val top = info.beforeContentPadding
+    val bottom = info.viewportSize.height - info.afterContentPadding
+    fun rowTop(row: Int) = layoutInfo.visibleItemsInfo.firstOrNull { it.index == row }?.let { center + it.offset }
+    // Already whole on screen (the usual case for a short note): leave the top in view.
+    val shownLast = layoutInfo.visibleItemsInfo.firstOrNull { it.index == span.last }
+    val shownTop = rowTop(span.first)
+    if (shownLast != null && shownTop != null && shownTop >= top && center + shownLast.offset + shownLast.size <= bottom) return
+    // With ItemStart anchoring, scrollToItem puts a row's top edge on the centre line, less
+    // scrollOffset. Lay the span out from the list's top edge first …
+    scrollToItem(span.first, center - top)
+    val firstTop = rowTop(span.first) ?: return
+    val last = layoutInfo.visibleItemsInfo.firstOrNull { it.index == span.last } ?: return
+    val spanBottom = center + last.offset + last.size
+    if (spanBottom > bottom) return
+    // … then, as it fits, slide it down to the bottom edge to bring back the context above.
+    scrollToItem(span.first, center - (bottom - (spanBottom - firstTop)))
 }
 
 private fun extraHeaderColor(label: String): Color = when (label.lowercase()) {
@@ -491,7 +546,8 @@ private fun ShowAnswerButton(onClick: () -> Unit) {
 
 /**
  * Two big answer buttons, Again and Good. Holding Again answers Hard and holding Good
- * answers Easy, so the rarely used grades stay reachable without crowding the screen.
+ * answers Easy, so the rarely used grades stay reachable without crowding the screen. Each
+ * pill shows its next interval under the label; the hold intervals are listed under the card.
  */
 @Composable
 private fun GradeButtons(
@@ -501,51 +557,36 @@ private fun GradeButtons(
     onEase: (Int) -> Unit,
     sidePadding: Dp
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = sidePadding),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        layout.holdCaption(nextReviewTimes)?.let { caption ->
-            Text(
-                text = caption,
-                fontSize = 9.sp,
-                color = MaterialTheme.colors.onSurfaceVariant,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        Row(
+        val hard = layout.hard
+        val easy = layout.easy
+        GradeButton(
+            label = "Again",
+            interval = layout.interval(nextReviewTimes, layout.again),
+            color = EaseAgainColor,
+            enabled = enabled,
+            onClick = { onEase(layout.again) },
+            onLongClick = if (hard != null) ({ onEase(hard) }) else null,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = sidePadding),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            val hard = layout.hard
-            val easy = layout.easy
-            GradeButton(
-                label = "Again",
-                interval = layout.interval(nextReviewTimes, layout.again),
-                color = EaseAgainColor,
-                enabled = enabled,
-                onClick = { onEase(layout.again) },
-                onLongClick = if (hard != null) ({ onEase(hard) }) else null,
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag(ReviewTags.ease(layout.again))
-            )
-            GradeButton(
-                label = "Good",
-                interval = layout.interval(nextReviewTimes, layout.good),
-                color = EaseGoodColor,
-                enabled = enabled,
-                onClick = { onEase(layout.good) },
-                onLongClick = if (easy != null) ({ onEase(easy) }) else null,
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag(ReviewTags.ease(layout.good))
-            )
-        }
+                .weight(1f)
+                .testTag(ReviewTags.ease(layout.again))
+        )
+        GradeButton(
+            label = "Good",
+            interval = layout.interval(nextReviewTimes, layout.good),
+            color = EaseGoodColor,
+            enabled = enabled,
+            onClick = { onEase(layout.good) },
+            onLongClick = if (easy != null) ({ onEase(easy) }) else null,
+            modifier = Modifier
+                .weight(1f)
+                .testTag(ReviewTags.ease(layout.good))
+        )
     }
 }
 
@@ -561,39 +602,34 @@ private fun GradeButton(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = modifier
+            .height(44.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(if (enabled) color else color.copy(alpha = 0.4f))
+            .combinedClickable(
+                enabled = enabled,
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        // Interval prediction above the button (e.g. "10m", "1d") — same data
-        // AnkiDroid shows under its review buttons. Empty string keeps vertical
-        // alignment stable across cards where some intervals are missing.
         Text(
-            text = interval ?: "",
-            fontSize = 10.sp,
-            color = MaterialTheme.colors.onSurfaceVariant,
-            maxLines = 1,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
+            text = label,
+            fontSize = 14.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black,
+            maxLines = 1
         )
-        Spacer(modifier = Modifier.height(2.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(38.dp)
-                .clip(RoundedCornerShape(19.dp))
-                .background(if (enabled) color else color.copy(alpha = 0.4f))
-                .combinedClickable(
-                    enabled = enabled,
-                    onClick = onClick,
-                    onLongClick = onLongClick
-                ),
-            contentAlignment = Alignment.Center
-        ) {
+        // Interval prediction (e.g. "10m", "1d"), the same data AnkiDroid shows on its
+        // buttons.
+        if (interval != null) {
             Text(
-                text = label,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black,
+                text = interval,
+                fontSize = 10.sp,
+                lineHeight = 11.sp,
+                color = Color.Black.copy(alpha = 0.7f),
                 maxLines = 1
             )
         }

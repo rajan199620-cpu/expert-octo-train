@@ -15,9 +15,9 @@ Based on [AnkiWatch](https://github.com/OleksandrShabaldas/AnkiWatch) by Oleksan
 | **Blue box** `[hint]` | A sibling cloze from the same note. Tap to open or close it. |
 | Plain text from a `#` cloze | Your anchor statement, shown as context on sibling cards (tested on its own card). |
 | **Show answer** | Opens the tested cloze and shows the note's Note / Mnemonics / Extra. |
-| **Again** / **Good** | Grade the card. **Hold Again = Hard**, **hold Good = Easy**. |
+| **Again** / **Good** | Grade the card. **Hold Again = Hard**, **hold Good = Easy**. Each button shows its next interval; the Hard/Easy intervals are at the end of the answer. |
 | **Bottom side button** | Press: show the answer, then press again for **Good**. Hold (½ s): **Again**. Ignored while the next cards load; on *Done!* it returns to the decks. |
-| Whole note / Focus on cloze | Focus mode (default) shows only the part of a long note holding the tested cloze, plus its heading or parent list item. |
+| Whole note / Focus on cloze | Focus mode (default) shows only the part of a long note holding the tested cloze, plus its heading or parent list item. Either way a card opens scrolled so the tested cloze (then its answer) is fully on screen. |
 | Bezel / swipe | Scroll. Swipe right to leave the review. |
 
 The top (Home) button is reserved by Wear OS and is never sent to apps. Tip: Settings →
@@ -111,9 +111,11 @@ Never commit the keystore; this repository is public.
   always does), mutation fuzzing of real card layouts, a sanitizer that must not change what
   is shown, truncation that must never uncover an answer, 1 MB and 50,000-deep inputs.
   Deliberately injected bugs are caught by the suite.
-- Watch UI on a Wear OS emulator: covered answers absent from the screen while walking the
-  whole note, peeking, focus mode, grading buttons and holds, real side-button key events,
-  120 random cards, a 40-section note, malformed input; screenshots captured.
+- Watch UI on a round Wear OS emulator: covered answers absent from the screen while walking
+  the whole note, the tested cloze and its answer on screen when each side opens (checked by
+  position inside the display circle, not just presence), peeking, focus mode, grading buttons
+  and holds, real side-button key events, 120 random cards, a 40-section note, malformed
+  input; screenshots captured.
 - Phone code against the real AnkiDroid app on an emulator: cloze fields and numbers, deck
   counts, answers landing in AnkiDroid's scheduler, oversized notes trimmed under the
   Bluetooth payload limit, and a multi-deck answer loop.
