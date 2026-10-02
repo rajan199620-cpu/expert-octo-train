@@ -70,8 +70,14 @@ class ScreensTest {
         compose.waitForIdle()
     }
 
+    /** Plain scrolling columns compose every child, so scroll the node itself; lazy lists need the list to search. */
     private fun scrollTo(text: String, substring: Boolean = false) {
-        compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText(text, substring = substring))
+        val nodes = compose.onAllNodesWithText(text, substring = substring)
+        if (nodes.fetchSemanticsNodes().isNotEmpty()) {
+            nodes.onFirst().performScrollTo()
+        } else {
+            compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText(text, substring = substring))
+        }
         compose.waitForIdle()
     }
 
@@ -252,6 +258,7 @@ class ScreensTest {
         scrollTo("Show older notes", substring = true)
         compose.onNodeWithText("Show older notes", substring = true).performClick()
         compose.waitForIdle()
+        scrollTo("Show older notes (630 more)")
         compose.onNodeWithText("Show older notes (630 more)").assertExists()
         tab("You")
         shot("45-you-3000")

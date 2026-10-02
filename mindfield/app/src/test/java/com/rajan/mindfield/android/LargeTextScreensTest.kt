@@ -68,8 +68,14 @@ class LargeTextScreensTest {
         compose.waitForIdle()
     }
 
-    private fun scrollTo(text: String) {
-        compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText(text))
+    /** Plain scrolling columns compose every child, so scroll the node itself; lazy lists need the list to search. */
+    private fun scrollTo(text: String, substring: Boolean = false) {
+        val nodes = compose.onAllNodesWithText(text, substring = substring)
+        if (nodes.fetchSemanticsNodes().isNotEmpty()) {
+            nodes.onFirst().performScrollTo()
+        } else {
+            compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText(text, substring = substring))
+        }
         compose.waitForIdle()
     }
 
