@@ -1,6 +1,8 @@
 # The Hindu (Delhi, 2 Oct 2026): prelims analysis, Anki patch and roast
 
-Pilot run. **Nothing has been added to Anki.** The patch is `anki_patch_TH_2026-10-02.tsv`. A readable view of every card is in `cards_readable.md`.
+Pilot run. **Nothing has been added to Anki.**
+
+**v3 (after the roast, no-bloat):** `anki_patch_TH_2026-10-02.tsv` has **18 cards**: 15 UPSC-style multi-statement trap cards and 3 fill-in-the-blank cards (tribal painting map, MV Act s.136A, PSC 1926) that no statement card covers. The reserve file was deleted. Riskier [static] facts are checked online (✔). `cards_readable.md` lists all 18.
 
 ## 1. What UPSC prelims actually asks (web research)
 
@@ -71,3 +73,14 @@ Panel scores (0–10): Red Team 7 · First-Principles 6 · Operator 7 · Counter
 
 - Anki **tags cannot contain spaces**. "current affairs October 2026" would split into three tags, so the patch uses `current_affairs_October_2026`. Every card also carries a subject tag `CA_Oct26::<Subject>`; you can delete it in the import dialog's tag field if you don't want it.
 - The file is a TSV with a `#notetype column` header, which needs Anki 2.1.55 or later. It contains Basic and Cloze notes. Import via File → Import and choose your deck there; the file sets no deck.
+
+## 6. Changes made after the roast (v2)
+
+| Roast finding | Change |
+|---|---|
+| Cloze cards train recall; most of the exam needs elimination across several statements | Added 15 Basic cards in UPSC format ("Which of the statements is/are correct?"). Each has at least one known trap: RPA 1950 vs 1951, Gawali vs Indra Sawhney, 'deficient' vs 'below normal', khadar vs bangar, Phoenix (Durban) vs Tolstoy Farm, 125 vs 150 days, the top-300 drug-brand rule, etc. |
+| 15 low-yield number/trivia cards | Removed: GST share, PMI value, Coal targets, sugar limit, drug-sample counts, apples, Kyiv bridge, Iraq, Asian Games, NIMHANS, Monegar Choultry, India–France year, ERONet/TCS, EC booth norms, the unverified 20% drought threshold |
+| 88 cards a day is unsustainable | v3 under the user's **no-bloat** rule: reserve deleted, and the 7 cloze cards that duplicated a statement card removed. **88 → 18 cards.** |
+| [static] facts unverified | Checked online: s.31 RPA 1950 (1 year / fine), Dikhow (south bank, Zunheboto), Tilak at Belgaum 1916, CJI nominates water-tribunal members (ISRWD ss.4, 5A), Schedule H2 (top 300, 1 Aug 2023), electoral trusts 95%, Musahar = SC (Bihar, UP), VB-G RAM G (125 days, in force 1 Jul 2026), Mahanadi chair. The Nirbhaya 'administered by DEA' claim could not be confirmed, so the card now says only 'set up by the Ministry of Finance; nodal MWCD'. |
+
+Still to do: the cheapest test (10 PYQs against the core cards). Once you've run it, the core/reserve split can be re-tuned.
