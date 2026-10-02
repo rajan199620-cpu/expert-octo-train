@@ -11,10 +11,13 @@ object Schedule {
 
     /** The next time strictly after [now] that the clock reads [minuteOfDay]. */
     fun next(minuteOfDay: Int, now: ZonedDateTime): ZonedDateTime {
-        fun on(day: LocalDate) = day.atStartOfDay(now.zone).plusMinutes(minuteOfDay.toLong())
-        val today = on(now.toLocalDate())
-        return if (today.isAfter(now)) today else on(now.toLocalDate().plusDays(1))
+        val today = at(now.toLocalDate(), minuteOfDay, now.zone)
+        return if (today.isAfter(now)) today else at(now.toLocalDate().plusDays(1), minuteOfDay, now.zone)
     }
+
+    /** The wall-clock time on [day]: not midnight plus minutes, which is off by an hour on DST days. */
+    private fun at(day: LocalDate, minuteOfDay: Int, zone: java.time.ZoneId): ZonedDateTime =
+        day.atTime(minuteOfDay / 60, minuteOfDay % 60).atZone(zone)
 
     /** Today's surprise spot-check minute: random-looking, but the same all day. */
     fun spotMinute(day: LocalDate): Int {
@@ -25,10 +28,10 @@ object Schedule {
     /** The next spot check after [now], skipping a day whose slot has already passed. */
     fun nextSpot(now: ZonedDateTime): ZonedDateTime {
         val today = now.toLocalDate()
-        val at = today.atStartOfDay(now.zone).plusMinutes(spotMinute(today).toLong())
-        if (at.isAfter(now)) return at
+        val slot = at(today, spotMinute(today), now.zone)
+        if (slot.isAfter(now)) return slot
         val tomorrow = today.plusDays(1)
-        return tomorrow.atStartOfDay(now.zone).plusMinutes(spotMinute(tomorrow).toLong())
+        return at(tomorrow, spotMinute(tomorrow), now.zone)
     }
 
     fun label(minuteOfDay: Int): String {

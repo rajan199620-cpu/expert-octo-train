@@ -257,6 +257,17 @@ object GoogleSync {
         }
     }
 
+    fun resetForTests(context: Context) {
+        prefs(context).edit { clear() }
+        loaded = false
+        _state.value = CloudState()
+    }
+
+    fun setStateForTests(state: CloudState) {
+        loaded = true
+        _state.value = state
+    }
+
     private fun prefs(context: Context) = context.getSharedPreferences("google_sync", Context.MODE_PRIVATE)
     private const val KEY_EMAIL = "email"
     private const val KEY_LAST = "last_sync"

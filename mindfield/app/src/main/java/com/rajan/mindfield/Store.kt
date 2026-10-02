@@ -174,6 +174,12 @@ object Store {
         runCatching { writer.submit {}.get(5, TimeUnit.SECONDS) }
     }
 
+    /** Simulates the process dying and restarting: re-reads the saved file. */
+    fun reloadForTests(context: Context) {
+        flush()
+        synchronized(this) { _state.value = read(context.applicationContext) }
+    }
+
     /** Fresh state for tests. */
     fun resetForTests(context: Context) {
         synchronized(this) {
