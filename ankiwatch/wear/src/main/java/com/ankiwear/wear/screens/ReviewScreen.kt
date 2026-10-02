@@ -32,7 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -387,16 +392,18 @@ private fun CardBody(
         currentSpan?.let { listState.bringIntoView(it) }
     }
 
+    val bottomPadding = 8.dp
     ScalingLazyColumn(
         // ScalingLazyColumn lays rows out a little beyond its own edges; clip there so a
         // scrolled row never draws over the counter or the buttons.
         modifier = modifier
             .testTag(ReviewTags.CONTENT)
-            .clipToBounds(),
+            .clipToBounds()
+            .fadingEdges(top = insets.listTop, bottom = bottomPadding),
         state = listState,
         anchorType = ScalingLazyListAnchorType.ItemStart,
         autoCentering = null,
-        contentPadding = PaddingValues(start = insets.listSide, end = insets.listSide, top = insets.listTop, bottom = 8.dp),
+        contentPadding = PaddingValues(start = insets.listSide, end = insets.listSide, top = insets.listTop, bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(3.dp),
         // No shrinking or fading towards the edges: this is text to read, and the tested
         // cloze often sits at the bottom of the screen.
@@ -482,6 +489,31 @@ private suspend fun ScalingLazyListState.bringIntoView(span: IntRange) {
     // … then, as it fits, slide it down to the bottom edge to bring back the context above.
     scrollToItem(span.first, center - (bottom - (spanBottom - firstTop)))
 }
+
+/**
+ * Fades rows out across the list's top and bottom padding, so a row scrolled part-way out
+ * trails off instead of being sliced in two right under the counter or above the buttons.
+ * Rows the list comes to rest on (the first one at the top, the tested cloze at the bottom)
+ * sit just inside the padding and are never faded.
+ */
+private fun Modifier.fadingEdges(top: Dp, bottom: Dp): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val topPx = top.toPx()
+        val bottomPx = bottom.toPx()
+        if (size.height > topPx + bottomPx) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    topPx / size.height to Color.Black,
+                    1f - bottomPx / size.height to Color.Black,
+                    1f to Color.Transparent
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
+    }
 
 private fun extraHeaderColor(label: String): Color = when (label.lowercase()) {
     "note", "notes" -> Color(0xFFF28B82)
