@@ -57,15 +57,19 @@ class SideButtonKeyTest {
 
     @Test
     fun pressRevealsThenPressGradesGood() {
-        launchDemo().use {
-            rule.onNodeWithText("Basics").performClick()
-            rule.waitForIdle()
-            rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).assertExists()
-            press() // reveal
-            rule.onNodeWithTag(ReviewTags.ease(3)).assertExists()
-            press() // Good: the deck's only card is done
-            rule.onNodeWithText("Done!").assertExists()
-        }
+        val scenario = launchDemo()
+        rule.onNodeWithText("Basics").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).assertExists()
+        press() // reveal
+        rule.onNodeWithTag(ReviewTags.ease(3)).assertExists()
+        press() // Good: the deck's only card is done
+        rule.onNodeWithText("Done!").assertExists()
+        press() // from "Done!" back to the deck list …
+        rule.onNodeWithText("Basics").assertExists()
+        press() // … where it is the ordinary Back again and leaves the app
+        SystemClock.sleep(500)
+        assertEquals(Lifecycle.State.DESTROYED, scenario.state)
     }
 
     @Test

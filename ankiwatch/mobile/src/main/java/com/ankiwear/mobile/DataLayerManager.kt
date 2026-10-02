@@ -3,6 +3,7 @@ package com.ankiwear.mobile
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.ankiwatch.core.Wire
 import com.ankiwatch.core.PayloadBudget
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
@@ -27,58 +28,58 @@ class DataLayerManager(context: Context) {
         private const val TAG = "DataLayerManager"
 
         // Message paths
-        const val PATH_REQUEST_DECKS = "/request/decks"
-        const val PATH_REQUEST_CARDS = "/request/cards"
-        const val PATH_RESPONSE_DECKS = "/response/decks"
-        const val PATH_RESPONSE_CARDS = "/response/cards"
+        const val PATH_REQUEST_DECKS = Wire.PATH_REQUEST_DECKS
+        const val PATH_REQUEST_CARDS = Wire.PATH_REQUEST_CARDS
+        const val PATH_RESPONSE_DECKS = Wire.PATH_RESPONSE_DECKS
+        const val PATH_RESPONSE_CARDS = Wire.PATH_RESPONSE_CARDS
         // Legacy message-based answer path. Kept so an older watch build still works, but
         // the current watch sends answers as DataItems under PATH_ANSWER_PREFIX instead.
-        const val PATH_REVIEW_ANSWER = "/review/answer"
-        const val PATH_STATUS_ERROR = "/status/error"
+        const val PATH_REVIEW_ANSWER = Wire.PATH_REVIEW_ANSWER
+        const val PATH_STATUS_ERROR = Wire.PATH_STATUS_ERROR
         // Review answers are written by the watch as DataItems under this prefix, one per
         // answer with a UUID suffix (e.g. "/answer/3f2c…"). DataItems are queued and
         // guaranteed-delivery, so a grade tapped while the phone is unreachable is applied
         // once the link returns instead of being silently dropped like a message would be.
-        const val PATH_ANSWER_PREFIX = "/answer/"
+        const val PATH_ANSWER_PREFIX = Wire.PATH_ANSWER_PREFIX
 
         // Capabilities (declared in each module's res/values/wear.xml)
-        const val CAPABILITY_PHONE = "ankiwatch_phone"
-        const val CAPABILITY_WATCH = "ankiwatch_watch"
+        const val CAPABILITY_PHONE = Wire.CAPABILITY_PHONE
+        const val CAPABILITY_WATCH = Wire.CAPABILITY_WATCH
 
         // Data keys
-        const val KEY_DECK_ID = "deck_id"
-        const val KEY_DECK_NAME = "deck_name"
-        const val KEY_NEW_COUNT = "new_count"
-        const val KEY_LEARN_COUNT = "learn_count"
-        const val KEY_REVIEW_COUNT = "review_count"
-        const val KEY_NOTE_ID = "note_id"
-        const val KEY_CARD_ORD = "card_ord"
-        const val KEY_QUESTION = "question"
-        const val KEY_ANSWER = "answer"
-        const val KEY_BUTTON_COUNT = "button_count"
-        const val KEY_EASE = "ease"
-        const val KEY_TIME_TAKEN = "time_taken"
-        const val KEY_ERROR_MESSAGE = "error_message"
-        const val KEY_DECKS = "decks"
-        const val KEY_CARDS = "cards"
-        const val KEY_TIMESTAMP = "timestamp"
-        const val KEY_REMAINING = "remaining"
-        const val KEY_NEW_REMAINING = "new_remaining"
-        const val KEY_LEARN_REMAINING = "learn_remaining"
-        const val KEY_REVIEW_REMAINING = "review_remaining"
-        const val KEY_NEXT_REVIEW_TIMES = "next_review_times"
+        const val KEY_DECK_ID = Wire.KEY_DECK_ID
+        const val KEY_DECK_NAME = Wire.KEY_DECK_NAME
+        const val KEY_NEW_COUNT = Wire.KEY_NEW_COUNT
+        const val KEY_LEARN_COUNT = Wire.KEY_LEARN_COUNT
+        const val KEY_REVIEW_COUNT = Wire.KEY_REVIEW_COUNT
+        const val KEY_NOTE_ID = Wire.KEY_NOTE_ID
+        const val KEY_CARD_ORD = Wire.KEY_CARD_ORD
+        const val KEY_QUESTION = Wire.KEY_QUESTION
+        const val KEY_ANSWER = Wire.KEY_ANSWER
+        const val KEY_BUTTON_COUNT = Wire.KEY_BUTTON_COUNT
+        const val KEY_EASE = Wire.KEY_EASE
+        const val KEY_TIME_TAKEN = Wire.KEY_TIME_TAKEN
+        const val KEY_ERROR_MESSAGE = Wire.KEY_ERROR_MESSAGE
+        const val KEY_DECKS = Wire.KEY_DECKS
+        const val KEY_CARDS = Wire.KEY_CARDS
+        const val KEY_TIMESTAMP = Wire.KEY_TIMESTAMP
+        const val KEY_REMAINING = Wire.KEY_REMAINING
+        const val KEY_NEW_REMAINING = Wire.KEY_NEW_REMAINING
+        const val KEY_LEARN_REMAINING = Wire.KEY_LEARN_REMAINING
+        const val KEY_REVIEW_REMAINING = Wire.KEY_REVIEW_REMAINING
+        const val KEY_NEXT_REVIEW_TIMES = Wire.KEY_NEXT_REVIEW_TIMES
         // Cloze cards: raw cloze field, tested cloze number (0 = not a cloze card) and the
         // answer-side extras as parallel label/value arrays.
-        const val KEY_CLOZE_CONTENT = "cloze_content"
-        const val KEY_CLOZE_NUMBER = "cloze_number"
-        const val KEY_EXTRA_LABELS = "extra_labels"
-        const val KEY_EXTRA_VALUES = "extra_values"
-        const val KEY_MODEL_NAME = "model_name"
+        const val KEY_CLOZE_CONTENT = Wire.KEY_CLOZE_CONTENT
+        const val KEY_CLOZE_NUMBER = Wire.KEY_CLOZE_NUMBER
+        const val KEY_EXTRA_LABELS = Wire.KEY_EXTRA_LABELS
+        const val KEY_EXTRA_VALUES = Wire.KEY_EXTRA_VALUES
+        const val KEY_MODEL_NAME = Wire.KEY_MODEL_NAME
         // Unique id the watch stamps on each answer DataItem, used for dedupe + ack.
-        const val KEY_ANSWER_UUID = "answer_uuid"
+        const val KEY_ANSWER_UUID = Wire.KEY_ANSWER_UUID
         // UUID of the answer that produced a given cards response, echoed back so the watch
         // can delete its queued answer DataItem now that the phone has applied it.
-        const val KEY_ACKED_ANSWER_UUID = "acked_answer_uuid"
+        const val KEY_ACKED_ANSWER_UUID = Wire.KEY_ACKED_ANSWER_UUID
     }
 
     /**

@@ -13,7 +13,11 @@ set -euo pipefail
 PACKAGE=com.ankiwatch.cloze
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ADB="${ADB:-adb}"
-WATCH="${1:?usage: install.sh <watch-ip:port> [--phone]}"
+if [ $# -lt 1 ]; then
+  echo "usage: install.sh <watch-ip:port> [--phone]   (set ADB=/path/to/adb if adb isn't on PATH)" >&2
+  exit 1
+fi
+WATCH="$1"
 PHONE="${2:-}"
 
 install_apk() {

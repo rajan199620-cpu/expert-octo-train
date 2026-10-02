@@ -92,7 +92,17 @@ fun ReviewScreen(
     onFinished: () -> Unit
 ) {
     if (card == null) {
-        // Waiting for more cards from the phone, or truly done.
+        // Waiting for more cards from the phone, or truly done. The side button must not
+        // fall through to Back here: a quick press while the next batch loads would
+        // otherwise drop the user out of the review. Loading: ignored. Done: back to decks.
+        val currentOnFinished by rememberUpdatedState(onFinished)
+        DisposableEffect(isFetching) {
+            val handler: (Press) -> Unit = { if (!isFetching) currentOnFinished() }
+            SideButtons.handler = handler
+            onDispose {
+                if (SideButtons.handler === handler) SideButtons.handler = null
+            }
+        }
         if (isFetching) {
             LoadingScreen()
         } else {

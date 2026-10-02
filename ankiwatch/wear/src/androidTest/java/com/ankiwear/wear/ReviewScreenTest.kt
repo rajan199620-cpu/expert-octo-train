@@ -261,6 +261,32 @@ class ReviewScreenTest {
     }
 
     @Test
+    fun sideButtonIsSwallowedWhileTheNextCardsLoad() {
+        var finished = 0
+        val fetching = mutableStateOf(true)
+        rule.setContent {
+            AnkiWearTheme {
+                ReviewScreen(
+                    card = null,
+                    revisionKey = "none",
+                    isFetching = fetching.value,
+                    onAnswer = { _, _, ease, _ -> answers.add(ease) },
+                    onFinished = { finished++ }
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.runOnIdle { SideButtons.handler!!.invoke(Press.SHORT) }
+        rule.runOnIdle { SideButtons.handler!!.invoke(Press.LONG) }
+        assertEquals(0, finished) // still loading: nothing happens, and it is not a Back
+        rule.runOnIdle { fetching.value = false } // nothing more due: "Done!"
+        rule.waitForIdle()
+        rule.runOnIdle { SideButtons.handler!!.invoke(Press.SHORT) }
+        assertEquals(1, finished)
+        assertTrue(answers.isEmpty())
+    }
+
+    @Test
     fun templateCardRevealsOnTapAndJumpsToTheAnswer() {
         show(basic)
         rule.screenshot("basic-question")
