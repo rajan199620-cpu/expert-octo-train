@@ -141,7 +141,8 @@ class ScreensTest {
         shot("13-today-mission-and-report")
 
         // Field report: "Used it", a note and an outcome.
-        compose.onAllNodesWithText(Mode.USED.label).onFirst().performClick()
+        // A click lands at the node's centre, so the button itself must be on screen, not just its section.
+        compose.onAllNodesWithText(Mode.USED.label).onFirst().performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Field report").assertExists()
         compose.onAllNodes(hasSetTextAction()).onLast().performTextInput("Opened the salary talk with my number first. It anchored the whole conversation.")
