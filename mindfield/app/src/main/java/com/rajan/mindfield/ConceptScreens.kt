@@ -5,6 +5,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -47,6 +50,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
@@ -88,8 +93,10 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
         onPauseOrDispose { }
     }
     val loggedToday = state.entriesOn(today).isNotEmpty()
+    // The floating button steps aside while the field report's own buttons are on screen.
+    var reportShown by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
-    ConceptPage(concept, state, today, isToday = true, nav = nav) {
+    ConceptPage(concept, state, today, isToday = true, nav = nav, onReportShown = { reportShown = it }) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault())), style = MaterialTheme.typography.labelLarge, color = p.muted)
@@ -130,10 +137,10 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
     }
     // Always within reach, so logging never means scrolling to the bottom.
     val accent = concept.category.accent(p.dark)
+    AnimatedVisibility(!reportShown, Modifier.align(Alignment.BottomEnd), enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut() + scaleOut(targetScale = 0.8f)) {
     Text(
         if (loggedToday) "✓ Logged · add more" else "📓  Log today",
         Modifier
-            .align(Alignment.BottomEnd)
             .padding(16.dp)
             .clip(RoundedCornerShape(50))
             .background(if (loggedToday) p.surface else accent)
@@ -143,6 +150,7 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
         color = if (loggedToday) p.ink else Color.White,
         style = MaterialTheme.typography.titleSmall,
     )
+    }
     }
 }
 
@@ -187,6 +195,7 @@ fun ConceptPage(
     today: LocalDate,
     isToday: Boolean,
     nav: Nav,
+    onReportShown: (Boolean) -> Unit = {},
     header: @Composable () -> Unit,
 ) {
     val p = palette
@@ -201,10 +210,13 @@ fun ConceptPage(
         PredictCard(concept, guess?.choice)
         Section("What's going on", "💡") { Body(concept.what) }
         StudySection(concept, unlocked = guess != null)
+        if (guess != null) RealWorldSection(concept)
         Section("Spot it in the wild", "🔍") { Body(concept.spot) }
         MissionSection(concept, state, today, isToday)
         Section("Watch out", "⚠️") { Body(concept.guard) }
-        FieldReport(concept, state, today, isToday, nav)
+        Box(Modifier.onGloballyPositioned { onReportShown(it.boundsInWindow().height > 0f) }) {
+            FieldReport(concept, state, today, isToday, nav)
+        }
         SeeAlso(concept, state, nav)
         ShareCard(concept)
         Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -399,6 +411,27 @@ private fun StudySection(concept: Concept, unlocked: Boolean) {
                         Text(concept.proof, style = MaterialTheme.typography.bodyMedium)
                         Text(concept.evidence.meaning, style = MaterialTheme.typography.bodySmall, color = p.muted)
                     }
+                }
+            }
+        }
+    }
+}
+
+/** The idea at work outside the lab, opened with the study so it can't give the prediction away. */
+@Composable
+private fun RealWorldSection(concept: Concept) {
+    val p = palette
+    val accent = concept.category.accent(p.dark)
+    AnimatedVisibility(visible = true, enter = fadeIn(tween(400)) + expandVertically(tween(400))) {
+        Section("In the real world", "🌍") {
+            Body(concept.caseStory)
+            concept.caseNuance?.let { nuance ->
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha = if (p.dark) 0.16f else 0.09f)).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text("The nuance", style = MaterialTheme.typography.titleSmall, color = accent)
+                    Text(nuance, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }

@@ -60,7 +60,7 @@ object ConceptParser {
     data class Result(val concepts: List<Concept>, val errors: List<String>)
 
     private val KEYS = setOf(
-        "title", "aka", "category", "evidence", "hook", "what", "study", "proof", "spot", "use", "guard",
+        "title", "aka", "category", "evidence", "hook", "what", "study", "case", "proof", "spot", "use", "guard",
         "predict", "scenario", "source", "related",
     )
     private val REQUIRED = KEYS - setOf("aka", "related")
@@ -164,6 +164,7 @@ object ConceptParser {
             hook = f.getValue("hook"),
             what = f.getValue("what"),
             study = f.getValue("study"),
+            case = f.getValue("case"),
             proof = f.getValue("proof"),
             spot = f.getValue("spot"),
             use = f.getValue("use"),

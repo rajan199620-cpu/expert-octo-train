@@ -24,8 +24,19 @@ the self, thinking traps, influence & persuasion, emotions & wellbeing, relation
 money, motivation & habits, groups & society.
 
 Every concept has: a hook, what's going on, **the key study with its numbers**, an **evidence
-label**, how to spot it, a mission, a "watch out", a predict-first question, an everyday scenario
-for review, sources and "see also" links.
+label**, **"In the real world"**, how to spot it, a mission, a "watch out", a predict-first
+question, an everyday scenario for review, sources and "see also" links.
+
+**In the real world** is a second, applied study for every concept, taken from the research
+itself rather than invented: colonoscopy patients and the peak-end rule, German judges anchored
+by loaded dice, lay counsellors treating depression in Goa (behavioural activation), Chicago
+Heights teachers paid upfront (loss aversion), heart-surgery rates either side of an 80th
+birthday (left-digit bias), Christian and Muslim football teammates in northern Iraq (contact),
+the Challenger launch decision (groupthink), and so on. Each one gives the setting, who was
+studied and the numbers, then ends with **"The nuance"**: where the effect stops, what the study
+can't show, or how it was later corrected. Like the study, it opens only after you predict, so it
+can't give the answer away. Every figure was checked against the original paper or a reliable
+summary; where a number couldn't be confirmed, the text stays qualitative.
 
 Evidence labels come from the replication literature (Many Labs, registered replication reports,
 meta-analyses): **Solid** (51) · **Good** (78) · **Debated** (12) · **Busted** (10). The busted
@@ -42,7 +53,8 @@ spotted least.
 ## Screens
 
 - **Today**: the specimen plate (each concept has its own generative emblem in its area's
-  colour), predict first, the study, mission + plan, field report, review nudge.
+  colour), predict first, the study, in the real world, mission + plan, field report, review
+  nudge, and a floating "Log today" button.
 - **Guide**: the collection. Undiscovered concepts stay sealed until their day (or turn on
   "show undiscovered"). Search, filter by area, myths, or what you've spotted.
 - **Review**: spaced questions, with a "how well they're sticking" chart.
@@ -71,6 +83,11 @@ in the same Google Cloud project you set up for the Meditation Timer, go to
 That's the same signing key as the Meditation Timer, so the Drive API and consent screen (with
 you as a test user) are already in place. If you connect before doing this, the app shows these
 exact values with copy buttons.
+
+**Recommended:** in **Google Auth Platform → Audience**, press **Publish app** to move the consent
+screen from "Testing" to "In production". In Testing, Google expires the sign-in after 7 days and
+backups pause until you sign in again (the app warns you with a banner and a notification when
+that happens). `drive.appdata` is a non-sensitive scope, so publishing needs no Google review.
 
 Without Google: You → Settings → **Backup file** saves or merges a JSON file you keep yourself.
 Restores and syncs always merge, never delete: two phones that sync at different times end up

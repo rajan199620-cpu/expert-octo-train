@@ -92,6 +92,16 @@ class LibraryTest {
     }
 
     @Test
+    fun `every concept has a substantial real-world case with a takeaway`() {
+        for (c in all) {
+            assertTrue("${c.id} case is ${c.case.length} chars", c.case.length in 500..1300)
+            assertTrue("${c.id} case repeats the study", c.case != c.study && !c.case.startsWith(c.study.take(60)))
+            assertTrue("${c.id} case story too short", c.caseStory.length >= 300)
+        }
+        for (c in all) assertTrue("${c.id} case has no \"The nuance:\" takeaway", c.caseNuance != null)
+    }
+
+    @Test
     fun `related links point both ways often enough to be useful`() {
         val linked = all.count { it.related.isNotEmpty() }
         assertTrue(linked >= all.size * 0.9)
@@ -107,6 +117,7 @@ class ParserTest {
         hook: A "hook" that's long enough to pass the length check here.
         what: What.
         study: Study.
+        case: A real place, with numbers. The nuance: it depends.
         proof: Proof.
         spot: Spot.
         use: Do it today. Then more.
@@ -129,6 +140,8 @@ class ParserTest {
         assertEquals(listOf("no", "yes continued", "no again"), c.predict.options)
         assertEquals(1, c.predict.answer)
         assertEquals("Do it today.", c.missionLine)
+        assertEquals("A real place, with numbers.", c.caseStory)
+        assertEquals("It depends.", c.caseNuance)
     }
 
     @Test

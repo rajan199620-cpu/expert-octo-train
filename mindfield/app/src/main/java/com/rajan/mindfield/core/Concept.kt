@@ -50,6 +50,8 @@ data class Concept(
     val hook: String,
     val what: String,
     val study: String,
+    /** The idea at work outside the lab: a real setting, the numbers, and "the nuance". */
+    val case: String,
     /** Why it got its evidence label. */
     val proof: String,
     val spot: String,
@@ -69,7 +71,17 @@ data class Concept(
 
     val numberLabel: String get() = "No. %03d".format(number)
 
+    /** The real-world case before its closing "The nuance: ..." takeaway (all of it if there is none). */
+    val caseStory: String get() = case.indexOf(NUANCE).let { if (it > 0) case.substring(0, it).trim() else case }
+
+    /** The case's closing takeaway, without the "The nuance:" label, or null if it has none. */
+    val caseNuance: String? get() = case.indexOf(NUANCE).takeIf { it > 0 }?.let {
+        case.substring(it).removePrefix("$NUANCE:").trim().replaceFirstChar(Char::uppercaseChar)
+    }
+
     companion object {
+        private const val NUANCE = "The nuance"
+
         /** Up to the first full stop, question or exclamation mark (and any closing quote) before a space. */
         fun firstSentence(text: String): String {
             val end = Regex("""[.!?][”’)]?(?=\s|$)""").find(text) ?: return text

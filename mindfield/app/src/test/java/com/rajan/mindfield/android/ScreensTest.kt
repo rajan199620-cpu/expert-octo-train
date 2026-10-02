@@ -1,6 +1,7 @@
 package com.rajan.mindfield
 
 import android.app.Application
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -113,6 +114,8 @@ class ScreensTest {
         val c = Store.todayConcept()
         shot("10-today")
         compose.onNodeWithText("🔒  Make your prediction above to unlock the study.").assertExists()
+        // The real-world case opens with the study, so it can't give the answer away.
+        compose.onAllNodesWithText("In the real world".uppercase()).assertCountEquals(0)
         // Guess right.
         compose.onNodeWithText(c.predict.options[c.predict.answer]).performScrollTo().performClick()
         compose.waitForIdle()
@@ -121,6 +124,12 @@ class ScreensTest {
         shot("11-today-predicted")
         scrollTo("The study".uppercase())
         shot("12-today-study")
+        scrollTo("In the real world".uppercase())
+        shot("12b-today-real-world")
+        if (c.caseNuance != null) {
+            scrollTo("The nuance")
+            shot("12c-today-nuance")
+        }
 
         // An if-then plan for the mission.
         scrollTo("Save my plan")
