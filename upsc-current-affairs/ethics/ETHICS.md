@@ -1,6 +1,6 @@
 # Ethics (GS-IV) from the newspaper: trends, roast, verdict, pilot
 
-**Nothing has been added to Anki.** The pilot is `anki_ethics_bank.tsv`, 8 notes built from The Hindu, 2 Oct 2026.
+**Nothing has been added to Anki.** The import file is `anki_ethics_bank.tsv`: **7 notes, one-line examples**, from The Hindu, 2 Oct 2026.
 
 ## 1. Trends (web research)
 - Ethics is **GS Paper IV (Mains)**, not prelims. Section A (theory, about 125 marks) and Section B (6 case studies, about 125 marks).
@@ -50,17 +50,20 @@ Cheapest next test: Pick 5 GS-IV Section A PYQs (2023–25). Answer each in 150 
 Panel scores (0–10): Red Team 7 · First-Principles 7 · Operator 8 · Counterparty 6 · Steelman 7
 ```
 
-## 3. Pilot bank from today's paper (8 notes, reshaped format)
+## 3. Example bank (v2: one-line examples, 7 notes)
 
-| # | Theme (stable first field) | Example from TH, 2 Oct 2026 |
-|---|---|---|
-| 1 | Moral courage and presence of mind under duress | Capt. Smit Machchhar, flydubai FZ1073; paired with Neerja Bhanot |
-| 2 | Institutional accountability vs individual blame | Indore water deaths: 'cumulative failure over decades', 859-day delays, missing records |
-| 3 | Conflict of interest and the duty to disclose | SC judge's undisclosed family link to the EC (pending; no actual bias alleged) |
-| 4 | Conscientious objection and constitutional morality | Vande Mataram law; Bagchi J. on Bijoe Emmanuel |
-| 5 | Empathy, compassion and the dignity of the weakest | Narsinh Mehta's line, plus the Bhadohi roadside-delivery inquiry |
-| 6 | Procurement ethics: lowest price vs value and safety | L1 tendering and counterfeit drugs |
-| 7 | Ethics of science and research | Xenocortication: bioethics review before the experiment; the 3Rs |
-| 8 | VIP culture vs citizen-first public service | Assam CM's convoy halting an ambulance; the 2017 red-beacon ban |
+Front = the theme (fixed, so re-imports update in place). Back = one line.
+
+| Theme | One-line example |
+|---|---|
+| Moral courage and presence of mind under duress | Capt. Smit Machchhar (2026): stabbed by his co-pilot mid-air, he still unlocked the cockpit so passengers could stop the attacker; all 174 landed safely. |
+| Institutional accountability vs individual blame | Indore water deaths (2026): the inquiry called them preventable, the result of decades of delayed tenders, sewer lines over water pipes and missing records. |
+| Constitutional morality and conscientious objection | Vande Mataram case (2026): an SC judge noted that standing respectfully without singing shouldn't be criminal, applying Bijoe Emmanuel (1986). |
+| Empathy and dignity in public service | Bhadohi, UP (2026): a Musahar woman was refused hospital admission and gave birth by the roadside; an inquiry found the doctors seriously negligent. |
+| Procurement ethics (lowest cost vs quality) | Delhi fake cancer-drug racket (2026): doctors blamed lowest-bidder (L1) buying for letting spurious medicines into hospitals. |
+| Ethics in science and technology | Stanford 'xenocortication' (2026): researchers consulted bioethicists before transplanting human brain tissue into mice. |
+| VIP culture vs citizen-first service | Assam (2026): an ambulance carrying a critical patient was held up for the CM's convoy; he then said ministers' movement must never inconvenience people. |
+
+**Dropped from v1:** *Conflict of interest* (the SC judge's undisclosed family link to the EC). It is an unresolved allegation against a sitting judge, so it is unsafe to cite in an exam answer. The theme will get an example when a clean one appears.
 
 **Excluded on purpose:** Form 7 "vote theft" claims, Mamata/Mahua disputes and party feuds, all partisan or unresolved. Also excluded: the Saudi execution and other human-interest stories with no clear value lesson.
