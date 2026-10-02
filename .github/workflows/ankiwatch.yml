@@ -1,0 +1,85 @@
+name: AnkiWatch
+
+on:
+  push:
+    paths:
+      - "ankiwatch/**"
+      - ".github/workflows/ankiwatch.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ankiwatch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build APKs + unit/stress tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: ankiwatch
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # One key signs both APKs (the Data Layer only pairs apps with the same signature).
+      # With the repository secrets set, every build uses your stable key, so updates
+      # install over the previous version. Without them, each run makes a one-off key.
+      - name: Signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANKIWATCH_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANKIWATCH_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/ankiwatch.p12"
+            {
+              echo "storeFile=$RUNNER_TEMP/ankiwatch.p12"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=ankiwatch"
+              echo "keyPassword=$KEYSTORE_PASSWORD"
+            } > keystore.properties
+            echo "::notice::Signed with the stable AnkiWatch key from repository secrets."
+          else
+            mkdir -p ~/.android
+            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android \
+              -keypass android -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" \
+              -keyalg RSA -keysize 2048 -validity 10000
+            echo "::warning::No signing secrets set: this build uses a one-off key. The install scripts uninstall the previous build first when the key changed."
+          fi
+
+      - name: Unit and stress tests
+        run: ./gradlew --no-daemon --stacktrace :core:test :mobile:testReleaseUnitTest :wear:testReleaseUnitTest
+
+      - name: Build APKs
+        run: ./gradlew --no-daemon --stacktrace :mobile:assembleRelease :wear:assembleRelease
+
+      - name: Collect APKs
+        run: |
+          mkdir -p dist
+          cp mobile/build/outputs/apk/release/mobile-release.apk dist/ankiwatch-phone.apk
+          cp wear/build/outputs/apk/release/wear-release.apk dist/ankiwatch-watch.apk
+          cp install/install.ps1 install/install.sh dist/
+          (cd dist && sha256sum ankiwatch-phone.apk ankiwatch-watch.apk > SHA256SUMS.txt)
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ankiwatch-apks
+          path: ankiwatch/dist
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: unit-test-reports
+          path: ankiwatch/**/build/reports/tests/

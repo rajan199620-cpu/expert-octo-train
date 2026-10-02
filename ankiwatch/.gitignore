@@ -1,0 +1,16 @@
+*.iml
+.gradle
+build/
+/local.properties
+/.idea
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Signing — never commit keystores or credentials
+*.keystore
+*.jks
+*.p12
+keystore.properties

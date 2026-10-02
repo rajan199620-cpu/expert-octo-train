@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="com.ichi2.anki.permission.READ_WRITE_DATABASE" />
+    <!-- Held briefly while the listener service applies an answer / builds a response so
+         the phone can't doze mid-operation and truncate the AnkiDroid write. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Android 11+ hides other apps unless declared: without this AnkiDroid looks
+         "not installed" and its provider can't be resolved. -->
+    <queries>
+        <package android:name="com.ichi2.anki" />
+        <provider android:authorities="com.ichi2.anki.flashcards" />
+    </queries>
+
+    <uses-feature
+        android:name="android.hardware.type.watch"
+        android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AnkiWear">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name="com.ankiwear.mobile.WearListenerService"
+            android:exported="true">
+            <intent-filter>
+                <!-- MESSAGE_RECEIVED: deck/card requests. DATA_CHANGED: review answers,
+                     which the watch writes as guaranteed-delivery DataItems. -->
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" />
+            </intent-filter>
+        </service>
+
+    </application>
+
+</manifest>
