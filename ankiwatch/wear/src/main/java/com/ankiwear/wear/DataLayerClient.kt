@@ -324,8 +324,11 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
         _decks.value = deckList
         _decksLastUpdated.value = dataMap.getLong(KEY_TIMESTAMP, System.currentTimeMillis())
         // Fresh decks arriving means the phone is reachable and healthy — clear any stale
-        // phone-reported error so the deck list can render.
+        // error (e.g. "Phone not connected" from before Bluetooth came back) so the deck
+        // list renders without the user having to tap Retry.
         _phoneReportedError.value = false
+        _errorMessage.value = null
+        _isPhoneConnected.value = true
         Log.d(TAG, "Received ${deckList.size} decks")
     }
 
@@ -370,8 +373,11 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
         try {
             val nodeIds = phoneNodeIds()
             if (nodeIds.isEmpty()) {
+                // Say why: no phone at all, or the Wear OS link itself failing.
+                val link = phoneLinkStatus()
+                _phoneLink.value = link
                 _isPhoneConnected.value = false
-                _errorMessage.value = "Phone not connected"
+                _errorMessage.value = Link.watchMessage(link) ?: "Phone not connected"
                 return
             }
             _isPhoneConnected.value = true
