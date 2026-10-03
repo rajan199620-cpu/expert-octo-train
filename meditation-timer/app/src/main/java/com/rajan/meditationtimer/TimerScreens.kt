@@ -182,6 +182,8 @@ private fun SetupScreen(
     val saved = remember { prefs.timerConfig }
     // Set while the "how do you feel right now?" check-in is showing on the way into a sit.
     var checkingIn by remember { mutableStateOf<SessionConfig?>(null) }
+    // Which settings sheet is open, if any: Bells, Sound & stillness or Practice tools.
+    var sheet by rememberSaveable { mutableStateOf<String?>(null) }
     var minutes by rememberSaveable { mutableIntStateOf(saved.durationSec / 60) }
     var opening by rememberSaveable { mutableIntStateOf(saved.openingBellSec) }
     var closing by rememberSaveable { mutableIntStateOf(saved.closingBellSec) }
@@ -248,7 +250,6 @@ private fun SetupScreen(
 
         // Set-once settings as three rows that say what's set; each opens only its own sheet
         // (Insight Timer's timer screen works the same way), instead of one long fold-out.
-        var sheet by rememberSaveable { mutableStateOf<String?>(null) }
         GlassCard(Modifier.fillMaxWidth(), padding = 6.dp) {
             SettingRow("Bells", bellsSummary(opening, closing, interval, bellAtEnd)) { sheet = SHEET_BELLS }
             HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = Color.White.copy(alpha = 0.08f))
