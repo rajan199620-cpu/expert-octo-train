@@ -139,9 +139,19 @@ class AnswerSync(
             }.joinToString(", ")
     }
 
-    /** Runs over everything queued; null when nothing was. [log] records it as a watch request. */
-    suspend fun run(log: Boolean = true): Report? = LOCK.withLock {
-        val pending = dataLayer.pendingAnswers()
+    /**
+     * Runs over everything queued; null when nothing was. [arrived] are the answers the
+     * triggering event carried: applied even if listing the queue fails, as before there was
+     * a queue to list. [log] records the run as a watch request.
+     */
+    suspend fun run(log: Boolean = true, arrived: List<QueuedAnswer> = emptyList()): Report? = LOCK.withLock {
+        val listed = try {
+            dataLayer.pendingAnswers()
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't list queued answers; using the ones that arrived", e)
+            emptyList()
+        }
+        val pending = (listed + arrived).distinctBy { it.first.toString() }
         if (pending.isEmpty()) return@withLock null
         val ordered = pending
             .map { (uri, map) -> uri to WatchAnswer.from(map) }

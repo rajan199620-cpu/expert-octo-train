@@ -7,6 +7,7 @@ import com.ankiwatch.core.Wire
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMap
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.delay
@@ -100,20 +101,22 @@ class WearListenerService : WearableListenerService() {
         // The watch writes review answers as DataItems under /answer/<uuid>. Rather than
         // apply just the ones in this event, apply everything queued, in the order it was
         // given on the watch: after an offline session hundreds arrive over several events.
-        val anyAnswer = dataEvents.any { event ->
-            event.type == DataEvent.TYPE_CHANGED &&
-                event.dataItem.uri.path?.startsWith(DataLayerManager.PATH_ANSWER_PREFIX) == true
-        }
-        if (!anyAnswer) return
-        runProcessing(LONG_WAKELOCK_TIMEOUT_MS) { syncAnswers() }
+        val arrived = dataEvents
+            .filter { event ->
+                event.type == DataEvent.TYPE_CHANGED &&
+                    event.dataItem.uri.path?.startsWith(DataLayerManager.PATH_ANSWER_PREFIX) == true
+            }
+            .map { event -> event.dataItem.uri to DataMapItem.fromDataItem(event.dataItem).dataMap }
+        if (arrived.isEmpty()) return
+        runProcessing(LONG_WAKELOCK_TIMEOUT_MS) { syncAnswers(arrived) }
     }
 
     /**
      * Applies the queued answers. Problems are reported to the watch; a live answer gets the
      * next cards back, offline ones don't (the watch already has its cards).
      */
-    private suspend fun syncAnswers() {
-        val report = answerSync.run() ?: return
+    private suspend fun syncAnswers(arrived: List<QueuedAnswer>) {
+        val report = answerSync.run(arrived = arrived) ?: return
         report.stopped?.let {
             reportError("Your grades are safe on the watch but didn't go into AnkiDroid yet: $it. They go in next time.")
             return

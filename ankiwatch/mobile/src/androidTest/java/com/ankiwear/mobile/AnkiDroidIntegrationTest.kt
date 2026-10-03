@@ -607,6 +607,28 @@ class AnkiDroidIntegrationTest {
     }
 
     @Test
+    fun answersThatArriveGoInEvenIfTheQueueCantBeListed() {
+        val deck = deckWith("AnkiWatch unlisted ${System.nanoTime()}", listOf("q {{c1::one}}", "r {{c1::two}}"))
+        helper.setSelectedDeck(deck.id)
+        val (a, b) = helper.getScheduledCards(deck.id, limit = 10)
+        val broken = object : AnswerQueue {
+            val deleted = ArrayList<Uri>()
+            override suspend fun pendingAnswers(): List<QueuedAnswer> = throw IllegalStateException("Wearable API unavailable")
+            override suspend fun deleteAnswerItem(uri: Uri) {
+                deleted += uri
+            }
+        }
+        val arrived = listOf(queued(b.noteId, 0, 4, deck.id, seq = 2, offline = false), queued(a.noteId, 0, 4, deck.id, seq = 1))
+        val report = runBlocking {
+            AnswerSync(helper, broken, AnswerDedupeStore(context), ExchangeLog(context)).run(arrived = arrived)
+        }!!
+        assertEquals(2, report.applied)
+        assertEquals(b.noteId, report.replyTo?.noteId) // the live one came last
+        assertEquals(arrived.map { it.first }.reversed(), broken.deleted) // applied in the order given
+        assertEquals(Triple(0, 0, 0), counts(deck))
+    }
+
+    @Test
     fun aBigOfflineBacklogGoesInQuickly() {
         // Ten decks of twenty new cards, all answered offline and delivered at once.
         val nano = System.nanoTime()
