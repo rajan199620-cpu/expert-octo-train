@@ -407,7 +407,8 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                         // session feels responsive. Per-bucket counts are intentionally NOT
                         // touched here (see currentCardType note above) — they self-heal
                         // from the phone's authoritative response.
-                        if (ease > 1) {
+                        // (Bury, ease 0, takes the card out of today's queue as well.)
+                        if (ease != 1) {
                             cardsRemaining = (cardsRemaining - 1).coerceAtLeast(0)
                         }
                         val nextIndex = currentCardIndex + 1

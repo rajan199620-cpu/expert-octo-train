@@ -32,6 +32,11 @@ class WireTest {
     }
 
     @Test
+    fun buryIsNotAGrade() {
+        assertTrue(Wire.EASE_BURY !in 1..4)
+    }
+
+    @Test
     fun answerPathsNestUnderTheirPrefix() {
         assertEquals('/', Wire.PATH_ANSWER_PREFIX.last())
         for ((name, path) in constants("PATH_")) {

@@ -54,6 +54,8 @@ class AnkiDroidHelper(private val context: Context) {
         private const val NEXT_REVIEW_TIMES = "next_review_times"
         private const val EASE = "answer_ease"
         private const val TIME_TAKEN = "time_taken"
+        // ReviewInfo.BURY: 1 buries the card (AnkiDroid's scheduler buryCards).
+        private const val BURY = "buried"
 
         // Card URIs — template-rendered question/answer, used for non-cloze notes.
         // Pattern: content://com.ichi2.anki.flashcards/notes/{noteId}/cards/{cardOrd}
@@ -320,6 +322,26 @@ class AnkiDroidHelper(private val context: Context) {
             rows > 0
         } catch (e: Exception) {
             Log.e(TAG, "Error answering card noteId=$noteId cardOrd=$cardOrd", e)
+            false
+        }
+    }
+
+    /**
+     * Buries the card until tomorrow, like Bury in AnkiDroid's reviewer. Its sibling cards
+     * are left alone.
+     */
+    fun buryCard(noteId: Long, cardOrd: Int): Boolean {
+        return try {
+            val values = ContentValues().apply {
+                put(NOTE_ID, noteId)
+                put(CARD_ORD, cardOrd)
+                put(BURY, 1)
+            }
+            val rows = contentResolver.update(REVIEW_INFO_URI, values, null, null)
+            Log.d(TAG, "buryCard update returned $rows rows (noteId=$noteId cardOrd=$cardOrd)")
+            rows > 0
+        } catch (e: Exception) {
+            Log.e(TAG, "Error burying card noteId=$noteId cardOrd=$cardOrd", e)
             false
         }
     }

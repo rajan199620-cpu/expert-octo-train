@@ -19,6 +19,12 @@ object Wire {
     // Watch → phone answers: guaranteed-delivery DataItems under this prefix + a UUID.
     const val PATH_ANSWER_PREFIX = "/answer/"
 
+    /**
+     * Answer ease meaning "bury this card until tomorrow" instead of a grade. AnkiDroid's
+     * grades are 1–4, so 0 is free, and bury rides the same queued, deduplicated path.
+     */
+    const val EASE_BURY = 0
+
     // Legacy message-based answer path, still accepted by the phone.
     const val PATH_REVIEW_ANSWER = "/review/answer"
 

@@ -66,6 +66,7 @@ import com.ankiwatch.core.ClozeParser
 import com.ankiwatch.core.ParsedField
 import com.ankiwatch.core.RenderOptions
 import com.ankiwatch.core.RenderedField
+import com.ankiwatch.core.Wire
 import com.ankiwear.wear.model.CardData
 import com.ankiwear.wear.model.CardType
 import com.ankiwear.wear.review.GradeLayout
@@ -83,6 +84,7 @@ object ReviewTags {
     const val CONTENT = "review-content"
     const val SHOW_ANSWER = "show-answer"
     const val FOCUS_TOGGLE = "focus-toggle"
+    const val BURY = "bury"
     fun block(index: Int) = "block-$index"
     fun extraBlock(extra: Int, index: Int) = "extra-$extra-$index"
     fun ease(ease: Int) = "ease-$ease"
@@ -100,6 +102,8 @@ fun ReviewScreen(
     /** Show only the part of a long note that holds the tested cloze. */
     focusMode: Boolean = true,
     onFocusModeChange: (Boolean) -> Unit = {},
+    /** Offer Bury; it reaches [onAnswer] with ease [Wire.EASE_BURY]. */
+    allowBury: Boolean = true,
     onAnswer: (noteId: Long, cardOrd: Int, ease: Int, timeTakenMs: Long) -> Unit,
     onFinished: () -> Unit
 ) {
@@ -214,6 +218,9 @@ fun ReviewScreen(
             // Cards without any tappable cloze keep the original "tap anywhere" reveal.
             onTapContent = if (!showAnswer && !rendered.hasTappableCloze) reveal else null,
             onFocusModeChange = onFocusModeChange,
+            // Bury hides the card until tomorrow; once per card, like a grade.
+            onBury = if (allowBury) ({ grade(Wire.EASE_BURY) }) else null,
+            buryEnabled = !hasAnswered,
             insets = insets,
             // Under the answer rather than above the buttons: the card keeps the room.
             footer = if (showAnswer) layout.holdCaption(card.nextReviewTimes) else null,
@@ -322,7 +329,8 @@ fun rememberScreenInsets(): ScreenInsets {
 private sealed class Line {
     class Body(val block: Block) : Line()
     object Gap : Line()
-    class FocusToggle(val hiddenCount: Int, val focused: Boolean) : Line()
+    /** The chip row under the card: Whole note/Focus (if the note can be focused) and Bury. */
+    class Actions(val hiddenCount: Int?, val focused: Boolean, val bury: Boolean) : Line()
     class ExtraHeader(val label: String) : Line()
     class Extra(val extraIndex: Int, val block: Block) : Line()
     class Footer(val text: String) : Line()
@@ -338,6 +346,8 @@ private fun CardBody(
     onToggle: (Int) -> Unit,
     onTapContent: (() -> Unit)?,
     onFocusModeChange: (Boolean) -> Unit,
+    onBury: (() -> Unit)?,
+    buryEnabled: Boolean,
     insets: ScreenInsets,
     footer: String?,
     modifier: Modifier = Modifier
@@ -347,7 +357,8 @@ private fun CardBody(
     val canFocus = focus != null && focus.size < body.blocks.size
     val focused = focusMode && canFocus
 
-    val rows = remember(rendered, focused, footer) {
+    val canBury = onBury != null
+    val rows = remember(rendered, focused, footer, canBury) {
         buildList {
             if (body.blocks.isEmpty()) add(Line.Empty)
             if (focused) {
@@ -360,7 +371,9 @@ private fun CardBody(
             } else {
                 body.blocks.forEach { add(Line.Body(it)) }
             }
-            if (canFocus) add(Line.FocusToggle(body.blocks.size - focus!!.size, focused))
+            if (canFocus || canBury) {
+                add(Line.Actions(if (canFocus) body.blocks.size - focus!!.size else null, focused, canBury))
+            }
             rendered.extras.forEachIndexed { k, (label, field) ->
                 add(Line.ExtraHeader(label))
                 field.blocks.forEach { add(Line.Extra(k, it)) }
@@ -430,20 +443,36 @@ private fun CardBody(
                         .fillMaxWidth()
                         .padding(top = 6.dp)
                 )
-                is Line.FocusToggle -> CompactChip(
-                    onClick = { onFocusModeChange(!row.focused) },
-                    colors = ChipDefaults.secondaryChipColors(),
-                    label = {
-                        Text(
-                            text = if (row.focused) "Whole note (+${row.hiddenCount})" else "Focus on cloze",
-                            fontSize = 11.sp,
-                            maxLines = 1
-                        )
-                    },
+                is Line.Actions -> Row(
                     modifier = Modifier
-                        .padding(top = 4.dp)
-                        .testTag(ReviewTags.FOCUS_TOGGLE)
-                )
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+                ) {
+                    if (row.hiddenCount != null) {
+                        CompactChip(
+                            onClick = { onFocusModeChange(!row.focused) },
+                            colors = ChipDefaults.secondaryChipColors(),
+                            label = {
+                                Text(
+                                    text = if (row.focused) "Whole note (+${row.hiddenCount})" else "Focus on cloze",
+                                    fontSize = 11.sp,
+                                    maxLines = 1
+                                )
+                            },
+                            modifier = Modifier.testTag(ReviewTags.FOCUS_TOGGLE)
+                        )
+                    }
+                    if (row.bury && onBury != null) {
+                        CompactChip(
+                            onClick = onBury,
+                            enabled = buryEnabled,
+                            colors = ChipDefaults.secondaryChipColors(),
+                            label = { Text(text = "Bury", fontSize = 11.sp, maxLines = 1) },
+                            modifier = Modifier.testTag(ReviewTags.BURY)
+                        )
+                    }
+                }
                 is Line.Footer -> Text(
                     text = row.text,
                     color = MaterialTheme.colors.onSurfaceVariant,

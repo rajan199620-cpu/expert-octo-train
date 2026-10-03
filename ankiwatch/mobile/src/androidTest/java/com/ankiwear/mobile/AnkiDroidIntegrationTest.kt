@@ -241,6 +241,24 @@ class AnkiDroidIntegrationTest {
     }
 
     @Test
+    fun buryHidesTheCardUntilTomorrowAndLeavesItsSiblings() {
+        val model = stockCloze()
+        val deckId = createDeck("AnkiWatch CI::bury ${System.nanoTime()}")
+        addNote(model, deckId, listOf("{{c1::one}} {{c2::two}} {{c3::three}}", "") + List(model.fields.size - 2) { "" })
+        helper.setSelectedDeck(deckId)
+        val first = helper.getScheduledCards(deckId).first()
+
+        assertTrue(helper.buryCard(first.noteId, first.cardOrd))
+        val after = helper.getDeckDueBreakdown(deckId)!!
+        Log.i(TAG, "after bury: $after")
+        assertEquals(2, after.newCount)
+        val next = helper.getScheduledCards(deckId, limit = 10)
+        assertFalse("the buried card is still scheduled: $next",
+            next.any { it.noteId == first.noteId && it.cardOrd == first.cardOrd })
+        assertTrue("its siblings went with it: $next", next.isNotEmpty())
+    }
+
+    @Test
     fun hugeNotesAreTrimmedToFitTheDataLayer() {
         val model = stockCloze()
         val deckId = createDeck("AnkiWatch CI::huge ${System.nanoTime()}")

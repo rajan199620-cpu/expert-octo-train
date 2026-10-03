@@ -17,6 +17,7 @@ Based on [AnkiWatch](https://github.com/OleksandrShabaldas/AnkiWatch) by Oleksan
 | **Show answer** | Opens the tested cloze and shows the note's Note / Mnemonics / Extra. |
 | **Again** / **Good** | Grade the card. **Hold Again = Hard**, **hold Good = Easy**. Each button shows its next interval; the Hard/Easy intervals are at the end of the answer. |
 | **Bottom side button** | Press: show the answer, then press again for **Good**. Hold (½ s): **Again**. Ignored while the next cards load; on *Done!* it returns to the decks. |
+| **Bury** | Under the card (scroll down). Hides this card until tomorrow, as Bury does in AnkiDroid; its sibling cards stay. |
 | Whole note / Focus on cloze | Focus mode (default) shows only the part of a long note holding the tested cloze, plus its heading or parent list item. Either way a card opens scrolled so the tested cloze (then its answer) is fully on screen. |
 | Bezel / swipe | Scroll. Swipe right to leave the review. |
 

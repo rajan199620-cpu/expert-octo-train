@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.PowerManager
 import android.util.Log
+import com.ankiwatch.core.Wire
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMap
@@ -100,7 +101,13 @@ class WearListenerService : WearableListenerService() {
 
         if (answers.isEmpty()) return
 
-        exchangeLog.request(if (answers.size == 1) "answer" else "${answers.size} answers")
+        val buries = answers.count { it.second.getInt(DataLayerManager.KEY_EASE) == Wire.EASE_BURY }
+        exchangeLog.request(
+            when {
+                answers.size == 1 -> if (buries == 1) "bury" else "answer"
+                else -> "${answers.size} answers"
+            }
+        )
         runProcessing {
             for ((uri, map) in answers) {
                 val uuid = map.getString(DataLayerManager.KEY_ANSWER_UUID)
@@ -255,6 +262,11 @@ class WearListenerService : WearableListenerService() {
      * warm up scheduler → answer), with a couple of retries for the cold-start case.
      */
     private suspend fun applyAnswer(req: AnswerRequest): Boolean {
+        if (req.ease == Wire.EASE_BURY) {
+            val buried = ankiHelper.buryCard(req.noteId, req.cardOrd)
+            Log.d(TAG, "Bury noteId=${req.noteId} cardOrd=${req.cardOrd}: $buried")
+            return buried
+        }
         if (req.deckId != 0L) {
             val selectedOk = ankiHelper.setSelectedDeck(req.deckId)
             delay(50) // brief settle for AnkiDroid to process the selection

@@ -21,6 +21,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ankiwatch.core.CardRenderer
 import com.ankiwatch.core.RenderOptions
+import com.ankiwatch.core.Wire
 import com.ankiwear.wear.model.CardData
 import com.ankiwear.wear.model.ClozeCard
 import com.ankiwear.wear.review.Press
@@ -272,6 +273,30 @@ class ReviewScreenTest {
         rule.onNodeWithTag(ReviewTags.ease(1)).performClick()
         rule.waitForIdle()
         assertEquals(listOf(3, 2, 4, 1), answers)
+    }
+
+    @Test
+    fun buryBuriesOnceOnEitherSide() {
+        show(lawC3)
+        rule.scrollContentTo(hasTestTag(ReviewTags.BURY))
+        rule.assertOnScreen("Bury")
+        rule.onNodeWithTag(ReviewTags.BURY).performClick()
+        rule.waitForIdle()
+        assertEquals(listOf(Wire.EASE_BURY), answers)
+        // Nothing more goes out for this card: not a second bury, not a grade.
+        rule.onNodeWithTag(ReviewTags.BURY).performClick()
+        rule.runOnIdle { SideButtons.handler!!.invoke(Press.SHORT) }
+        rule.waitForIdle()
+        assertEquals(listOf(Wire.EASE_BURY), answers)
+
+        // After revealing the answer, too.
+        switchTo(lawC5)
+        rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+        rule.waitForIdle()
+        rule.scrollContentTo(hasTestTag(ReviewTags.BURY))
+        rule.onNodeWithTag(ReviewTags.BURY).performClick()
+        rule.waitForIdle()
+        assertEquals(listOf(Wire.EASE_BURY, Wire.EASE_BURY), answers)
     }
 
     @Test
