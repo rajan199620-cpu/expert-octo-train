@@ -3,6 +3,7 @@ package com.ankiwear.mobile
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.ankiwatch.core.Link
 import com.ankiwatch.core.Wire
 import com.ankiwatch.core.PayloadBudget
 import com.google.android.gms.wearable.CapabilityClient
@@ -184,9 +185,28 @@ class DataLayerManager(context: Context) {
     }
 
     /**
-     * Checks whether any watch nodes are connected.
+     * What the phone can see of the watch app, for the status screen: ready, a watch without
+     * a matching AnkiWatch, no watch at all, or the Wear OS link failing.
      */
-    suspend fun isWatchConnected(): Boolean = watchNodeIds().isNotEmpty()
+    suspend fun watchLink(): Link.Status {
+        var error: String? = null
+        val app = try {
+            capabilityClient
+                .getCapability(CAPABILITY_WATCH, CapabilityClient.FILTER_REACHABLE)
+                .await()
+                .nodes.map { it.displayName }
+        } catch (e: Exception) {
+            error = e.message ?: e.javaClass.simpleName
+            null
+        }
+        val connected = try {
+            nodeClient.connectedNodes.await().map { it.displayName }
+        } catch (e: Exception) {
+            error = error ?: e.message ?: e.javaClass.simpleName
+            null
+        }
+        return Link.classify(app, connected, error)
+    }
 
     /**
      * Resolves the watch node ids. Prefers nodes actually advertising the watch

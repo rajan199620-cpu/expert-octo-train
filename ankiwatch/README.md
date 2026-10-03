@@ -106,9 +106,18 @@ Never commit the keystore; this repository is public.
   replaced the phone app, since both apps share one package name). On the phone, uninstall
   AnkiWatch, then install `ankiwatch-phone.apk`. The right app is called **AnkiWatch Phone**
   and lists your decks.
+- **The phone's "Watch" row** (it rechecks every few seconds while open):
+  - *Connected*: ready; open AnkiWatch on the watch.
+  - *AnkiWatch missing on watch*: the watch is connected, but AnkiWatch isn't installed on
+    it, or it comes from a different download. Each build is signed with its own key unless
+    you set up a permanent one, and the two apps only talk when signed alike: install
+    both files from the same download.
+  - *No watch connected*: the phone can't see the watch at all. Check Bluetooth, and that
+    Galaxy Wearable shows the watch as connected.
+- **The watch says "Phone found, but AnkiWatch Phone isn't on it, or it's from a different
+  download"**: same cause as above; reinstall both apps from one download.
 - **"Phone not connected" on the watch**: the phone must be within Bluetooth range of the
-  watch (or both on Wi-Fi) with AnkiWatch Phone installed, from the same download as the
-  watch app.
+  watch (or both on Wi-Fi) with AnkiWatch Phone installed.
 - **"AnkiWatch needs permission"**: open AnkiWatch Phone and allow AnkiDroid access.
 - **Cards look like plain text**: only cloze note types (Enhanced Cloze, Cloze) get the
   cloze layout; other notes show their template with formatting kept.

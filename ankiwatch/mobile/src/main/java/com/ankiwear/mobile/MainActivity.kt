@@ -29,8 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.ankiwatch.core.Link
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -63,6 +67,17 @@ class MainActivity : ComponentActivity() {
                 PhoneScreen(state = uiState, currentVersion = BuildConfig.VERSION_NAME)
             }
         }
+
+        // Keep the watch row live while this screen is open, so installing or opening the
+        // watch app (or reconnecting Bluetooth) shows up without reopening the phone app.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    uiState = uiState.copy(watchLink = dataLayerManager.watchLink())
+                    delay(WATCH_CHECK_INTERVAL_MS)
+                }
+            }
+        }
     }
 
     override fun onResume() {
@@ -87,7 +102,6 @@ class MainActivity : ComponentActivity() {
         }
 
         refreshDecks()
-        checkWatchConnection()
     }
 
     private fun refreshDecks() {
@@ -97,18 +111,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkWatchConnection() {
-        lifecycleScope.launch {
-            val connected = dataLayerManager.isWatchConnected()
-            uiState = uiState.copy(watchConnected = connected)
-        }
+    private companion object {
+        const val WATCH_CHECK_INTERVAL_MS = 3_000L
     }
 }
 
 data class PhoneUiState(
     val ankiDroidInstalled: Boolean = false,
     val permissionGranted: Boolean = false,
-    val watchConnected: Boolean = false,
+    /** Null until the first check has finished. */
+    val watchLink: Link.Status? = null,
     val decks: List<DeckData> = emptyList()
 )
 
@@ -138,8 +150,8 @@ fun PhoneScreen(state: PhoneUiState, currentVersion: String = "") {
             )
             StatusRow(
                 label = "Watch",
-                ok = state.watchConnected,
-                detail = if (state.watchConnected) "Connected" else "Not connected"
+                ok = state.watchLink?.state == Link.State.READY,
+                detail = Link.phoneRow(state.watchLink)
             )
             if (currentVersion.isNotEmpty()) {
                 StatusRow(label = "Version", ok = true, detail = currentVersion)
@@ -147,9 +159,13 @@ fun PhoneScreen(state: PhoneUiState, currentVersion: String = "") {
 
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Open AnkiWatch on your watch to review. This phone app only needs to stay " +
-                    "installed; it doesn't have to be open.",
-                style = MaterialTheme.typography.bodySmall
+                text = Link.phoneHint(state.watchLink),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (state.watchLink == null || state.watchLink.state == Link.State.READY) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.error
+                }
             )
             Spacer(modifier = Modifier.height(24.dp))
 

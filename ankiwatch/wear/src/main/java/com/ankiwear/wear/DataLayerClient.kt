@@ -3,6 +3,7 @@ package com.ankiwear.wear
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.ankiwatch.core.Link
 import com.ankiwatch.core.Wire
 import com.ankiwear.wear.model.CardData
 import com.ankiwear.wear.model.ClozeCard
@@ -92,6 +93,10 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
 
     private val _isPhoneConnected = MutableStateFlow(false)
     val isPhoneConnected: StateFlow<Boolean> = _isPhoneConnected.asStateFlow()
+
+    /** What the last connection check saw of the phone app; null before the first one. */
+    private val _phoneLink = MutableStateFlow<Link.Status?>(null)
+    val phoneLink: StateFlow<Link.Status?> = _phoneLink.asStateFlow()
 
     /** System.currentTimeMillis() of the last decks response we received from the phone,
      *  or null if we haven't gotten one yet this session. The deck list shows this as
@@ -245,7 +250,32 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
      * list if the capability lookup is momentarily empty.
      */
     suspend fun checkConnection() {
-        _isPhoneConnected.value = phoneNodeIds().isNotEmpty()
+        val link = phoneLinkStatus()
+        _phoneLink.value = link
+        // A connected phone without a visible AnkiWatch still gets requests: right after
+        // pairing the capability can lag behind. The watch explains APP_MISSING if no answer
+        // comes back.
+        _isPhoneConnected.value = link.state == Link.State.READY || link.state == Link.State.APP_MISSING
+    }
+
+    private suspend fun phoneLinkStatus(): Link.Status {
+        var error: String? = null
+        val app = try {
+            capabilityClient
+                .getCapability(CAPABILITY_PHONE, CapabilityClient.FILTER_REACHABLE)
+                .await()
+                .nodes.map { it.displayName }
+        } catch (e: Exception) {
+            error = e.message ?: e.javaClass.simpleName
+            null
+        }
+        val connected = try {
+            nodeClient.connectedNodes.await().map { it.displayName }
+        } catch (e: Exception) {
+            error = error ?: e.message ?: e.javaClass.simpleName
+            null
+        }
+        return Link.classify(app, connected, error)
     }
 
     fun clearError() {

@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+import com.ankiwatch.core.Link
 import com.ankiwear.wear.model.CardData
 import com.ankiwear.wear.model.CardType
 import com.ankiwear.wear.model.DeckInfo
@@ -105,6 +106,7 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
         val authoritativeReview by dataLayerClient.reviewRemaining.collectAsState()
         val errorMessage by dataLayerClient.errorMessage.collectAsState()
         val isConnected by dataLayerClient.isPhoneConnected.collectAsState()
+        val phoneLink by dataLayerClient.phoneLink.collectAsState()
         val decksLastUpdated by dataLayerClient.decksLastUpdated.collectAsState()
 
         var isLoadingDecks by remember { mutableStateOf(true) }
@@ -254,7 +256,10 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                     }
                     timedOut && decks.isEmpty() && isConnected -> {
                         ErrorScreen(
-                            message = "Phone took too long to respond. This usually clears up after one retry — the phone-side service was probably cold-starting.",
+                            // A phone without a matching AnkiWatch Phone never answers; say so
+                            // rather than blaming a slow start.
+                            message = Link.watchMessage(phoneLink)
+                                ?: "Phone took too long to respond. This usually clears up after one retry — the phone-side service was probably cold-starting.",
                             onRetry = {
                                 timedOut = false
                                 isLoadingDecks = true

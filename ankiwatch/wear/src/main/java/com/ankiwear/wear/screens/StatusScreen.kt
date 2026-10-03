@@ -31,7 +31,7 @@ fun DisconnectedScreen(onRetry: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Make sure your phone is nearby and AnkiWatch is installed on it.",
+            text = "Make sure your phone is nearby and AnkiWatch Phone is installed on it.",
             style = MaterialTheme.typography.body2,
             color = MaterialTheme.colors.onSurfaceVariant,
             textAlign = TextAlign.Center
