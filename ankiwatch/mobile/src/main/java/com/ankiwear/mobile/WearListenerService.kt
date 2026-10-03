@@ -101,7 +101,7 @@ class WearListenerService : WearableListenerService() {
 
         if (answers.isEmpty()) return
 
-        val buries = answers.count { it.second.getInt(DataLayerManager.KEY_EASE) == Wire.EASE_BURY }
+        val buries = answers.count { it.second.getInt(DataLayerManager.KEY_EASE, -1) == Wire.EASE_BURY }
         exchangeLog.request(
             when {
                 answers.size == 1 -> if (buries == 1) "bury" else "answer"
@@ -223,7 +223,8 @@ class WearListenerService : WearableListenerService() {
         AnswerRequest(
             noteId = dataMap.getLong(DataLayerManager.KEY_NOTE_ID),
             cardOrd = dataMap.getInt(DataLayerManager.KEY_CARD_ORD),
-            ease = dataMap.getInt(DataLayerManager.KEY_EASE),
+            // -1, not getInt's default 0: an answer without an ease must never read as Bury.
+            ease = dataMap.getInt(DataLayerManager.KEY_EASE, -1),
             timeTaken = dataMap.getLong(DataLayerManager.KEY_TIME_TAKEN),
             deckId = dataMap.getLong(DataLayerManager.KEY_DECK_ID),
             uuid = uuid
@@ -262,6 +263,8 @@ class WearListenerService : WearableListenerService() {
      * warm up scheduler → answer), with a couple of retries for the cold-start case.
      */
     private suspend fun applyAnswer(req: AnswerRequest): Boolean {
+        // Thrown, so handleAnswer reports it to the watch and drops the item.
+        require(Wire.isAnswerEase(req.ease)) { "unknown answer (ease ${req.ease})" }
         if (req.ease == Wire.EASE_BURY) {
             val buried = ankiHelper.buryCard(req.noteId, req.cardOrd)
             Log.d(TAG, "Bury noteId=${req.noteId} cardOrd=${req.cardOrd}: $buried")

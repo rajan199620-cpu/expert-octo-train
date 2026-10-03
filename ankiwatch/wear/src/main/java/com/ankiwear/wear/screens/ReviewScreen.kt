@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,12 +40,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -443,11 +446,10 @@ private fun CardBody(
                         .fillMaxWidth()
                         .padding(top = 6.dp)
                 )
-                is Line.Actions -> Row(
+                is Line.Actions -> ChipRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+                        .padding(top = 4.dp)
                 ) {
                     if (row.hiddenCount != null) {
                         CompactChip(
@@ -457,7 +459,8 @@ private fun CardBody(
                                 Text(
                                     text = if (row.focused) "Whole note (+${row.hiddenCount})" else "Focus on cloze",
                                     fontSize = 11.sp,
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             },
                             modifier = Modifier.testTag(ReviewTags.FOCUS_TOGGLE)
@@ -488,6 +491,44 @@ private fun CardBody(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Chips side by side and centred, or centred one under another when they don't all fit across
+ * (a 40 mm watch, a large font size, a long label), so none is ever squeezed or cut short.
+ * Stacked chips need no extra gap: each CompactChip carries its own tap-target padding.
+ */
+@Composable
+internal fun ChipRow(
+    modifier: Modifier = Modifier,
+    gap: Dp = 6.dp,
+    content: @Composable () -> Unit
+) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val gapPx = gap.roundToPx()
+        val chips = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val across = chips.sumOf { it.width } + gapPx * (chips.size - 1).coerceAtLeast(0)
+        val sideBySide = across <= constraints.maxWidth
+        val width = (if (sideBySide) across else chips.maxOfOrNull { it.width } ?: 0)
+            .coerceIn(constraints.minWidth, constraints.maxWidth)
+        val height = (if (sideBySide) chips.maxOfOrNull { it.height } ?: 0 else chips.sumOf { it.height })
+            .coerceIn(constraints.minHeight, constraints.maxHeight)
+        layout(width, height) {
+            if (sideBySide) {
+                var x = (width - across) / 2
+                chips.forEach {
+                    it.placeRelative(x, (height - it.height) / 2)
+                    x += it.width + gapPx
+                }
+            } else {
+                var y = 0
+                chips.forEach {
+                    it.placeRelative((width - it.width) / 2, y)
+                    y += it.height
+                }
             }
         }
     }
@@ -669,7 +710,8 @@ private fun GradeButton(
 ) {
     Column(
         modifier = modifier
-            .height(44.dp)
+            // At least 44 dp; taller with a large font size, rather than clipping the text.
+            .heightIn(min = 44.dp)
             .clip(RoundedCornerShape(22.dp))
             .background(if (enabled) color else color.copy(alpha = 0.4f))
             .combinedClickable(

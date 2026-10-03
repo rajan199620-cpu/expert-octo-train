@@ -52,6 +52,8 @@ class ReviewScreenTest {
     private val answers = mutableListOf<Int>()
     private lateinit var cardState: MutableState<CardData?>
     private lateinit var focusState: MutableState<Boolean>
+    private lateinit var fontScaleState: MutableState<Float>
+    private lateinit var screenState: MutableState<Int?>
 
     private val lawC3 get() = DemoContent.cards(1L)[0] // tests c3 ("second mode" + "condition")
     private val lawC5 get() = DemoContent.cards(1L)[1] // ord 4 → c5 (punishment)
@@ -68,16 +70,22 @@ class ReviewScreenTest {
             cardState = state
             val focusMode = remember { mutableStateOf(focus) }
             focusState = focusMode
+            val fontScale = remember { mutableStateOf(1f) }
+            fontScaleState = fontScale
+            val screen = remember { mutableStateOf<Int?>(null) }
+            screenState = screen
             val current = state.value
-            AnkiWearTheme {
-                ReviewScreen(
-                    card = current,
-                    revisionKey = "${current?.noteId}:${current?.cardOrd}:${current?.hashCode()}",
-                    focusMode = focusMode.value,
-                    onFocusModeChange = { focusMode.value = it },
-                    onAnswer = { _, _, ease, _ -> answers.add(ease) },
-                    onFinished = {}
-                )
+            WatchSize(screen.value, fontScale.value) {
+                AnkiWearTheme {
+                    ReviewScreen(
+                        card = current,
+                        revisionKey = "${current?.noteId}:${current?.cardOrd}:${current?.hashCode()}",
+                        focusMode = focusMode.value,
+                        onFocusModeChange = { focusMode.value = it },
+                        onAnswer = { _, _, ease, _ -> answers.add(ease) },
+                        onFinished = {}
+                    )
+                }
             }
         }
         rule.waitForIdle()
@@ -299,6 +307,87 @@ class ReviewScreenTest {
         assertEquals(listOf(Wire.EASE_BURY, Wire.EASE_BURY), answers)
     }
 
+    /** Bury and a grade (or the side button) in the same moment: whichever came first counts, once. */
+    @Test
+    fun buryAndAGradeTogetherCountOnce() {
+        show(lawC3)
+        rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+        rule.waitForIdle()
+        rule.scrollContentTo(hasTestTag(ReviewTags.BURY))
+        rule.onNodeWithTag(ReviewTags.BURY).performClick()
+        // Straight after the tap, before the screen has redrawn with the buttons disabled.
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            SideButtons.handler!!.invoke(Press.SHORT)
+            SideButtons.handler!!.invoke(Press.LONG)
+        }
+        rule.onNodeWithTag(ReviewTags.ease(3)).performClick()
+        rule.waitForIdle()
+        assertEquals(listOf(Wire.EASE_BURY), answers)
+
+        switchTo(lawC5)
+        rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+        rule.waitForIdle()
+        rule.scrollContentTo(hasTestTag(ReviewTags.BURY))
+        InstrumentationRegistry.getInstrumentation().runOnMainSync { SideButtons.handler!!.invoke(Press.LONG) } // Again
+        rule.onNodeWithTag(ReviewTags.BURY).performClick()
+        rule.waitForIdle()
+        assertEquals(listOf(Wire.EASE_BURY, 1), answers)
+    }
+
+    /**
+     * Every control on the smallest round Wear OS screen (192 dp), a 40 mm-class one and this
+     * 44 mm-class emulator, at each font size a watch offers and beyond. Up to 1.3× (the
+     * largest watch setting) every label is whole and readable inside the circle; up to 1.5×
+     * the chips and Show answer still are. At any size the chips never cover each other and
+     * Bury answers.
+     */
+    @Test
+    fun controlsHoldUpOnEveryScreenAndFontSize() {
+        show(lawC3)
+        var id = 7_000L
+        for (screenDp in listOf(227, 204, 192)) for (scale in listOf(0.85f, 1f, 1.15f, 1.3f, 1.5f, 2f)) {
+            rule.runOnIdle {
+                screenState.value = screenDp
+                fontScaleState.value = scale
+            }
+            for (answerSide in listOf(false, true)) {
+                val what = "${screenDp}dp, font ${scale}x, ${if (answerSide) "answer" else "question"} side"
+                switchTo(lawC3.copy(noteId = id++))
+                if (answerSide) {
+                    rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+                    rule.waitForIdle()
+                    for ((ease, label) in listOf(1 to "Again", 3 to "Good")) {
+                        rule.onNodeWithTag(ReviewTags.ease(ease)).assertExists()
+                        if (scale <= 1.3f) {
+                            rule.assertLabelWhole(ReviewTags.ease(ease), what)
+                            rule.assertOnScreen(label)
+                        }
+                    }
+                } else if (scale <= 1.5f) {
+                    rule.assertLabelWhole(ReviewTags.SHOW_ANSWER, what)
+                    rule.assertOnScreen("Show answer")
+                }
+
+                rule.scrollContentTo(hasTestTag(ReviewTags.FOCUS_TOGGLE))
+                rule.assertOnScreen("Whole note")
+                if (scale <= 1.5f) rule.assertLabelWhole(ReviewTags.FOCUS_TOGGLE, what)
+                rule.scrollContentTo(hasTestTag(ReviewTags.BURY))
+                rule.assertOnScreen("Bury")
+                rule.assertLabelWhole(ReviewTags.BURY, what)
+                val focus = rule.placedNodes(hasTestTag(ReviewTags.FOCUS_TOGGLE)).single().unclippedBounds()
+                val bury = rule.placedNodes(hasTestTag(ReviewTags.BURY)).single().unclippedBounds()
+                assertFalse("$what: the chips overlap ($focus, $bury)", focus.overlaps(bury))
+                if (screenDp == 192 && (scale == 1.3f || scale == 2f)) {
+                    rule.screenshot("size-${screenDp}dp-${scale}x-${if (answerSide) "answer" else "question"}")
+                }
+            }
+        }
+        // Still a working button at the largest size on the smallest screen.
+        rule.onNodeWithTag(ReviewTags.BURY).performClick()
+        rule.waitForIdle()
+        assertEquals(listOf(Wire.EASE_BURY), answers)
+    }
+
     @Test
     fun aSecondTapCannotGradeTwice() {
         show(lawC3)
@@ -449,32 +538,59 @@ class ReviewScreenTest {
     @Test
     fun stressManyRandomCards() {
         val rnd = Random(2026)
+        // A separate stream for what the user does, so the cards stay the same as before.
+        val user = Random(99)
         val (first, _) = randomCard(rnd, 0)
         show(first, focus = rnd.nextBoolean())
         var slowest = 0L
+        var buried = 0
         val count = 120
         for (i in 1..count) {
             val (card, secrets) = randomCard(rnd, i.toLong())
+            rule.runOnIdle { focusState.value = user.nextBoolean() }
             val start = SystemClock.uptimeMillis()
             switchTo(card)
             slowest = maxOf(slowest, SystemClock.uptimeMillis() - start)
+            val what = "card $i (focus ${focusState.value})\n${card.cloze!!.content}"
             val text = rule.allText()
             for ((_, list) in secrets) for (s in list) {
                 assertFalse("card $i leaked $s\n${card.cloze!!.content}\n$text", text.contains(s))
             }
             val question = firstTestedBlock(card, answer = false)
-            if (question >= 0) rule.assertRowInView(ReviewTags.block(question), "card $i question\n${card.cloze!!.content}")
-            rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
-            rule.waitForIdle()
-            val answer = firstTestedBlock(card, answer = true)
-            if (answer >= 0) rule.assertRowInView(ReviewTags.block(answer), "card $i answer\n${card.cloze!!.content}")
+            if (question >= 0) rule.assertRowInView(ReviewTags.block(question), "$what\nquestion")
             val before = answers.size
-            rule.onNodeWithTag(if (i % 3 == 0) ReviewTags.ease(1) else ReviewTags.ease(3)).performClick()
+            val bury = when (user.nextInt(8)) {
+                0 -> "question"
+                1 -> "answer"
+                else -> null
+            }
+            if (bury != "question") {
+                rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+                rule.waitForIdle()
+                val answer = firstTestedBlock(card, answer = true)
+                if (answer >= 0) rule.assertRowInView(ReviewTags.block(answer), "$what\nanswer")
+            }
+            if (bury != null) {
+                rule.scrollContentTo(hasTestTag(ReviewTags.BURY))
+                rule.assertOnScreen("Bury")
+                rule.onNodeWithTag(ReviewTags.BURY).performClick()
+                buried++
+            } else {
+                rule.onNodeWithTag(if (i % 3 == 0) ReviewTags.ease(1) else ReviewTags.ease(3)).performClick()
+            }
             rule.waitForIdle()
-            assertEquals("card $i grade", before + 1, answers.size)
+            // Whatever is pressed after the one answer, nothing more goes out for this card.
+            rule.runOnIdle {
+                SideButtons.handler!!.invoke(Press.SHORT)
+                SideButtons.handler!!.invoke(Press.LONG)
+            }
+            rule.waitForIdle()
+            assertEquals("$what\none answer (bury: $bury)", before + 1, answers.size)
+            if (bury != null) assertEquals(Wire.EASE_BURY, answers.last())
         }
-        Log.i("AnkiWatchTest", "stress: $count random cards, slowest card switch ${slowest}ms")
+        Log.i("AnkiWatchTest", "stress: $count random cards ($buried buried), slowest card switch ${slowest}ms")
         assertTrue("slowest card switch took ${slowest}ms", slowest < 3_000)
+        assertTrue("only $buried buries", buried >= 10)
     }
 
     @Test

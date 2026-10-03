@@ -1,6 +1,7 @@
 package com.ankiwatch.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -34,6 +35,16 @@ class WireTest {
     @Test
     fun buryIsNotAGrade() {
         assertTrue(Wire.EASE_BURY !in 1..4)
+    }
+
+    @Test
+    fun onlyGradesAndBuryAreAnswers() {
+        assertTrue(Wire.isAnswerEase(Wire.EASE_BURY))
+        for (ease in 1..4) assertTrue(Wire.isAnswerEase(ease))
+        // -1 is what the phone reads when an answer carries no ease at all.
+        for (ease in listOf(-1, 5, 6, 100, Int.MIN_VALUE, Int.MAX_VALUE)) {
+            assertFalse("ease $ease", Wire.isAnswerEase(ease))
+        }
     }
 
     @Test

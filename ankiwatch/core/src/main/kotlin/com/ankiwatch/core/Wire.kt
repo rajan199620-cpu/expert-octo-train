@@ -25,6 +25,12 @@ object Wire {
      */
     const val EASE_BURY = 0
 
+    /**
+     * A grade (1–4) or [EASE_BURY]. Anything else is a malformed answer; in particular a
+     * DataMap without an ease reads as 0, so readers must default to -1, never to bury.
+     */
+    fun isAnswerEase(ease: Int): Boolean = ease == EASE_BURY || ease in 1..4
+
     // Legacy message-based answer path, still accepted by the phone.
     const val PATH_REVIEW_ANSWER = "/review/answer"
 

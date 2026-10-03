@@ -167,11 +167,17 @@ Never commit the keystore; this repository is public.
 - Watch UI on a round Wear OS emulator: covered answers absent from the screen while walking
   the whole note, the tested cloze and its answer on screen when each side opens (checked by
   position inside the display circle, not just presence), peeking, focus mode, grading buttons
-  and holds, real side-button key events, 120 random cards, a 40-section note, malformed
-  input; screenshots captured.
+  and holds, real side-button key events, Bury on either side (once only, even when tapped
+  together with a grade or the side button), 120 random cards with random Bury and focus
+  mode, a 40-section note, malformed input. Every control on 192, 204 and 227 dp round
+  screens at font sizes from 0.85× to 2×: labels whole and inside the circle up to 1.3×
+  (the largest watch setting), the chips under the card wrapping instead of overlapping at
+  any size. Screenshots captured.
 - Phone code against the real AnkiDroid app on an emulator: cloze fields and numbers, deck
-  counts, answers landing in AnkiDroid's scheduler, oversized notes trimmed under the
-  Bluetooth payload limit, and a multi-deck answer loop.
+  counts, answers landing in AnkiDroid's scheduler, Bury (the card leaves today's queue, its
+  siblings stay; burying a whole deck empties today's queue; a stale or bogus bury fails
+  cleanly), oversized notes trimmed under the Bluetooth payload limit, and a multi-deck
+  answer loop with buries mixed in.
 - The downloadable APKs themselves: on a phone emulator the watch APK must be refused and
   the phone APK must install and keep running; on the Wear OS emulator the watch APK must.
   The install scripts are run against a fake adb (watch, phone, wrong address, a watch on

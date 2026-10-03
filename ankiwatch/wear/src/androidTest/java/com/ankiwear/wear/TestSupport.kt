@@ -1,10 +1,15 @@
 package com.ankiwear.wear
 
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.util.Base64
 import android.util.Log
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -24,11 +29,16 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.toSize
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ankiwear.wear.screens.ReviewTags
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import java.io.ByteArrayOutputStream
 import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /** Every piece of text currently in the composition, one node per line. */
@@ -48,6 +58,9 @@ fun ComposeTestRule.allText(): String {
  */
 fun ComposeTestRule.placedNodes(matcher: SemanticsMatcher): List<SemanticsNode> =
     onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes().filter { it.layoutInfo.isPlaced }
+
+/** Where the node is laid out, including any part the list or a parent clips away. */
+fun SemanticsNode.unclippedBounds(): Rect = Rect(positionInRoot, size.toSize())
 
 /** Where the card list draws on screen; rows outside it are clipped. */
 fun ComposeTestRule.contentViewport(): Rect =
@@ -163,6 +176,58 @@ fun ComposeTestRule.assertOnScreen(needle: String) {
             }
         }
     }
+}
+
+/**
+ * Asserts that every piece of text in the control tagged [tag] (a one-line label: a chip, a
+ * button) is shown whole: it got the width its text needs (so it isn't wrapped away,
+ * ellipsized or clipped) and lies inside the control (so a fixed height doesn't cut it).
+ * Nothing is scrolled first.
+ */
+fun ComposeTestRule.assertLabelWhole(tag: String, what: String) {
+    val control = placedNodes(hasTestTag(tag)).firstOrNull()
+    assertTrue("$what: $tag is not laid out", control != null)
+    val box = control!!.unclippedBounds()
+    val labels = placedNodes(hasAnyAncestor(hasTestTag(tag)) and SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult))
+    assertTrue("$what: $tag shows no text", labels.isNotEmpty())
+    for (label in labels) {
+        val layouts = mutableListOf<TextLayoutResult>()
+        label.config[SemanticsActions.GetTextLayoutResult].action!!.invoke(layouts)
+        val layout = layouts.first()
+        val text = layout.layoutInput.text.text
+        val needed = ceil(layout.multiParagraph.intrinsics.maxIntrinsicWidth)
+        assertTrue("$what: '$text' needs ${needed}px across, got ${layout.size.width}px", needed <= layout.size.width + 1f)
+        assertFalse("$what: '$text' overflows (${layout.lineCount} lines)", layout.hasVisualOverflow)
+        val r = label.unclippedBounds()
+        assertTrue(
+            "$what: '$text' at $r spills out of $tag at $box",
+            r.left >= box.left - 1f && r.right <= box.right + 1f && r.top >= box.top - 1f && r.bottom <= box.bottom + 1f
+        )
+    }
+}
+
+/**
+ * Shows [content] as on a round watch [screenDp] wide (null: this emulator's own size) with
+ * the font size setting at [fontScale]. The pixels stay the same; the density changes, as it
+ * does between a 40 mm and a 44 mm watch. Font scaling is linear here, which for scales above
+ * 1 is larger than Android's own (non-linear) scaling of big text, so it errs on the safe side.
+ */
+@Composable
+fun WatchSize(screenDp: Int?, fontScale: Float, content: @Composable () -> Unit) {
+    val config = LocalConfiguration.current
+    val base = LocalDensity.current
+    val density = if (screenDp == null) base.density else config.screenWidthDp * base.density / screenDp
+    val sized = if (screenDp == null) config else Configuration(config).apply {
+        screenWidthDp = screenDp
+        screenHeightDp = (config.screenHeightDp * base.density / density).roundToInt()
+        smallestScreenWidthDp = minOf(screenWidthDp, screenHeightDp)
+        densityDpi = (density * 160).roundToInt()
+    }
+    CompositionLocalProvider(
+        LocalDensity provides Density(density, base.fontScale * fontScale),
+        LocalConfiguration provides sized,
+        content = content
+    )
 }
 
 /** Taps the middle of [needle] inside the text node tagged [tag] (e.g. one cloze span). */

@@ -14,6 +14,7 @@ import androidx.test.uiautomator.Until
 import com.ankiwatch.core.CardRenderer
 import com.ankiwatch.core.PayloadBudget
 import com.ankiwatch.core.RenderOptions
+import com.ankiwatch.core.Wire
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -259,6 +260,55 @@ class AnkiDroidIntegrationTest {
     }
 
     @Test
+    fun buryingEveryCardEmptiesTodaysQueue() {
+        val model = stockCloze()
+        // Top level, so the shared "AnkiWatch CI" parent's daily new-card limit can't interfere.
+        val deckId = createDeck("AnkiWatch bury-all ${System.nanoTime()}")
+        var total = 0
+        for (n in 0 until 6) {
+            val k = 1 + n % 3
+            addNote(model, deckId, listOf((1..k).joinToString(" ") { "w$n {{c$it::s$n-$it}}" }, "") + List(model.fields.size - 2) { "" })
+            total += k
+        }
+        helper.setSelectedDeck(deckId)
+        assertEquals(total, helper.getDeckDueBreakdown(deckId)!!.newCount)
+        val buried = HashSet<Pair<Long, Int>>()
+        while (true) {
+            val next = helper.getScheduledCards(deckId, limit = 10)
+            assertFalse("a buried card came back: $next", next.any { (it.noteId to it.cardOrd) in buried })
+            val card = next.firstOrNull() ?: break
+            assertTrue("bury failed for ${card.noteId}/${card.cardOrd}", helper.buryCard(card.noteId, card.cardOrd))
+            buried += card.noteId to card.cardOrd
+            assertTrue("more buries (${buried.size}) than cards ($total)", buried.size <= total)
+        }
+        Log.i(TAG, "buried all $total cards")
+        assertEquals(total, buried.size)
+        val counts = helper.getDeckDueBreakdown(deckId)!!
+        assertEquals("$counts", 0, counts.totalDue)
+    }
+
+    @Test
+    fun staleOrBogusBuriesFailWithoutHarm() {
+        val model = stockCloze()
+        val deckId = createDeck("AnkiWatch bury-stale ${System.nanoTime()}")
+        val noteId = addNote(model, deckId, listOf("{{c1::one}} {{c2::two}}", "") + List(model.fields.size - 2) { "" })
+        helper.setSelectedDeck(deckId)
+        // A card the note doesn't have, and a note that no longer exists (deleted on the phone
+        // while the watch still showed it): no crash, just false.
+        assertFalse(helper.buryCard(noteId, 7))
+        assertFalse(helper.buryCard(Long.MAX_VALUE - 1, 0))
+        assertEquals(2, helper.getDeckDueBreakdown(deckId)!!.newCount)
+
+        // AnkiDroid still answers, and the same bury delivered twice is harmless.
+        val card = helper.getScheduledCards(deckId).first()
+        assertTrue(helper.buryCard(card.noteId, card.cardOrd))
+        helper.buryCard(card.noteId, card.cardOrd)
+        assertEquals(1, helper.getDeckDueBreakdown(deckId)!!.newCount)
+        val left = helper.getScheduledCards(deckId, limit = 10)
+        assertEquals(listOf(noteId to 1 - card.cardOrd), left.map { it.noteId to it.cardOrd })
+    }
+
+    @Test
     fun hugeNotesAreTrimmedToFitTheDataLayer() {
         val model = stockCloze()
         val deckId = createDeck("AnkiWatch CI::huge ${System.nanoTime()}")
@@ -306,20 +356,29 @@ class AnkiDroidIntegrationTest {
         Log.i(TAG, "added $notes notes in ${SystemClock.uptimeMillis() - addStart}ms")
 
         var answered = 0
+        val buried = HashSet<Pair<Long, Int>>()
         val answerStart = SystemClock.uptimeMillis()
         for (deckId in decks) {
             helper.setSelectedDeck(deckId)
             repeat(30) {
                 val card = helper.getScheduledCards(deckId).firstOrNull() ?: return@repeat
                 assertNotNull(card.cloze)
-                val ease = listOf(1, 3, 3, 3, 4)[rnd.nextInt(5)]
-                assertTrue("answer failed for ${card.noteId}/${card.cardOrd}", helper.answerCard(card.noteId, card.cardOrd, ease, 3_000))
+                val key = card.noteId to card.cardOrd
+                assertFalse("buried card $key came back", key in buried)
+                val ease = listOf(Wire.EASE_BURY, 1, 3, 3, 3, 4)[rnd.nextInt(6)]
+                if (ease == Wire.EASE_BURY) {
+                    assertTrue("bury failed for $key", helper.buryCard(card.noteId, card.cardOrd))
+                    buried += key
+                } else {
+                    assertTrue("answer failed for $key", helper.answerCard(card.noteId, card.cardOrd, ease, 3_000))
+                }
                 answered++
             }
         }
         val perAnswer = (SystemClock.uptimeMillis() - answerStart) / maxOf(answered, 1)
-        Log.i(TAG, "stress: answered $answered cards, ${perAnswer}ms per fetch+answer")
+        Log.i(TAG, "stress: answered $answered cards (${buried.size} buried), ${perAnswer}ms per fetch+answer")
         assertTrue(answered >= 30)
+        assertTrue("no buries in the mix", buried.isNotEmpty())
         assertTrue("fetch+answer took ${perAnswer}ms", perAnswer < 2_000)
         assertTrue(PayloadBudget.MAX_BYTES < 100 * 1024)
     }
