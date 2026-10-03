@@ -33,6 +33,14 @@ function Invoke-Adb([string[]]$Arguments) {
     return ($output -join "`n")
 }
 
+# "true" on a Wear OS watch, "false" on a phone; anything else if the device can't say.
+function Get-WatchFeature([string]$Serial) {
+    $out = Invoke-Adb @("-s", $Serial, "shell", "pm", "has-feature", "android.hardware.type.watch")
+    $lines = @($out -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($lines.Count -eq 0) { return "" }
+    return $lines[-1]
+}
+
 function Install-Apk([string]$Serial, [string]$Apk) {
     if (-not (Test-Path $Apk)) {
         Write-Error "Missing $Apk - run this script from the unzipped download."
@@ -45,6 +53,10 @@ function Install-Apk([string]$Serial, [string]$Apk) {
         Write-Host "  Signing key changed - reinstalling (review history lives in AnkiDroid, nothing is lost)."
         Invoke-Adb @("-s", $Serial, "uninstall", $Package) | Out-Null
         $out = Invoke-Adb @("-s", $Serial, "install", $Apk)
+    }
+    if ($out -match "INSTALL_FAILED_MISSING_SHARED_LIBRARY") {
+        Write-Error "$Serial is not a Wear OS watch, so it refuses the watch app."
+        exit 1
     }
     if ($out -notmatch "Success") {
         Write-Error "Install failed on ${Serial}:`n$out"
@@ -63,13 +75,23 @@ if ($Phone) {
         Write-Error "No phone found over USB. Enable USB debugging on the phone and accept the prompt."
         exit 1
     }
+    if ((Get-WatchFeature $phoneSerial) -eq "true") {
+        Write-Error "$phoneSerial (USB) is a watch, not a phone. Connect the phone with USB debugging."
+        exit 1
+    }
     Install-Apk $phoneSerial (Join-Path $Here "ankiwatch-phone.apk")
     # Same permission the app asks for on first launch.
     Invoke-Adb @("-s", $phoneSerial, "shell", "pm", "grant", $Package, "com.ichi2.anki.permission.READ_WRITE_DATABASE") | Out-Null
 }
 
 Write-Host (Invoke-Adb @("connect", $Watch))
+# Both apps share one package name, so the watch app on a phone would replace the phone app.
+if ((Get-WatchFeature $Watch) -eq "false") {
+    Write-Error ("$Watch is not a watch (it looks like a phone). Use the address shown on the WATCH " +
+        "under Settings > Developer options > Wireless debugging > IP address & Port.")
+    exit 1
+}
 Install-Apk $Watch (Join-Path $Here "ankiwatch-watch.apk")
 
 Write-Host ""
-Write-Host "Done. Open AnkiWatch on the phone once (it asks for AnkiDroid access), then on the watch."
+Write-Host "Done. Open AnkiWatch Phone on the phone once (it asks for AnkiDroid access), then AnkiWatch on the watch."

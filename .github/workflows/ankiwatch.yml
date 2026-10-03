@@ -111,6 +111,12 @@ jobs:
       - name: Build app and test APKs
         run: ./ankiwatch/gradlew -p ankiwatch --no-daemon :wear:assembleDebug :wear:assembleDebugAndroidTest
 
+      # The exact files users download, from the build job.
+      - uses: actions/download-artifact@v4
+        with:
+          name: ankiwatch-apks
+          path: release-apks
+
       # Each script line runs on its own; the last line fails the step if the tests did,
       # after screenshots and logs have been saved.
       - name: Run on a Wear OS emulator
@@ -128,7 +134,9 @@ jobs:
             ./ankiwatch/gradlew -p ankiwatch --no-daemon :wear:connectedDebugAndroidTest || touch wear-ui-failed
             adb logcat -d -v raw -s ANKIWATCH_SHOT:I > wear-shots.log || true
             adb logcat -d -s AnkiWatchTest:I TestRunner:I AndroidRuntime:E > wear-logcat.log || true
+            bash .github/scripts/check_release_apks.sh release-apks watch || touch release-failed
             test ! -f wear-ui-failed
+            test ! -f release-failed
 
       - name: Screenshots
         if: always()
@@ -184,6 +192,12 @@ jobs:
       - name: Build app and test APKs
         run: ./ankiwatch/gradlew -p ankiwatch --no-daemon :mobile:assembleDebug :mobile:assembleDebugAndroidTest
 
+      # The exact files users download, from the build job.
+      - uses: actions/download-artifact@v4
+        with:
+          name: ankiwatch-apks
+          path: release-apks
+
       - name: Run on a phone emulator with AnkiDroid
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -201,7 +215,9 @@ jobs:
             ./ankiwatch/gradlew -p ankiwatch --no-daemon :mobile:connectedDebugAndroidTest || touch phone-failed
             adb logcat -d -s AnkiWatchIT:* AnkiDroidHelper:* TestRunner:I AndroidRuntime:E > phone-logcat.log || true
             adb logcat -d > full-logcat.log || true
+            bash .github/scripts/check_release_apks.sh release-apks phone || touch release-failed
             test ! -f phone-failed
+            test ! -f release-failed
 
       - name: Logs
         if: always()

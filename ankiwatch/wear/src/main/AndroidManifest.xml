@@ -10,10 +10,12 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault">
 
-        <!-- Optional so the UI tests can also run on a non-Wear emulator image. -->
+        <!-- Required: only Wear OS has this library, so a phone refuses to install the watch
+             APK. The two apps share one package name (the Data Layer needs that), so a phone
+             that accepted it would silently swap its phone app for the watch app. -->
         <uses-library
             android:name="com.google.android.wearable"
-            android:required="false" />
+            android:required="true" />
 
         <!-- Needs the phone app: AnkiDroid on the phone does the scheduling. -->
         <meta-data

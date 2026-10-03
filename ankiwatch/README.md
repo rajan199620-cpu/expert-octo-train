@@ -47,11 +47,15 @@ Download **SDK Platform-Tools** from
 
 ### 3. Phone app
 
-Copy `ankiwatch-phone.apk` to the phone and open it (allow your file manager to install
-apps when asked). Open **AnkiWatch** on the phone once and allow access to AnkiDroid; it
-then lists your decks. The phone app can stay closed after that.
+Copy **`ankiwatch-phone.apk`** to the phone and open it (allow your file manager to install
+apps when asked). Open **AnkiWatch Phone** once and allow access to AnkiDroid; it then lists
+your decks. The phone app can stay closed after that.
 
-(Alternatively install it from the PC with USB debugging on: add `-Phone` below.)
+Only the phone file goes on the phone. `ankiwatch-watch.apk` goes on the watch, from the PC,
+in step 5: Galaxy Wearable does not pass sideloaded apps on to the watch, and the phone
+refuses the watch file ("App not installed").
+
+(Alternatively install the phone app from the PC with USB debugging on: add `-Phone` below.)
 
 ### 4. Watch: turn on wireless debugging
 
@@ -75,8 +79,9 @@ then lists your decks. The phone app can stay closed after that.
 .\install.ps1 -Watch 192.168.1.23:41235 -Adb .\adb.exe
 ```
 
-(macOS/Linux: `ADB=./adb ./install.sh 192.168.1.23:41235`.) Open **AnkiWatch** on the
-watch: your decks appear; tap one to start.
+(macOS/Linux: `ADB=./adb ./install.sh 192.168.1.23:41235`.) The script checks that the
+address really is the watch before installing anything. Open **AnkiWatch** on the watch:
+your decks appear; tap one to start.
 
 Turn Wireless debugging off again afterwards if you like; it only matters for installing.
 
@@ -96,9 +101,15 @@ Never commit the keystore; this repository is public.
 
 ## Troubleshooting
 
-- **"Phone not connected"**: the phone must be within Bluetooth range of the watch (or
-  both on Wi-Fi) with AnkiWatch installed on the phone.
-- **"AnkiWatch needs permission"**: open AnkiWatch on the phone and allow AnkiDroid access.
+- **The phone shows "Error / Phone not connected / Retry"**: that is the watch app, so the
+  watch file was opened on the phone (builds before 3 October 2026 allowed that, and it
+  replaced the phone app, since both apps share one package name). On the phone, uninstall
+  AnkiWatch, then install `ankiwatch-phone.apk`. The right app is called **AnkiWatch Phone**
+  and lists your decks.
+- **"Phone not connected" on the watch**: the phone must be within Bluetooth range of the
+  watch (or both on Wi-Fi) with AnkiWatch Phone installed, from the same download as the
+  watch app.
+- **"AnkiWatch needs permission"**: open AnkiWatch Phone and allow AnkiDroid access.
 - **Cards look like plain text**: only cloze note types (Enhanced Cloze, Cloze) get the
   cloze layout; other notes show their template with formatting kept.
 - Images show as `[image]` and audio is skipped; the watch has no web view to run card
@@ -119,6 +130,10 @@ Never commit the keystore; this repository is public.
 - Phone code against the real AnkiDroid app on an emulator: cloze fields and numbers, deck
   counts, answers landing in AnkiDroid's scheduler, oversized notes trimmed under the
   Bluetooth payload limit, and a multi-deck answer loop.
+- The downloadable APKs themselves: on a phone emulator the watch APK must be refused and
+  the phone APK must install and keep running; on the Wear OS emulator the watch APK must.
+  The install scripts are run against a fake adb (watch, phone, wrong address, a watch on
+  USB) in bash and PowerShell.
 
 Run the core suite locally with `./gradlew :core:test` (`-Pstress.iterations=20000` for a
 longer run).

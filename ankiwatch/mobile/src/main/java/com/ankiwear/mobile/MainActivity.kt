@@ -117,7 +117,7 @@ data class PhoneUiState(
 fun PhoneScreen(state: PhoneUiState, currentVersion: String = "") {
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("AnkiWatch") })
+            TopAppBar(title = { Text("AnkiWatch Phone") })
         }
     ) { padding ->
         Column(
