@@ -27,6 +27,7 @@ class MeditationService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var chime: Chime
     private lateinit var dnd: Dnd
+    private lateinit var ambient: AmbientPlayer
     private var wakeLock: PowerManager.WakeLock? = null
     private var startedAtWallMs = 0L
     private var volume = 0.6f
@@ -42,6 +43,7 @@ class MeditationService : Service() {
         super.onCreate()
         chime = Chime(this)
         dnd = Dnd(this)
+        ambient = AmbientPlayer(this)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -86,6 +88,8 @@ class MeditationService : Service() {
         if (autoDnd) dnd.engage()
         SessionRepository.update(session)
         schedule(session)
+        val prefs = Prefs(this)
+        ambient.start(prefs.ambience, prefs.ambienceVolume, prefs.ambienceUri?.let(android.net.Uri::parse))
     }
 
     /** Posts the bells still to come and the finish, measured from where the clock stands now. */
@@ -95,7 +99,7 @@ class MeditationService : Service() {
         val config = session.config
         acquireWakeLock(config.durationMs - elapsed + WAKE_LOCK_SLACK_MS)
         for (cue in BellSchedule.cues(config)) {
-            if (cue.atMs > elapsed) handler.postDelayed({ chime.ring(volume, alertMode) }, cue.atMs - elapsed)
+            if (cue.atMs > elapsed) handler.postDelayed({ ambient.duck(); chime.ring(volume, alertMode) }, cue.atMs - elapsed)
         }
         // Posted after the END bell (same delay, FIFO) so that bell is already ringing here.
         handler.postDelayed({ complete(config) }, (config.durationMs - elapsed).coerceAtLeast(0))
@@ -108,6 +112,7 @@ class MeditationService : Service() {
         handler.removeCallbacksAndMessages(null)
         releaseWakeLock()
         dnd.restore()
+        ambient.pause()
         val paused = session.copy(clock = session.clock.pause(SystemClock.elapsedRealtime()))
         publish(paused)
         return paused
@@ -117,6 +122,7 @@ class MeditationService : Service() {
         val session = running ?: return
         val resumed = session.copy(clock = session.clock.resume(SystemClock.elapsedRealtime()), endingAtMs = null)
         if (autoDnd) dnd.engage()
+        ambient.resume()
         publish(resumed)
         schedule(resumed)
     }
@@ -140,6 +146,8 @@ class MeditationService : Service() {
     private fun complete(config: SessionConfig) {
         SessionLog.get(this).add(record(config, config.durationSec))
         SessionRepository.finished(config, startedAtWallMs, config.durationSec, before, noticedCount())
+        // The sound eases away under the final bell rather than stopping with it.
+        ambient.stop(AmbientPlayer.END_FADE_MS)
         dnd.restore()
         stopForeground(STOP_FOREGROUND_REMOVE)
         // Let a ringing bell fade out naturally before tearing down.
@@ -169,6 +177,7 @@ class MeditationService : Service() {
 
     private fun shutdown() {
         handler.removeCallbacksAndMessages(null)
+        ambient.stop(1_500)
         chime.release()
         dnd.restore()
         releaseWakeLock()
@@ -178,6 +187,7 @@ class MeditationService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        ambient.stop(1_500)
         chime.release()
         dnd.restore()
         releaseWakeLock()

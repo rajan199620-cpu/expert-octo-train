@@ -284,10 +284,12 @@ private fun SetupScreen(
                     SectionLabel("How cues reach you", "Vibrate only is for sitting next to someone")
                     ChipRow(AlertMode.entries, alertMode, { it.label }) { alertMode = it }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Volume")
+                        // "Bell" rather than "Volume": the background sound has its own slider below.
+                        Text("Bell")
                         Slider(value = volume, onValueChange = { volume = it }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
                         TextButton(onClick = { onTestBell(volume, alertMode) }) { Text("Test") }
                     }
+                    BackgroundSoundSection(prefs)
                     SwitchRow("Silence notifications while I sit", autoDnd) {
                         autoDnd = it
                         if (it && !dndAccess) context.startActivity(Dnd.accessSettings)
@@ -315,32 +317,44 @@ private fun SetupScreen(
         modifier = Modifier.padding(vertical = 8.dp),
     )
     }
+    // Choosing a feeling only records it; the sit starts when you tap Begin, not before.
     checkingIn?.let { config ->
-        CheckInDialog(
-            title = "Before you begin",
-            question = "How do you feel right now?",
-            onDismiss = { checkingIn = null },
-        ) { before ->
+        CheckInDialog(minutes = config.durationSec / 60, onDismiss = { checkingIn = null }) { before ->
             checkingIn = null
             onBegin(config, volume, alertMode, autoDnd, before)
         }
     }
 }
 
-/** One tap on the way in (or out): how you feel right now. Skipping is always fine. */
+/**
+ * The check-in on the way into a sit. Tapping a feeling selects it (tap again to clear); nothing
+ * starts until Begin, so there's a moment to settle first. Answering is optional.
+ */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun CheckInDialog(title: String, question: String, onDismiss: () -> Unit, onAnswer: (Int) -> Unit) {
+private fun CheckInDialog(minutes: Int, onDismiss: () -> Unit, onBegin: (Int) -> Unit) {
+    var feeling by rememberSaveable { mutableIntStateOf(0) }
     Dialog(onDismissRequest = onDismiss) {
         GlassCard(Modifier.fillMaxWidth().background(NightSky, RoundedCornerShape(24.dp))) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            Text(question, style = MaterialTheme.typography.headlineSmall)
+            Text("Before you begin", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Text("How do you feel right now?", style = MaterialTheme.typography.headlineSmall)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 CHECK_IN_LABELS.forEachIndexed { i, label ->
-                    FilterChip(selected = false, onClick = { onAnswer(i + 1) }, label = { Text(label) })
+                    FilterChip(
+                        selected = feeling == i + 1,
+                        onClick = { feeling = if (feeling == i + 1) 0 else i + 1 },
+                        label = { Text(label) },
+                    )
                 }
             }
-            TextButton(onClick = { onAnswer(0) }, modifier = Modifier.align(Alignment.End)) { Text("Skip") }
+            Text(
+                if (feeling == 0) "Optional. Take a breath, then begin when you're ready."
+                else "Noted. Take a breath, then begin when you're ready.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            GradientButton("Begin  ·  $minutes min", onClick = { onBegin(feeling) })
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Not now") }
         }
     }
 }
@@ -365,7 +379,7 @@ private fun PracticeToolsCard(prefs: Prefs) {
         ToggleRow(
             "Count distractions",
             "Each time you notice the mind has wandered, tap the screen or press a volume key, then return. " +
-                "The screen stays on, dimmed, while you sit.",
+                "The screen stays on while you sit, so taps register.",
             counting,
         ) { counting = it; prefs.countDistractions = it }
         ToggleRow(
@@ -532,19 +546,12 @@ private fun RunningScreen(session: SessionState.Running) {
         if (countingNow) VolumeKeys.handler = { notice() }
         onDispose { if (countingNow) VolumeKeys.handler = null }
     }
-    // The screen has to stay on to take taps, so it stays on as dim as the phone allows.
+    // The screen has to stay on to take taps; it keeps your own brightness (no dimming).
     val window = (LocalContext.current as? Activity)?.window
     DisposableEffect(counting, window) {
         if (counting && window != null) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            val attrs = window.attributes
-            val previous = attrs.screenBrightness
-            attrs.screenBrightness = 0.02f
-            window.attributes = attrs
-            onDispose {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                window.attributes = window.attributes.also { it.screenBrightness = previous }
-            }
+            onDispose { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
         } else {
             onDispose { }
         }
@@ -786,6 +793,11 @@ private fun settingsSummary(opening: Int, closing: Int, interval: Int, bellAtEnd
         add("closing ${secondsLabel(closing)}")
         if (interval > 0) add("every $interval min")
         if (bellAtEnd) add("bell at the end")
+        when (prefs.ambience) {
+            Ambience.OFF -> {}
+            Ambience.CUSTOM -> add("your recording")
+            else -> add(prefs.ambience.label.lowercase())
+        }
         if (dnd) add("notifications silenced")
         if (prefs.countDistractions) add("counting")
         if (prefs.checkIns) add("check-ins")

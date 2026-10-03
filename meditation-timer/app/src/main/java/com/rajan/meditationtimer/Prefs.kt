@@ -32,6 +32,21 @@ class Prefs(context: Context) {
         }
     }
 
+    /** Background sound during a sit, its own volume, and the user's recording if they chose one. */
+    var ambience: Ambience
+        get() = enumOrDefault(sp.getString(KEY_AMBIENCE, null), Ambience.OFF)
+        set(value) = sp.edit { putString(KEY_AMBIENCE, value.name) }
+    var ambienceVolume: Float
+        get() = sp.getFloat(KEY_AMBIENCE_VOLUME, 0.5f)
+        set(value) = sp.edit { putFloat(KEY_AMBIENCE_VOLUME, value.coerceIn(0f, 1f)) }
+    /** Content URI of "My recording", with a persisted read grant; stays on this phone only. */
+    var ambienceUri: String?
+        get() = sp.getString(KEY_AMBIENCE_URI, null)
+        set(value) = sp.edit { putString(KEY_AMBIENCE_URI, value) }
+    var ambienceName: String?
+        get() = sp.getString(KEY_AMBIENCE_NAME, null)
+        set(value) = sp.edit { putString(KEY_AMBIENCE_NAME, value) }
+
     /** Everything that shapes your usual sit, for the backup file. */
     fun exportSettings(): Map<String, String> = buildMap {
         for (key in listOf(KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET)) {
@@ -44,6 +59,9 @@ class Prefs(context: Context) {
         // The settings line is "key=value;..." so free text is URL-encoded.
         sp.getString(KEY_REMINDER_CUE, null)?.let { put(KEY_REMINDER_CUE, java.net.URLEncoder.encode(it, "UTF-8")) }
         if (sp.contains(KEY_VOLUME)) put(KEY_VOLUME, sp.getFloat(KEY_VOLUME, 0.6f).toString())
+        if (sp.contains(KEY_AMBIENCE_VOLUME)) put(KEY_AMBIENCE_VOLUME, sp.getFloat(KEY_AMBIENCE_VOLUME, 0.5f).toString())
+        // A recording lives on one phone, so a backup carries the built-in sounds only.
+        ambience.takeIf { it != Ambience.CUSTOM && sp.contains(KEY_AMBIENCE) }?.let { put(KEY_AMBIENCE, it.name) }
         for (key in listOf(KEY_ALERT, KEY_BREATH_PATTERN)) sp.getString(key, null)?.let { put(key, it) }
     }
 
@@ -58,7 +76,8 @@ class Prefs(context: Context) {
                         value.toBooleanStrictOrNull()?.let { putBoolean(key, it) }
                     KEY_REMINDER_TIME -> value.toIntOrNull()?.takeIf { it in 0 until 24 * 60 }?.let { putInt(key, it) }
                     KEY_REMINDER_CUE -> runCatching { java.net.URLDecoder.decode(value, "UTF-8") }.getOrNull()?.let { putString(key, it.limitText(60)) }
-                    KEY_VOLUME -> value.toFloatOrNull()?.let { putFloat(key, it.coerceIn(0f, 1f)) }
+                    KEY_VOLUME, KEY_AMBIENCE_VOLUME -> value.toFloatOrNull()?.takeIf { !it.isNaN() }?.let { putFloat(key, it.coerceIn(0f, 1f)) }
+                    KEY_AMBIENCE -> Ambience.entries.firstOrNull { it.name == value && it != Ambience.CUSTOM }?.let { putString(key, it.name) }
                     KEY_ALERT, KEY_BREATH_PATTERN -> putString(key, value)
                 }
             }
@@ -130,6 +149,10 @@ class Prefs(context: Context) {
         /** Bumped when settings are restored, so open screens reload them. */
         val version = kotlinx.coroutines.flow.MutableStateFlow(0)
 
+        private const val KEY_AMBIENCE = "ambience"
+        private const val KEY_AMBIENCE_VOLUME = "ambience_volume"
+        private const val KEY_AMBIENCE_URI = "ambience_uri"
+        private const val KEY_AMBIENCE_NAME = "ambience_name"
         private const val KEY_MEMORY_HIDDEN = "memory_hidden_on"
         private const val KEY_RECAP_SEEN = "recap_seen"
         private const val KEY_DURATION = "duration_min"

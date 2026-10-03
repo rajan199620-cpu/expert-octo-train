@@ -42,6 +42,7 @@ class ServiceStressTest {
     fun clean() {
         SessionLog.resetForTests()
         File(app.filesDir, "sessions.csv").delete()
+        app.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().clear().commit()
         SessionRepository.reset()
         SessionRepository.startCounting(false)
         SessionRepository.pendingBefore = 0
@@ -116,6 +117,53 @@ class ServiceStressTest {
         assertTrue(done.endedEarly)
         assertTrue("sat ${done.satSec}", done.satSec in 309..311)
         assertEquals(1, records.size)
+    }
+
+    @Test
+    fun `background sound never changes how a sit runs or logs, and leaves nothing playing`() {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.CUSTOM)) {
+            SessionRepository.reset()
+            Prefs(app).ambience = kind
+            Prefs(app).ambienceUri = if (kind == Ambience.CUSTOM) "content://nowhere/missing.mp3" else null // a deleted file
+            val before = records.size
+            val s = begin(minutes = 3, interval = 1)
+            idle(30)
+            s.deliver(MeditationService::pause)
+            idle(600)
+            s.deliver(MeditationService::resume)
+            s.deliver(MeditationService::end)
+            s.deliver(MeditationService::resume) // keep sitting
+            idle(151)
+            assertEquals("$kind", 180, (SessionRepository.state.value as SessionState.Finished).satSec)
+            assertEquals(before + 1, records.size)
+        }
+        // Every sound thread fades out and ends on its own after the sit (real time, a few seconds).
+        val deadline = System.currentTimeMillis() + 20_000
+        while (AmbientPlayer.live.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(100)
+        assertEquals(0, AmbientPlayer.live.get())
+    }
+
+    @Test
+    fun `ambient player survives any order of calls`() {
+        val player = AmbientPlayer(app)
+        val rnd = Random(3)
+        repeat(300) {
+            when (rnd.nextInt(7)) {
+                0 -> player.start(listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.OFF).random(rnd), rnd.nextFloat(), fadeInMs = 50)
+                1 -> player.pause()
+                2 -> player.resume()
+                3 -> player.duck()
+                4 -> player.stop(rnd.nextInt(0, 100))
+                5 -> player.setVolume(rnd.nextFloat())
+                else -> player.stopNow()
+            }
+            if (rnd.nextInt(10) == 0) Thread.sleep(5)
+        }
+        player.stopNow()
+        assertEquals(AmbientPlayer.State.STOPPED, player.state)
+        val deadline = System.currentTimeMillis() + 10_000
+        while (AmbientPlayer.live.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        assertEquals("sound threads left running", 0, AmbientPlayer.live.get())
     }
 
     @Test

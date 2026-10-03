@@ -60,9 +60,24 @@ at the bottom.
 **Sit screen**: the lesson, the duration, and Begin. Bells, sound and practice tools are set once,
 so they fold into one summary line; "Change" opens them.
 
+**Check-in before a sit**: tapping a feeling only selects it (tap again to clear); the sit starts
+when you tap **Begin** in the check-in, so there's a moment to settle. "Not now" goes back.
+
+**Background sound** (Sit → Change → Sound & stillness, off by default): **Rain**, **Birds**, or
+**My recording** (any audio file on the phone, looped). Rain and birdsong are generated on the
+phone as it plays, so they never loop or repeat and add nothing to the download. The sound has its
+own volume (separate from the bell), fades in over 8 s, fades out on pause, dips under every bell
+so the bell is always heard, and eases away over the final bell. *Listen* plays 10 s to set it.
+Why these two: in a meta-analysis of 18 studies, natural sounds lowered stress and improved mood
+and health measures; water sounds did most for health and positive mood, birdsong most for stress
+(Buxton et al., PNAS 2021). Natural sounds beat quiet for heart rate, blood pressure and breathing
+rate, though not for how stressed people said they felt (Fan & Baharum, Stress 2024). In a pilot
+study, experienced meditators preferred silence and beginners preferred gentle sound (Liu & Rice,
+Work 2019), so silence stays the default.
+
 **Practice tools** (Sit → Change → Practice tools, each optional):
 - **Count distractions**: during a sit, tap anywhere or press a volume key each time you notice the
-  mind has wandered. The screen stays on at minimum brightness. The finish screen and History
+  mind has wandered. The screen stays on (at your normal brightness) so taps register. The finish screen and History
   ("Catching the wandering mind", per 10 minutes) show the count, framed as a skill, not a score.
 - **Check in before and after**: one tap for how you feel going in (Tense → Calm) and coming out.
   History shows "What a sit changes": the average shift and how often you came out calmer.

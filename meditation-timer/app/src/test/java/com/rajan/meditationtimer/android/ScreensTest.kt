@@ -10,6 +10,12 @@ import android.os.SystemClock
 import android.view.KeyEvent
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -126,13 +132,60 @@ class ScreensTest {
 
         compose.onNodeWithText("Begin  ·", substring = true).performClick()
         compose.onNodeWithText("How do you feel right now?").assertExists()
-        captureScreenRoboImage("build/outputs/roborazzi/03-check-in.png")
+        // Choosing a feeling only selects it: nothing starts until Begin is tapped.
         compose.onNodeWithText("Tense").performClick()
         compose.waitForIdle()
-        assertEquals(1, SessionRepository.pendingBefore)
+        assertNull("a feeling must not start the sit", shadowOf(app).nextStartedService)
+        compose.onNodeWithText("How do you feel right now?").assertExists()
+        compose.onNodeWithText("Tense").assertIsSelected()
+        // Changing your mind: tap again to clear, then pick another.
+        compose.onNodeWithText("Tense").performClick()
+        compose.onNodeWithText("Tense").assertIsNotSelected()
+        compose.onNodeWithText("Calm").performClick()
+        compose.waitForIdle()
+        captureScreenRoboImage("build/outputs/roborazzi/03-check-in.png")
+        assertNull(shadowOf(app).nextStartedService)
+        compose.onNode(hasText("Begin  ·", substring = true) and hasAnyAncestor(isDialog())).performClick()
+        compose.waitForIdle()
+        assertEquals(5, SessionRepository.pendingBefore)
         assertTrue(SessionRepository.counting)
         val started = shadowOf(app).nextStartedService
         assertEquals(MeditationService::class.java.name, started.component?.className)
+    }
+
+    @Test
+    fun `not now closes the check-in without starting, and skipping the feeling still begins`() {
+        launch()
+        compose.onNodeWithText("Begin  ·", substring = true).performClick()
+        compose.onNodeWithText("Not now").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("How do you feel right now?").assertDoesNotExist()
+        assertNull(shadowOf(app).nextStartedService)
+        // No feeling chosen is fine: Begin starts with the check-in recorded as skipped.
+        compose.onNodeWithText("Begin  ·", substring = true).performClick()
+        compose.onNode(hasText("Begin  ·", substring = true) and hasAnyAncestor(isDialog())).performClick()
+        compose.waitForIdle()
+        assertEquals(0, SessionRepository.pendingBefore)
+        assertNotNull(shadowOf(app).nextStartedService)
+    }
+
+    @Test
+    fun `background sound can be chosen, previewed and shows in the summary`() {
+        launch()
+        compose.onNodeWithText("Change").performScrollTo().performClick()
+        compose.onNodeWithText("Background sound").performScrollTo()
+        compose.onNodeWithText("Listen").assertDoesNotExist() // off: no volume or preview
+        compose.onNodeWithText("Rain").performScrollTo().performClick()
+        assertEquals(Ambience.RAIN, Prefs(app).ambience)
+        compose.onNodeWithText("Listen").performScrollTo().performClick()
+        compose.onNodeWithText("Stop").assertExists()
+        shot("15-background-sound")
+        compose.onNodeWithText("Stop").performClick()
+        compose.onNodeWithText("Birds").performScrollTo().performClick()
+        assertEquals(Ambience.BIRDS, Prefs(app).ambience)
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.onNodeWithText("birds", substring = true).assertExists()
+        compose.onNodeWithText("Background sound").assertDoesNotExist()
     }
 
     @Test
