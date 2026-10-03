@@ -73,7 +73,24 @@ data class MoodPoint(val startedAtMs: Long, val date: LocalDate, val rating: Int
 
 data class DayEntry(val date: LocalDate, val totalSec: Int, val sessions: List<SessionRecord>)
 
+/**
+ * A streak that forgives: up to [REST_DAYS_PER_WEEK] missed day in any Monday–Sunday week is a
+ * rest day and doesn't break it; a second miss in the same week does. [days] counts days sat
+ * (rest days add nothing); [restsUsed] is how many rest days it has used, [restThisWeek] whether
+ * this week's rest day is already spent.
+ */
+data class Streak(val days: Int, val restsUsed: Int, val restThisWeek: Boolean)
+
+/** This week against the weekly goal, and how many weeks running the goal has been met. */
+data class WeekGoal(val goal: Int, val daysThisWeek: Int, val met: Boolean, val weeksRunning: Int) {
+    val daysLeft: Int get() = (goal - daysThisWeek).coerceAtLeast(0)
+}
+
+/** One missed day a week keeps a streak alive; broken streaks discourage, repairable ones less so. */
+const val REST_DAYS_PER_WEEK = 1
+
 data class HistorySummary(
+    /** Forgiving: see [Streak]. */
     val currentStreak: Int,
     val longestStreak: Int,
     val totalSec: Long,
@@ -91,8 +108,8 @@ object History {
         val activeDays = byDay.keys
         val weekStart = today.minusDays(6)
         return HistorySummary(
-            currentStreak = currentStreak(activeDays, today),
-            longestStreak = longestStreak(activeDays),
+            currentStreak = streak(activeDays, today).days,
+            longestStreak = longestForgivingStreak(activeDays),
             totalSec = records.sumOf { it.actualSec.toLong() },
             sessionCount = records.size,
             last7DaysSec = byDay.filterKeys { it in weekStart..today }.values.flatten().sumOf { it.actualSec.toLong() },
@@ -292,6 +309,69 @@ object History {
     private fun csvField(value: String): String =
         if (value.any { it == ',' || it == '"' || it == '\n' || it == '\r' }) "\"" + value.replace("\"", "\"\"") + "\"" else value
 
+    private fun weekOf(day: LocalDate): LocalDate = day.with(DayOfWeek.MONDAY)
+
+    /**
+     * The forgiving streak ending today (or yesterday, if today has no sit yet: today isn't
+     * missed until it's over). Walks back day by day; a missed day spends that week's rest day,
+     * a second miss in the same week ends the streak. Rest days count only when sits come before
+     * them, so a streak never "starts" with a rest.
+     */
+    fun streak(activeDays: Set<LocalDate>, today: LocalDate, restsPerWeek: Int = REST_DAYS_PER_WEEK): Streak {
+        if (activeDays.isEmpty()) return Streak(0, 0, false)
+        val first = activeDays.min()
+        var day = if (today in activeDays) today else today.minusDays(1)
+        var count = 0
+        var committedRests = 0
+        val restsByWeek = HashMap<LocalDate, Int>()
+        val pending = ArrayList<LocalDate>()
+        while (!day.isBefore(first)) {
+            if (day in activeDays) {
+                count++
+                // Rests between two sits are real rest days.
+                for (r in pending) restsByWeek.merge(weekOf(r), 1, Int::plus)
+                committedRests += pending.size
+                pending.clear()
+            } else {
+                val week = weekOf(day)
+                val used = (restsByWeek[week] ?: 0) + pending.count { weekOf(it) == week }
+                if (used >= restsPerWeek) break
+                pending += day
+            }
+            day = day.minusDays(1)
+        }
+        val thisWeek = weekOf(today)
+        return Streak(count, committedRests, (restsByWeek[thisWeek] ?: 0) > 0)
+    }
+
+    /** The longest forgiving streak ever: the best [streak] ending on any day that was sat. */
+    fun longestForgivingStreak(activeDays: Set<LocalDate>, restsPerWeek: Int = REST_DAYS_PER_WEEK): Int {
+        // Only the last day of each strict run can end a longest streak; check those.
+        return activeDays.filter { it.plusDays(1) !in activeDays }
+            .maxOfOrNull { streak(activeDays, it, restsPerWeek).days } ?: 0
+    }
+
+    /**
+     * This week (Monday–Sunday) against a goal of [goal] days, and how many weeks in a row it has
+     * been met: finished weeks back from last week, plus this week once it's met.
+     */
+    fun weekGoal(activeDays: Set<LocalDate>, today: LocalDate, goal: Int): WeekGoal {
+        val monday = weekOf(today)
+        fun daysIn(weekStart: LocalDate) = (0L..6L).count { weekStart.plusDays(it) in activeDays && !weekStart.plusDays(it).isAfter(today) }
+        val now = daysIn(monday)
+        val met = goal > 0 && now >= goal
+        var running = if (met) 1 else 0
+        if (goal > 0) {
+            var week = monday.minusWeeks(1)
+            val first = activeDays.minOrNull()
+            while (first != null && !week.plusDays(6).isBefore(first) && daysIn(week) >= goal) {
+                running++
+                week = week.minusWeeks(1)
+            }
+        }
+        return WeekGoal(goal, now, met, running)
+    }
+
     fun longestStreak(activeDays: Set<LocalDate>): Int {
         var longest = 0
         var run = 0
@@ -322,4 +402,11 @@ fun String.limitText(max: Int): String {
     if (length <= max) return this
     val cut = take(max)
     return if (cut.last().isHighSurrogate()) cut.dropLast(1) else cut
+}
+
+/** "3 of 5 days this week", "5 of 5 days this week ✓", or without a goal "3 days this week". */
+fun weekLine(daysSat: Int, goal: Int): String = when {
+    goal <= 0 -> if (daysSat == 1) "1 day this week" else "$daysSat days this week"
+    daysSat >= goal -> "$daysSat of $goal days this week ✓"
+    else -> "$daysSat of $goal days this week"
 }

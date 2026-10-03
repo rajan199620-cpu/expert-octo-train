@@ -2,6 +2,9 @@ package com.rajan.meditationtimer
 
 enum class BreathPhase(val label: String) { INHALE("Breathe in"), HOLD_IN("Hold"), EXHALE("Breathe out"), HOLD_OUT("Hold") }
 
+/** How a rhythm is breathed: plainly, humming on the out-breath, or nostril by nostril. */
+enum class BreathStyle { PLAIN, HUM, ALTERNATE }
+
 /** A breathing rhythm; phases with 0 seconds are skipped. */
 data class BreathPattern(
     val name: String,
@@ -10,7 +13,39 @@ data class BreathPattern(
     val holdInSec: Double,
     val exhaleSec: Double,
     val holdOutSec: Double,
+    val style: BreathStyle = BreathStyle.PLAIN,
+    /** What the research does and doesn't show, said plainly; null for the long-established ones. */
+    val evidence: String? = null,
+    /** How to do it, for rhythms that need more than "breathe in, breathe out". */
+    val howTo: String? = null,
 ) {
+    /**
+     * Breaths that make one full round: alternate-nostril breathing goes left in, right out, then
+     * right in, left out, so a round is two breaths and a session ends on a whole round.
+     */
+    val breathsPerRound: Int get() = if (style == BreathStyle.ALTERNATE) 2 else 1
+
+    /** Total breaths for about [minutes]: rounded up to finish on a whole round. */
+    fun breathsFor(minutes: Int): Long {
+        val rounds = (minutes * 60_000L + cycleMs * breathsPerRound - 1) / (cycleMs * breathsPerRound)
+        return rounds.coerceAtLeast(1) * breathsPerRound
+    }
+
+    /** What the screen says during [state]: the phase, plus the hum or the nostril where it matters. */
+    fun cue(state: BreathState): String = when (style) {
+        BreathStyle.PLAIN -> state.phase.label
+        BreathStyle.HUM -> if (state.phase == BreathPhase.EXHALE) "Hum softly" else state.phase.label
+        BreathStyle.ALTERNATE -> {
+            // Even breaths: in left, out right. Odd breaths: in right, out left.
+            val even = state.completedCycles % 2 == 0L
+            when (state.phase) {
+                BreathPhase.INHALE -> if (even) "In · left nostril" else "In · right nostril"
+                BreathPhase.EXHALE -> if (even) "Out · right nostril" else "Out · left nostril"
+                else -> state.phase.label
+            }
+        }
+    }
+
     val cycleMs: Long get() = ((inhaleSec + holdInSec + exhaleSec + holdOutSec) * 1000).toLong()
 
     private val phases: List<Pair<BreathPhase, Long>>
@@ -35,6 +70,26 @@ data class BreathPattern(
             BreathPattern("Coherent", "5.5 s in, 5.5 s out: about 5.5 breaths a minute, calming", 5.5, 0.0, 5.5, 0.0),
             BreathPattern("Box", "4 in, 4 hold, 4 out, 4 hold: steadying", 4.0, 4.0, 4.0, 4.0),
             BreathPattern("4-7-8", "4 in, 7 hold, 8 out: winding down for sleep", 4.0, 7.0, 8.0, 0.0),
+            BreathPattern(
+                "Bhramari", "Humming bee: 4 s in, then a soft hum for 8 s out", 4.0, 0.0, 8.0, 0.0,
+                style = BreathStyle.HUM,
+                howTo = "Lips closed, teeth slightly apart. Breathe in through the nose; on the out-breath " +
+                    "hum a low, even \u201cmmm\u201d you can feel in your face. You may close your ears " +
+                    "gently with your thumbs. Keep it soft, never forced.",
+                evidence = "Small trials: heart rate and blood pressure fell after practice, and anxiety eased " +
+                    "(e.g. a 2023 randomised trial in people with high blood pressure). Evidence is low " +
+                    "to moderate: small groups, short follow-up.",
+            ),
+            BreathPattern(
+                "Nadi Shodhana", "Alternate nostril: 4 s in, 6 s out, switching sides", 4.0, 0.0, 6.0, 0.0,
+                style = BreathStyle.ALTERNATE,
+                howTo = "Right thumb closes the right nostril, ring finger the left. In through the left, " +
+                    "out through the right; in through the right, out through the left: that's one round. " +
+                    "No breath-holding here. Skip it if your nose is blocked.",
+                evidence = "Many small trials: with regular practice, resting blood pressure and heart rate " +
+                    "came down, most in people with raised blood pressure. Effects on heart-rate " +
+                    "variability are mixed.",
+            ),
         )
     }
 }

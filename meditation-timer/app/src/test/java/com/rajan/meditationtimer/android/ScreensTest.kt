@@ -123,12 +123,16 @@ class ScreensTest {
         seed()
         launch()
         shot("01-sit")
-        // Set-once settings start folded into one line; "Change" opens them.
-        compose.onNodeWithText("Practice tools").assertDoesNotExist()
-        compose.onNodeWithText("Change").performScrollTo().performClick()
-        compose.onNodeWithText("Practice tools").performScrollTo()
+        // Set-once settings are rows that say what's set; each opens only its own sheet.
+        compose.onNodeWithText("Count distractions").assertDoesNotExist()
+        compose.onNodeWithText("Practice tools").performScrollTo().performClick()
         compose.onNodeWithText("Count distractions").assertExists()
-        shot("02-practice-tools")
+        compose.onNodeWithText("Weekly goal").assertExists()
+        compose.onNodeWithText("Opening bell").assertDoesNotExist() // only this topic, not everything
+        captureScreenRoboImage("build/outputs/roborazzi/02-practice-tools.png")
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Count distractions").assertDoesNotExist()
 
         compose.onNodeWithText("Begin  ·", substring = true).performClick()
         compose.onNodeWithText("How do you feel right now?").assertExists()
@@ -172,14 +176,14 @@ class ScreensTest {
     @Test
     fun `background sound can be chosen, previewed and shows in the summary`() {
         launch()
-        compose.onNodeWithText("Change").performScrollTo().performClick()
+        compose.onNodeWithText("Sound & stillness").performScrollTo().performClick()
         compose.onNodeWithText("Background sound").performScrollTo()
         compose.onNodeWithText("Listen").assertDoesNotExist() // off: no volume or preview
         compose.onNodeWithText("Rain").performScrollTo().performClick()
         assertEquals(Ambience.RAIN, Prefs(app).ambience)
         compose.onNodeWithText("Listen").performScrollTo().performClick()
         compose.onNodeWithText("Stop").assertExists()
-        shot("15-background-sound")
+        captureScreenRoboImage("build/outputs/roborazzi/15-background-sound.png")
         compose.onNodeWithText("Stop").performClick()
         compose.onNodeWithText("Birds").performScrollTo().performClick()
         assertEquals(Ambience.BIRDS, Prefs(app).ambience)
@@ -243,16 +247,70 @@ class ScreensTest {
         launch()
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.waitForIdle()
-        shot("07-history-top")
-        val list = compose.onNode(hasScrollToNodeAction())
-        list.performScrollToNode(hasText("What a sit changes"))
-        shot("08-history-check-ins")
-        list.performScrollToNode(hasText("Catching the wandering mind"))
-        shot("09-history-noticing")
-        list.performScrollToNode(hasText("Sessions"))
-        shot("10-history-log")
-        list.performScrollToNode(hasText("Google account"))
-        shot("11-history-google")
+        // Overview: the week against the goal, the month, and two headline numbers.
+        compose.onNodeWithText("of 5 days this week", substring = true).assertExists()
+        compose.onNodeWithText("in review", substring = true).assertExists()
+        compose.onNodeWithText("What a sit changes").assertDoesNotExist() // that's in Trends
+        shot("07-history-overview")
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("calmer after a sit", substring = true))
+        shot("08-history-overview-bottom")
+        // A highlight opens Trends.
+        compose.onNodeWithText("calmer after a sit", substring = true).performClick()
+        compose.onNodeWithText("What a sit changes").assertExists()
+        shot("09-history-trends")
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Catching the wandering mind"))
+        shot("10-history-trends-bottom")
+        compose.onNodeWithText("Sessions").performClick()
+        shot("11-history-sessions")
+        compose.onNodeWithText("Backup").performClick()
+        compose.onNodeWithText("Google account").assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/12-history-backup.png")
+    }
+
+    @Test
+    fun `weekly goal set in practice tools shows in history and the widget line`() {
+        seed(days = 10)
+        launch()
+        compose.onNodeWithText("Practice tools").performScrollTo().performClick()
+        compose.onNodeWithText("3 days").performClick()
+        assertEquals(3, Prefs(app).weeklyGoal)
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.onNodeWithText("3 days a week", substring = true).assertExists() // the row's summary
+        compose.onAllNodesWithText("History").onLast().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("of 3 days this week", substring = true).assertExists()
+        // Off: back to a plain count, no goal line.
+        compose.onAllNodesWithText("Sit").onLast().performClick()
+        compose.onNodeWithText("Practice tools").performScrollTo().performClick()
+        compose.onNodeWithText("Off").performClick()
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.onAllNodesWithText("History").onLast().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("of 3 days", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("to go", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `nadi shodhana guides each nostril in turn and bhramari explains itself`() {
+        launch()
+        compose.onAllNodesWithText("Breathe").onLast().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Bhramari").performScrollTo().performClick()
+        compose.onNodeWithText("Evidence:", substring = true).assertExists()
+        compose.onNodeWithText("Nadi Shodhana").performScrollTo().performClick()
+        compose.onNodeWithText("No breath-holding", substring = true).assertExists()
+        shot("16-breathe-nadi")
+        compose.onNodeWithText("Start").performScrollTo().performClick()
+        compose.mainClock.autoAdvance = false
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithText("In · left nostril").assertExists()
+        shot("17-breathe-session")
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_000))
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithText("Out · right nostril").assertExists()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_500))
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithText("In · right nostril").assertExists()
     }
 
     @Test
@@ -300,11 +358,16 @@ class ScreensTest {
         launch()
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.waitForIdle()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("in review", substring = true))
+        compose.onNodeWithText("Trends").performClick()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Catching the wandering mind"))
+        compose.onNodeWithText("Sessions").performClick()
         val list = compose.onNode(hasScrollToNodeAction())
         // The log shows recent days first; older ones load on request instead of all at once.
         list.performScrollToNode(hasText("Show earlier days", substring = true))
         compose.onNodeWithText("Show earlier days", substring = true).performClick()
-        list.performScrollToNode(hasText("version", substring = true))
+        compose.onNodeWithText("Backup").performClick()
+        compose.onNodeWithText("version", substring = true).performScrollTo()
         val ms = (System.nanoTime() - started) / 1_000_000
         assertTrue("took $ms ms", ms < 60_000)
     }
@@ -323,6 +386,6 @@ class ScreensTest {
         frame.addView(widget, FrameLayout.LayoutParams((340 * density).toInt(), (150 * density).toInt()))
         host.setContentView(frame)
         shadowOf(Looper.getMainLooper()).idle()
-        widget.captureRoboImage("build/outputs/roborazzi/12-widget.png")
+        widget.captureRoboImage("build/outputs/roborazzi/18-widget.png")
     }
 }

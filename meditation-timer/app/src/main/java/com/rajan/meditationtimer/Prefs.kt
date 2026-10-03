@@ -49,7 +49,7 @@ class Prefs(context: Context) {
 
     /** Everything that shapes your usual sit, for the backup file. */
     fun exportSettings(): Map<String, String> = buildMap {
-        for (key in listOf(KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET)) {
+        for (key in listOf(KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET, KEY_WEEKLY_GOAL)) {
             if (sp.contains(key)) put(key, sp.getInt(key, 0).toString())
         }
         for (key in listOf(KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON)) {
@@ -72,6 +72,7 @@ class Prefs(context: Context) {
                 when (key) {
                     KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET ->
                         value.toIntOrNull()?.let { putInt(key, it) }
+                    KEY_WEEKLY_GOAL -> value.toIntOrNull()?.takeIf { it in 0..7 }?.let { putInt(key, it) }
                     KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON ->
                         value.toBooleanStrictOrNull()?.let { putBoolean(key, it) }
                     KEY_REMINDER_TIME -> value.toIntOrNull()?.takeIf { it in 0 until 24 * 60 }?.let { putInt(key, it) }
@@ -105,6 +106,11 @@ class Prefs(context: Context) {
     var countDistractions: Boolean
         get() = sp.getBoolean(KEY_COUNT, true)
         set(value) = sp.edit { putBoolean(KEY_COUNT, value) }
+
+    /** Days a week you mean to sit (Monday–Sunday); 0 = no goal. 5 leaves room for a busy week. */
+    var weeklyGoal: Int
+        get() = sp.getInt(KEY_WEEKLY_GOAL, 5).coerceIn(0, 7)
+        set(value) = sp.edit { putInt(KEY_WEEKLY_GOAL, value.coerceIn(0, 7)) }
 
     /** One-tap "how do you feel?" just before and just after each sit. */
     var checkIns: Boolean
@@ -149,6 +155,7 @@ class Prefs(context: Context) {
         /** Bumped when settings are restored, so open screens reload them. */
         val version = kotlinx.coroutines.flow.MutableStateFlow(0)
 
+        private const val KEY_WEEKLY_GOAL = "weekly_goal"
         private const val KEY_AMBIENCE = "ambience"
         private const val KEY_AMBIENCE_VOLUME = "ambience_volume"
         private const val KEY_AMBIENCE_URI = "ambience_uri"

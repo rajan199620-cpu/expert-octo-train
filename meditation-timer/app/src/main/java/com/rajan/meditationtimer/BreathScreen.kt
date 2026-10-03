@@ -109,7 +109,12 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
         GlassCard(Modifier.fillMaxWidth()) {
             SectionLabel("Rhythm", pattern.description)
             ChipRow(BreathPattern.ALL.map { it.name }, pattern.name, { it }) { patternName = it }
-            SectionLabel("Length", "Rounded up to finish on a full breath")
+            // The two traditional practices say how to do them and what the evidence is, plainly.
+            pattern.howTo?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            pattern.evidence?.let {
+                Text("Evidence: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            SectionLabel("Length", if (pattern.breathsPerRound > 1) "Rounded up to finish on a full round" else "Rounded up to finish on a full breath")
             ChipRow(listOf(1, 3, 5, 10), minutes, { "$it min" }) { minutes = it }
         }
         if (justFinished) {
@@ -259,8 +264,7 @@ private fun BreathingSession(
     LaunchedEffect(startedAt) {
         while (true) withFrameMillis { now = SystemClock.elapsedRealtime() }
     }
-    val cycles = ((minutes * 60_000L) + pattern.cycleMs - 1) / pattern.cycleMs
-    val totalMs = cycles * pattern.cycleMs
+    val totalMs = pattern.breathsFor(minutes) * pattern.cycleMs
     val elapsed = (now - startedAt).coerceIn(0, totalMs)
     val state = pattern.at(elapsed)
 
@@ -280,7 +284,7 @@ private fun BreathingSession(
         Box(Modifier.size(300.dp), contentAlignment = Alignment.Center) {
             BreathOrb(state.expansion, Modifier.fillMaxSize())
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(state.phase.label, style = MaterialTheme.typography.headlineSmall)
+                Text(pattern.cue(state), style = MaterialTheme.typography.headlineSmall)
                 Text(
                     "${(state.msLeftInPhase + 999) / 1000}",
                     style = MaterialTheme.typography.displaySmall,

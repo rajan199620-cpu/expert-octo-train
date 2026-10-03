@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -75,13 +76,19 @@ class LargeTextScreensTest {
         RuntimeEnvironment.setFontScale(1f)
     }
 
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
     @Test
     fun `sit screen, its settings and Begin all reachable`() {
         shot("01-sit")
-        compose.onNodeWithText("Change").performScrollTo().performClick()
-        compose.onNodeWithText("Practice tools").performScrollTo()
-        shot("02-settings")
+        compose.onNodeWithText("Practice tools").performScrollTo().performClick()
+        compose.onNodeWithText("Weekly goal").assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/large-02-settings.png")
         compose.onNodeWithText("Daily reminder").performScrollTo()
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.onNodeWithText("Sound & stillness").performScrollTo().performClick()
+        compose.onNodeWithText("Background sound").performScrollTo()
+        captureScreenRoboImage("build/outputs/roborazzi/large-02b-sound.png")
+        compose.onNodeWithText("Done").performScrollTo().performClick()
         compose.onNodeWithText("Begin  ·", substring = true).assertExists()
     }
 
@@ -106,12 +113,12 @@ class LargeTextScreensTest {
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.waitForIdle()
         shot("06-history")
-        val list = compose.onNode(hasScrollToNodeAction())
-        list.performScrollToNode(hasText("in review", substring = true))
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("in review", substring = true))
         shot("07-review")
-        list.performScrollToNode(hasText("How your sits felt"))
+        compose.onNodeWithText("Trends").performClick()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("How your sits felt"))
         shot("08-mood")
-        list.performScrollToNode(hasText("Sessions"))
+        compose.onNodeWithText("Sessions").performClick()
         shot("09-log")
     }
 }

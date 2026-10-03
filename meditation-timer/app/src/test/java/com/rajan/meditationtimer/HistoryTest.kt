@@ -252,4 +252,13 @@ class HistoryTest {
         assertEquals(7, History.weeksToShow(LocalDate.of(2026, 8, 20), wed)) // week of 17 Aug … week of 28 Sep
         assertEquals(12, History.weeksToShow(LocalDate.of(2025, 1, 1), wed))
     }
+
+    @Test
+    fun weekLineReadsNaturally() {
+        assertEquals("3 of 5 days this week", weekLine(3, 5))
+        assertEquals("5 of 5 days this week ✓", weekLine(5, 5))
+        assertEquals("6 of 5 days this week ✓", weekLine(6, 5))
+        assertEquals("1 day this week", weekLine(1, 0))
+        assertEquals("0 days this week", weekLine(0, 0))
+    }
 }

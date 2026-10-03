@@ -5,6 +5,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -86,84 +88,125 @@ fun HistoryTab() {
     // Years of sits would be thousands of rows drawn at once: show recent days, older on request.
     var daysShown by rememberSaveable { mutableIntStateOf(LOG_PAGE_DAYS) }
 
-    // Order follows what you come here for: how this week is going, how sits felt, the calendar,
-    // then the log. Rarely used backup controls sit at the bottom (progressive disclosure).
-    LazyColumn(
-        Modifier.widthIn(max = 480.dp).fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Text("Your practice", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.headlineMedium)
+    val goal = remember { Prefs(context).weeklyGoal }
+    val weekGoal = remember(activeDays, goal) { History.weekGoal(activeDays, today, goal) }
+    val streak = remember(activeDays) { History.streak(activeDays, today) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var showBackup by rememberSaveable { mutableStateOf(false) }
+
+    // Three short pages instead of one long one (Strava's Progress / Activities, Headspace's
+    // stats-first profile): what you come for most, the week and the month, opens first; trends
+    // and the full log are one tap away; backup is behind a button, as settings are elsewhere.
+    Column(Modifier.widthIn(max = 480.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Your practice", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
+            TextButton(onClick = { showBackup = true }) { Text("Backup") }
         }
         if (records.isEmpty()) {
-            item {
-                GlassCard(Modifier.fillMaxWidth()) {
-                    Text("Your sits will appear here.", style = MaterialTheme.typography.titleMedium)
-                    if (AutoBackup.supported) {
-                        Text(
-                            "Reinstalled the app? Restore brings back your history from ${AutoBackup.LOCATION}.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        TextButton(onClick = restore) { Text("Restore history") }
-                    }
+            GlassCard(Modifier.fillMaxWidth()) {
+                Text("Your sits will appear here.", style = MaterialTheme.typography.titleMedium)
+                if (AutoBackup.supported) {
+                    Text(
+                        "Reinstalled the app? Restore brings back your history from ${AutoBackup.LOCATION}.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = restore) { Text("Restore history") }
                 }
             }
         } else {
-            item { WeekCard(week, summary) }
-            item { MonthRecapCard(records, zone, today) }
-            checkIns?.let { item { CheckInCard(it) } }
-            item { GlassCard(Modifier.fillMaxWidth()) { MoodChart(mood, zone) } }
-            if (noticing.isNotEmpty()) item { NoticingCard(noticing) }
-            item { GlassCard(Modifier.fillMaxWidth()) { Heatmap(heatmap) } }
-            item {
-                Text(
-                    "Sessions",
-                    Modifier.padding(top = 8.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            // One card for the whole log, days separated by hairlines rather than a card each.
-            item {
-                GlassCard(Modifier.fillMaxWidth(), padding = 16.dp) {
-                    summary.days.take(daysShown).forEachIndexed { i, day ->
-                        if (i > 0) HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
-                        Row(Modifier.fillMaxWidth()) {
-                            Text(day.date.format(dayFormat), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                formatDuration(day.totalSec.toLong()),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+            Segments(listOf("Overview", "Trends", "Sessions"), tab) { tab = it }
+            LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                when (tab) {
+                    0 -> {
+                        item { WeekCard(week, summary, weekGoal, streak) }
+                        item { MonthRecapCard(records, zone, today) }
+                        // Headlines from Trends, each a door to the full chart (as Apple Fitness does).
+                        if (checkIns != null || noticing.isNotEmpty()) {
+                            item { Highlights(checkIns, noticing) { tab = 1 } }
                         }
-                        for (session in day.sessions) SessionLine(session, zone)
                     }
-                    val hidden = summary.days.size - daysShown
-                    if (hidden > 0) {
-                        TextButton(onClick = { daysShown += LOG_PAGE_DAYS * 2 }) {
-                            Text(if (hidden == 1) "Show 1 earlier day" else "Show earlier days ($hidden more)")
+                    1 -> {
+                        checkIns?.let { item { CheckInCard(it) } }
+                        item { GlassCard(Modifier.fillMaxWidth()) { MoodChart(mood, zone) } }
+                        if (noticing.isNotEmpty()) item { NoticingCard(noticing) }
+                        item { GlassCard(Modifier.fillMaxWidth()) { Heatmap(heatmap) } }
+                    }
+                    else -> item {
+                        // One card for the whole log, days separated by hairlines rather than a card each.
+                        GlassCard(Modifier.fillMaxWidth(), padding = 16.dp) {
+                            summary.days.take(daysShown).forEachIndexed { i, day ->
+                                if (i > 0) HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                                Row(Modifier.fillMaxWidth()) {
+                                    Text(day.date.format(dayFormat), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        formatDuration(day.totalSec.toLong()),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                                for (session in day.sessions) SessionLine(session, zone)
+                            }
+                            val hidden = summary.days.size - daysShown
+                            if (hidden > 0) {
+                                TextButton(onClick = { daysShown += LOG_PAGE_DAYS * 2 }) {
+                                    Text(if (hidden == 1) "Show 1 earlier day" else "Show earlier days ($hidden more)")
+                                }
+                            }
                         }
                     }
                 }
+                item { Spacer(Modifier.height(4.dp)) }
             }
         }
-        item { GoogleCard() }
-        // Once Google backup is on, the file backup card is redundant; it returns if you disconnect.
-        if (cloud.email == null) item { DataCard(hasRecords = records.isNotEmpty(), onBackup = { backup.launch("meditation-history-$today.csv") }, onRestore = restore) }
-        // Which build is installed, so "is this the new APK?" has an answer.
-        item {
+    }
+
+    if (showBackup) {
+        AppSheet("Backup", onDismiss = { showBackup = false }) {
+            GoogleCard()
+            // Once Google backup is on, the file backup is redundant; it returns if you disconnect.
+            if (cloud.email == null) DataCard(hasRecords = records.isNotEmpty(), onBackup = { backup.launch("meditation-history-$today.csv") }, onRestore = restore)
+            // Which build is installed, so "is this the new APK?" has an answer.
             val version = remember {
                 runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
             }
             Text(
                 "Meditation Timer${version?.let { " · version $it" } ?: ""}",
-                Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+/** Two headline numbers from Trends; tapping opens the full charts. */
+@Composable
+private fun Highlights(checkIns: CheckInSummary?, noticing: List<NoticingPoint>, onOpen: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        checkIns?.let {
+            val shift = it.averageShift
+            HighlightTile(
+                (if (shift > 0) "+" else if (shift < 0) "−" else "") + String.format(Locale.ROOT, "%.1f", kotlin.math.abs(shift)),
+                if (shift >= 0) "calmer after a sit" else "less settled after a sit",
+                Modifier.weight(1f),
+                onOpen,
+            )
+        }
+        if (noticing.isNotEmpty()) {
+            val avg = noticing.takeLast(20).map { it.perTenMin }.average()
+            HighlightTile(String.format(Locale.ROOT, "%.1f", avg), "wanderings caught per 10 min", Modifier.weight(1f), onOpen)
+        }
+    }
+}
+
+@Composable
+private fun HighlightTile(value: String, label: String, modifier: Modifier, onOpen: () -> Unit) {
+    GlassCard(modifier.clickable(onClick = onOpen), padding = 16.dp) {
+        Text(value, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Trends ›", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -173,16 +216,31 @@ fun HistoryTab() {
  * streak motivates, a highlighted broken one discourages (Silverman & Barasch, 2023).
  */
 @Composable
-private fun WeekCard(week: List<Pair<LocalDate, Boolean?>>, summary: HistorySummary) {
+private fun WeekCard(week: List<Pair<LocalDate, Boolean?>>, summary: HistorySummary, goal: WeekGoal, streak: Streak) {
     val primary = MaterialTheme.colorScheme.primary
     val daysSat = week.count { it.second == true }
     GlassCard(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text("$daysSat", style = MaterialTheme.typography.displaySmall, color = primary)
             Text(
-                if (daysSat == 1) "  day this week" else "  days this week",
+                when {
+                    goal.goal <= 0 -> if (daysSat == 1) "  day this week" else "  days this week"
+                    else -> "  of ${goal.goal} days this week"
+                },
                 Modifier.padding(bottom = 6.dp),
                 style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        if (goal.goal > 0) {
+            Text(
+                when {
+                    goal.met && goal.weeksRunning >= 2 -> "Goal met ✓  ·  ${goal.weeksRunning} weeks running"
+                    goal.met -> "Goal met ✓"
+                    goal.weeksRunning >= 1 -> "${dayCount(goal.daysLeft)} to go  ·  met ${if (goal.weeksRunning == 1) "last week" else "${goal.weeksRunning} weeks running"}"
+                    else -> "${dayCount(goal.daysLeft)} to go"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (goal.met) primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -212,6 +270,8 @@ private fun WeekCard(week: List<Pair<LocalDate, Boolean?>>, summary: HistorySumm
         val parts = buildList {
             add("${formatDuration(summary.last7DaysSec)} in the last 7 days")
             if (summary.currentStreak >= 2) add("✦\u00A0${streakLabel(summary.currentStreak)}")
+            // A forgiving streak says when it forgave, so the rule is never a surprise.
+            if (summary.currentStreak >= 2 && streak.restThisWeek) add("rest day used this week")
         }
         Text(parts.joinToString("  ·  "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(

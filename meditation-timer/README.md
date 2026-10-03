@@ -44,10 +44,10 @@ mindfulness (Levinson et al., 2014). Results are kept to compare over weeks.
 **Mood chart** (History): one dot per rated sit over the last 12 weeks, Restless → Deep, plus
 a line for the average of your last five ratings once you have five; tap to inspect a sit.
 
-**History layout**: this week as seven dots at the top (resets each Monday; the streak shows only
-while it's alive), the month in review, then the mood chart, a calendar that grows from your first
-week up to 12, one card for the session log (latest 30 days, older on request), and backup/restore
-at the bottom.
+**History layout**: three short tabs instead of one long page. **Overview**: this week against
+your goal, the month in review, and two headline numbers that open Trends. **Trends**: what a sit
+changes, the mood chart, wandering caught, and the calendar. **Sessions**: the log (latest 30 days,
+older on request). **Backup** (top right) opens Google backup, file backup/restore and the version.
 
 **Looking back**:
 - **On this day**: the Sit screen shows a journal note you wrote on this date a year, six months,
@@ -57,13 +57,21 @@ at the bottom.
   compared with the month before. Opens on last month; ‹ › step through months with sits. For the
   first three days of a month the Sit screen says last month's review is ready.
 
-**Sit screen**: the lesson, the duration, and Begin. Bells, sound and practice tools are set once,
-so they fold into one summary line; "Change" opens them.
+**Sit screen**: the duration, today's lesson, and Begin. Bells, sound and practice tools are three
+rows that say what's set (e.g. "Bell · rain"); tapping one opens just that topic in a sheet from the
+bottom, saved when you close it (the row-per-setting pattern of Insight Timer's timer screen).
 
 **Check-in before a sit**: tapping a feeling only selects it (tap again to clear); the sit starts
 when you tap **Begin** in the check-in, so there's a moment to settle. "Not now" goes back.
 
-**Background sound** (Sit → Change → Sound & stillness, off by default): **Rain**, **Birds** (a
+**Breathe tab rhythms**: Coherent, Box and 4-7-8, plus two traditional practices, each with how to
+do it and what the evidence shows. **Bhramari** (humming bee: 4 s in, a soft hum for 8 s out; small
+trials found lower heart rate and blood pressure and less anxiety, low to moderate certainty).
+**Nadi Shodhana** (alternate nostril: 4 s in, 6 s out, the screen says which nostril; many small
+trials found lower resting blood pressure and heart rate; effects on heart-rate variability are
+mixed). No breath-holding in either; sessions end on a whole round.
+
+**Background sound** (Sit → Sound & stillness, off by default): **Rain**, **Birds** (a
 breeze, two whistlers, a dove's low coo, a gentle carol and a distant koel; no quick chirps or
 trills: every note is at least 150 ms and glides slowly), **Rain & birds** together, or
 **My recording** (any audio file on the phone, looped). Rain and birdsong are generated on the
@@ -77,7 +85,13 @@ rate, though not for how stressed people said they felt (Fan & Baharum, Stress 2
 study, experienced meditators preferred silence and beginners preferred gentle sound (Liu & Rice,
 Work 2019), so silence stays the default.
 
-**Practice tools** (Sit → Change → Practice tools, each optional):
+**Weekly goal and a forgiving streak** (Sit → Practice tools): set how many days a week you mean
+to sit (3–7, default 5, or off). History shows "3 of 5 days this week" and how many weeks running
+you've met it; the widget shows the same line. The streak forgives one missed day per Monday–Sunday
+week (a rest day; a second miss that week ends it) and History says when a rest day was used:
+broken streaks discourage, repairable ones much less (Silverman & Barasch, 2023).
+
+**Practice tools** (Sit → Practice tools, each optional):
 - **Count distractions**: during a sit, tap anywhere or press a volume key each time you notice the
   mind has wandered. The screen stays on (at your normal brightness) so taps register. The finish screen and History
   ("Catching the wandering mind", per 10 minutes) show the count, framed as a skill, not a score.

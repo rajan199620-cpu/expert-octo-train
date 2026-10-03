@@ -302,9 +302,15 @@ class ServiceStressTest {
         SitWidget.refresh(app)
         fun week() = manager.getViewFor(id).findViewById<TextView>(R.id.widget_week).text.toString()
         fun button() = manager.getViewFor(id).findViewById<TextView>(R.id.widget_start).text.toString()
-        assertEquals("0 days this week", week())
+        assertEquals("0 of 5 days this week", week()) // the default goal
         assertTrue(button().startsWith("Sit · "))
         SessionLog.get(app).add(SessionRecord(java.time.Instant.now().toEpochMilli(), 600, 600))
+        assertEquals("1 of 5 days this week", week())
+        Prefs(app).weeklyGoal = 1
+        SitWidget.refresh(app)
+        assertEquals("1 of 1 days this week ✓", week())
+        Prefs(app).weeklyGoal = 0
+        SitWidget.refresh(app)
         assertEquals("1 day this week", week())
     }
 }

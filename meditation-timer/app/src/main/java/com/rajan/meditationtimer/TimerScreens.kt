@@ -50,6 +50,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -108,7 +109,7 @@ fun TimerTab(
     val log = remember { SessionLog.get(context) }
     val records by log.records.collectAsStateWithLifecycle()
     val streak = remember(records) {
-        History.currentStreak(records.map { it.day(ZoneId.systemDefault()) }.toSet(), LocalDate.now())
+        History.streak(records.map { it.day(ZoneId.systemDefault()) }.toSet(), LocalDate.now()).days
     }
     // Looking back: a note from this date a while ago, and last month's review once it's ready.
     val today = LocalDate.now()
@@ -245,64 +246,15 @@ private fun SetupScreen(
             RecapReadyCard(recapReady, today, onOpen = { seen(); onHistory() }, onHide = { seen() })
         }
 
-        // Bells, sound and tools are set once and rarely changed: they fold into one line, so the
-        // screen is about the sit itself (Insight Timer and Oak do the same). One tap opens them.
-        var showSettings by rememberSaveable { mutableStateOf(false) }
-        GlassCard(Modifier.fillMaxWidth().clickable { showSettings = !showSettings }, padding = 16.dp) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Bells, sound & tools", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        settingsSummary(opening, closing, interval, bellAtEnd, alertMode, autoDnd, prefs),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    if (showSettings) "Done" else "Change",
-                    Modifier.padding(start = 12.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-        AnimatedVisibility(showSettings) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                GlassCard(Modifier.fillMaxWidth()) {
-                    CardTitle("Bells")
-                    SectionLabel("Opening bell", "Rings this long after you tap Begin")
-                    ChipRow(listOf(5, 10, 15, 30), opening, { "${it}s" }) { opening = it }
-                    SectionLabel("Closing bell", "Rings this long before the session ends")
-                    ChipRow(listOf(5, 10, 30, 60), closing, ::secondsLabel) { closing = it }
-                    SectionLabel("Interval bells", "A soft reminder to come back to the breath")
-                    ChipRow(listOf(0, 5, 10, 15), interval, { if (it == 0) "Off" else "Every $it min" }) { interval = it }
-                    SwitchRow("Also ring when time is up", bellAtEnd) { bellAtEnd = it }
-                }
-
-                GlassCard(Modifier.fillMaxWidth()) {
-                    CardTitle("Sound & stillness")
-                    SectionLabel("How cues reach you", "Vibrate only is for sitting next to someone")
-                    ChipRow(AlertMode.entries, alertMode, { it.label }) { alertMode = it }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        // "Bell" rather than "Volume": the background sound has its own slider below.
-                        Text("Bell")
-                        Slider(value = volume, onValueChange = { volume = it }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-                        TextButton(onClick = { onTestBell(volume, alertMode) }) { Text("Test") }
-                    }
-                    BackgroundSoundSection(prefs)
-                    SwitchRow("Silence notifications while I sit", autoDnd) {
-                        autoDnd = it
-                        if (it && !dndAccess) context.startActivity(Dnd.accessSettings)
-                    }
-                    if (autoDnd && !dndAccess) {
-                        TextButton(onClick = { context.startActivity(Dnd.accessSettings) }) {
-                            Text("Needs Do Not Disturb access — tap to allow")
-                        }
-                    }
-                }
-
-                PracticeToolsCard(prefs)
-            }
+        // Set-once settings as three rows that say what's set; each opens only its own sheet
+        // (Insight Timer's timer screen works the same way), instead of one long fold-out.
+        var sheet by rememberSaveable { mutableStateOf<String?>(null) }
+        GlassCard(Modifier.fillMaxWidth(), padding = 6.dp) {
+            SettingRow("Bells", bellsSummary(opening, closing, interval, bellAtEnd)) { sheet = SHEET_BELLS }
+            HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = Color.White.copy(alpha = 0.08f))
+            SettingRow("Sound & stillness", soundSummary(alertMode, autoDnd, prefs)) { sheet = SHEET_SOUND }
+            HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = Color.White.copy(alpha = 0.08f))
+            SettingRow("Practice tools", toolsSummary(prefs)) { sheet = SHEET_TOOLS }
         }
 
         Spacer(Modifier.height(8.dp))
@@ -316,6 +268,43 @@ private fun SetupScreen(
         },
         modifier = Modifier.padding(vertical = 8.dp),
     )
+    }
+    fun closeSheet() {
+        sheet = null
+        prefs.saveTimer(SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval), volume, alertMode, autoDnd)
+        SitWidget.refresh(context)
+    }
+    when (sheet) {
+        SHEET_BELLS -> AppSheet("Bells", onDismiss = ::closeSheet) {
+            SectionLabel("Opening bell", "Rings this long after you tap Begin")
+            ChipRow(listOf(5, 10, 15, 30), opening, { "${it}s" }) { opening = it }
+            SectionLabel("Closing bell", "Rings this long before the session ends")
+            ChipRow(listOf(5, 10, 30, 60), closing, ::secondsLabel) { closing = it }
+            SectionLabel("Interval bells", "A soft reminder to come back to the breath")
+            ChipRow(listOf(0, 5, 10, 15), interval, { if (it == 0) "Off" else "Every $it min" }) { interval = it }
+            SwitchRow("Also ring when time is up", bellAtEnd) { bellAtEnd = it }
+        }
+        SHEET_SOUND -> AppSheet("Sound & stillness", onDismiss = ::closeSheet) {
+            SectionLabel("How cues reach you", "Vibrate only is for sitting next to someone")
+            ChipRow(AlertMode.entries, alertMode, { it.label }) { alertMode = it }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                // "Bell" rather than "Volume": the background sound has its own slider below.
+                Text("Bell")
+                Slider(value = volume, onValueChange = { volume = it }, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
+                TextButton(onClick = { onTestBell(volume, alertMode) }) { Text("Test") }
+            }
+            BackgroundSoundSection(prefs)
+            SwitchRow("Silence notifications while I sit", autoDnd) {
+                autoDnd = it
+                if (it && !dndAccess) context.startActivity(Dnd.accessSettings)
+            }
+            if (autoDnd && !dndAccess) {
+                TextButton(onClick = { context.startActivity(Dnd.accessSettings) }) {
+                    Text("Needs Do Not Disturb access — tap to allow")
+                }
+            }
+        }
+        SHEET_TOOLS -> AppSheet("Practice tools", onDismiss = ::closeSheet) { PracticeTools(prefs) }
     }
     // Choosing a feeling only records it; the sit starts when you tap Begin, not before.
     checkingIn?.let { config ->
@@ -361,7 +350,7 @@ private fun CheckInDialog(minutes: Int, onDismiss: () -> Unit, onBegin: (Int) ->
 
 /** Optional tools around the sit: distraction counting, check-ins and the daily reminder. */
 @Composable
-private fun PracticeToolsCard(prefs: Prefs) {
+private fun PracticeTools(prefs: Prefs) {
     val context = LocalContext.current
     val focus = LocalFocusManager.current
     var counting by remember { mutableStateOf(prefs.countDistractions) }
@@ -374,8 +363,16 @@ private fun PracticeToolsCard(prefs: Prefs) {
         ReminderScheduler.schedule(context)
     }
 
-    GlassCard(Modifier.fillMaxWidth()) {
-        CardTitle("Practice tools")
+    var goal by remember { mutableIntStateOf(prefs.weeklyGoal) }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SectionLabel(
+            "Weekly goal",
+            "Days a week you mean to sit. One missed day a week is a rest day and keeps your streak.",
+        )
+        ChipRow(listOf(0, 3, 4, 5, 6, 7), goal, { if (it == 0) "Off" else "$it days" }) {
+            goal = it
+            prefs.weeklyGoal = it
+        }
         ToggleRow(
             "Count distractions",
             "Each time you notice the mind has wandered, tap the screen or press a volume key, then return. " +
@@ -784,26 +781,38 @@ fun streakLabel(days: Int) = when (days) {
     else -> "$days-day streak"
 }
 
-/** One line saying how the sit is set up, shown while the settings are folded away. */
-private fun settingsSummary(opening: Int, closing: Int, interval: Int, bellAtEnd: Boolean, mode: AlertMode, dnd: Boolean, prefs: Prefs): String {
-    val reminder = prefs.reminder
-    return buildList {
-        add(mode.label)
-        add("opening ${opening}s")
-        add("closing ${secondsLabel(closing)}")
-        if (interval > 0) add("every $interval min")
-        if (bellAtEnd) add("bell at the end")
+private const val SHEET_BELLS = "bells"
+private const val SHEET_SOUND = "sound"
+private const val SHEET_TOOLS = "tools"
+
+/** What each settings row says it's set to, so most days there's no need to open it. */
+private fun bellsSummary(opening: Int, closing: Int, interval: Int, bellAtEnd: Boolean): String = buildList {
+    add("Opening ${opening}s")
+    add("closing ${secondsLabel(closing)}")
+    add(if (interval > 0) "every $interval min" else "no interval bells")
+    if (bellAtEnd) add("bell at the end")
+}.joinToString(" · ")
+
+private fun soundSummary(mode: AlertMode, dnd: Boolean, prefs: Prefs): String = buildList {
+    add(mode.label)
+    add(
         when (prefs.ambience) {
-            Ambience.OFF -> {}
-            Ambience.CUSTOM -> add("your recording")
-            else -> add(prefs.ambience.label.lowercase())
-        }
-        if (dnd) add("notifications silenced")
-        if (prefs.countDistractions) add("counting")
-        if (prefs.checkIns) add("check-ins")
-        if (reminder.enabled) add("reminder ${reminder.timeLabel}")
-    }.joinToString(" · ")
-}
+            Ambience.OFF -> "silence"
+            Ambience.CUSTOM -> "your recording"
+            else -> prefs.ambience.label.lowercase()
+        },
+    )
+    if (dnd) add("notifications silenced")
+}.joinToString(" · ")
+
+private fun toolsSummary(prefs: Prefs): String = buildList {
+    val goal = prefs.weeklyGoal
+    if (goal > 0) add("$goal days a week")
+    if (prefs.countDistractions) add("counting")
+    if (prefs.checkIns) add("check-ins")
+    val reminder = prefs.reminder
+    if (reminder.enabled) add("reminder ${reminder.timeLabel}")
+}.joinToString(" · ").ifEmpty { "All off" }
 
 private fun secondsLabel(sec: Int) = if (sec % 60 == 0) "${sec / 60} min" else "${sec}s"
 

@@ -40,7 +40,7 @@ class SitWidget : AppWidgetProvider() {
             val minutes = Prefs(context).timerConfig.durationSec / 60
 
             return RemoteViews(context.packageName, R.layout.widget_sit).apply {
-                setTextViewText(R.id.widget_week, if (daysSat == 1) "1 day this week" else "$daysSat days this week")
+                setTextViewText(R.id.widget_week, weekLine(daysSat, Prefs(context).weeklyGoal))
                 week.forEachIndexed { i, (_, sat) ->
                     setImageViewResource(
                         DOTS[i],
