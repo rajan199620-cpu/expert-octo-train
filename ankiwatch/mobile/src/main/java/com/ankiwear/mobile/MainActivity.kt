@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var ankiHelper: AnkiDroidHelper
     private lateinit var dataLayerManager: DataLayerManager
+    private lateinit var exchangeLog: ExchangeLog
 
     private var uiState by mutableStateOf(PhoneUiState())
 
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         ankiHelper = AnkiDroidHelper(this)
         dataLayerManager = DataLayerManager(this)
+        exchangeLog = ExchangeLog(this)
 
         setContent {
             MaterialTheme {
@@ -73,7 +75,10 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (true) {
-                    uiState = uiState.copy(watchLink = dataLayerManager.watchLink())
+                    // Query first, then copy the state as it is now: copying before the
+                    // suspending call could write back a deck list replaced meanwhile.
+                    val link = dataLayerManager.watchLink()
+                    uiState = uiState.copy(watchLink = link, lastExchange = exchangeLog.summary())
                     delay(WATCH_CHECK_INTERVAL_MS)
                 }
             }
@@ -121,6 +126,8 @@ data class PhoneUiState(
     val permissionGranted: Boolean = false,
     /** Null until the first check has finished. */
     val watchLink: Link.Status? = null,
+    /** The watch's last request and what the phone did with it; null if it never asked. */
+    val lastExchange: String? = null,
     val decks: List<DeckData> = emptyList()
 )
 
@@ -166,6 +173,12 @@ fun PhoneScreen(state: PhoneUiState, currentVersion: String = "") {
                 } else {
                     MaterialTheme.colorScheme.error
                 }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            // Shows whether the watch's requests reach this phone, and how they ended.
+            Text(
+                text = "Last watch request: " + (state.lastExchange ?: "none yet (the watch hasn't asked this phone for anything)"),
+                style = MaterialTheme.typography.bodySmall
             )
             Spacer(modifier = Modifier.height(24.dp))
 

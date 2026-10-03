@@ -14,6 +14,9 @@ object PayloadBudget {
     /** Rough per-card cost of keys, numbers and framing. */
     const val CARD_OVERHEAD_BYTES = 400
 
+    /** Rough per-deck cost in the deck list: five keys, an id, three counts, framing. */
+    const val DECK_OVERHEAD_BYTES = 160
+
     const val TRUNCATION_NOTE = " … [shortened: too long for the watch]"
 
     data class CardText(
@@ -74,6 +77,26 @@ object PayloadBudget {
         val withoutContent = current.byteSize() - utf8Length(current.content)
         current = current.copy(content = SafeTruncate.truncate(current.content, (budget - withoutContent).coerceAtLeast(0)))
         return current
+    }
+
+    /**
+     * Which decks of a deck list fit in one DataItem, as indices in the original order. A
+     * collection with very many (sub)decks would otherwise exceed the limit and the watch
+     * would get no deck list at all. Decks with cards due are kept ahead of decks with
+     * nothing due; within each group the list order decides.
+     */
+    fun decksThatFit(names: List<String>, hasDue: List<Boolean>, budget: Int = MAX_BYTES): List<Int> {
+        require(names.size == hasDue.size)
+        val cost = names.map { DECK_OVERHEAD_BYTES + utf8Length(it) }
+        if (cost.sum() <= budget) return names.indices.toList()
+        val kept = ArrayList<Int>()
+        var total = 0
+        for (i in names.indices.sortedBy { if (hasDue[it]) 0 else 1 }) {
+            if (total + cost[i] > budget) continue
+            total += cost[i]
+            kept.add(i)
+        }
+        return kept.sorted()
     }
 
     fun utf8Length(s: String): Int {

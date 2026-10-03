@@ -257,9 +257,9 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                     timedOut && decks.isEmpty() && isConnected -> {
                         ErrorScreen(
                             // A phone without a matching AnkiWatch Phone never answers; say so
-                            // rather than blaming a slow start.
-                            message = Link.watchMessage(phoneLink)
-                                ?: "Phone took too long to respond. This usually clears up after one retry — the phone-side service was probably cold-starting.",
+                            // rather than blaming a slow start. Otherwise point at the phone's
+                            // record of the request.
+                            message = Link.watchNoReply(phoneLink),
                             onRetry = {
                                 timedOut = false
                                 isLoadingDecks = true

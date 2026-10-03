@@ -62,6 +62,14 @@ object Link {
             "Android couldn't check the watch link (Google Play services): ${status.error}"
     }
 
+    /**
+     * What the watch says when its requests got no answer. With the phone app reachable,
+     * the phone's own status screen tells whether the request arrived and how it ended.
+     */
+    fun watchNoReply(status: Status?): String = watchMessage(status)
+        ?: "Your phone didn't answer. Open AnkiWatch Phone: \"Last watch request\" shows if " +
+            "the request arrived. Then tap Retry."
+
     /** What the watch says when it can't use the phone; null when it can. */
     fun watchMessage(status: Status?): String? = when (status?.state) {
         null, State.READY -> null

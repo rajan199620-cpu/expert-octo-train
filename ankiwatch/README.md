@@ -135,6 +135,10 @@ Never commit the keystore; this repository is public.
     Galaxy Wearable shows the watch as connected.
 - **The watch says "Phone found, but AnkiWatch Phone isn't on it, or it's from a different
   download"**: same cause as above; reinstall both apps from one download.
+- **The watch says "Your phone didn't answer"**: open AnkiWatch Phone and read its *Last
+  watch request* line. *None yet* (or an old time): the watch's requests aren't reaching
+  this app, so reinstall both apps from one download. A time with an error: that error is
+  what went wrong on the phone (for example AnkiDroid access).
 - **"Phone not connected" on the watch**: the phone must be within Bluetooth range of the
   watch (or both on Wi-Fi) with AnkiWatch Phone installed.
 - **"AnkiWatch needs permission"**: open AnkiWatch Phone and allow AnkiDroid access.

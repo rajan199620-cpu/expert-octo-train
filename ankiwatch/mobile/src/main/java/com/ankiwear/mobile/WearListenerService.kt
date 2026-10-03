@@ -42,6 +42,7 @@ class WearListenerService : WearableListenerService() {
     private lateinit var dataLayerManager: DataLayerManager
     private lateinit var answerDedupe: AnswerDedupeStore
     private lateinit var powerManager: PowerManager
+    private lateinit var exchangeLog: ExchangeLog
 
     companion object {
         private const val TAG = "WearListenerService"
@@ -55,13 +56,18 @@ class WearListenerService : WearableListenerService() {
         dataLayerManager = DataLayerManager(this)
         answerDedupe = AnswerDedupeStore(this)
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        exchangeLog = ExchangeLog(this)
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         Log.d(TAG, "Message received: ${messageEvent.path}")
         when (messageEvent.path) {
-            DataLayerManager.PATH_REQUEST_DECKS -> runProcessing { handleDeckRequest() }
+            DataLayerManager.PATH_REQUEST_DECKS -> {
+                exchangeLog.request("deck list")
+                runProcessing { handleDeckRequest() }
+            }
             DataLayerManager.PATH_REQUEST_CARDS -> {
+                exchangeLog.request("cards")
                 val data = messageEvent.data
                 runProcessing { handleCardRequest(data) }
             }
@@ -94,6 +100,7 @@ class WearListenerService : WearableListenerService() {
 
         if (answers.isEmpty()) return
 
+        exchangeLog.request(if (answers.size == 1) "answer" else "${answers.size} answers")
         runProcessing {
             for ((uri, map) in answers) {
                 val uuid = map.getString(DataLayerManager.KEY_ANSWER_UUID)
@@ -117,6 +124,7 @@ class WearListenerService : WearableListenerService() {
             runBlocking { messageMutex.withLock { block() } }
         } catch (e: Exception) {
             Log.e(TAG, "Processing failed", e)
+            exchangeLog.outcome("failed: ${e.message ?: e.javaClass.simpleName}")
         } finally {
             if (wakeLock.isHeld) wakeLock.release()
         }
@@ -124,20 +132,31 @@ class WearListenerService : WearableListenerService() {
 
     private suspend fun handleDeckRequest() {
         if (!ankiHelper.isAnkiDroidInstalled()) {
-            dataLayerManager.sendError("AnkiDroid is not installed on this phone.")
+            reportError("AnkiDroid is not installed on this phone.")
             return
         }
         if (!ankiHelper.hasPermission()) {
-            dataLayerManager.sendError("AnkiWatch needs permission to access AnkiDroid. Please open AnkiWatch on your phone.")
+            reportError("AnkiWatch needs permission to access AnkiDroid. Please open AnkiWatch Phone on your phone.")
             return
         }
 
         val decks = ankiHelper.getDecks()
         if (decks.isEmpty()) {
-            dataLayerManager.sendError("No decks found in AnkiDroid.")
+            reportError("No decks found in AnkiDroid.")
             return
         }
-        dataLayerManager.sendDecks(decks)
+        try {
+            exchangeLog.outcome(dataLayerManager.sendDecks(decks))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending decks", e)
+            reportError("The phone couldn't send your decks: ${e.message ?: e.javaClass.simpleName}")
+        }
+    }
+
+    /** Tells the watch what went wrong and keeps it on the phone's status screen too. */
+    private suspend fun reportError(message: String) {
+        exchangeLog.outcome("error: $message")
+        dataLayerManager.sendError(message)
     }
 
     private suspend fun handleCardRequest(data: ByteArray) {
@@ -146,14 +165,14 @@ class WearListenerService : WearableListenerService() {
             val deckId = dataMap.getLong(DataLayerManager.KEY_DECK_ID)
 
             if (!ankiHelper.hasPermission()) {
-                dataLayerManager.sendError("Permission to access AnkiDroid not granted.")
+                reportError("Permission to access AnkiDroid not granted.")
                 return
             }
 
             sendCardsForDeck(deckId)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling card request", e)
-            dataLayerManager.sendError("Error fetching cards: ${e.message}")
+            reportError("Error fetching cards: ${e.message ?: e.javaClass.simpleName}")
         }
     }
 
@@ -173,14 +192,14 @@ class WearListenerService : WearableListenerService() {
         // subdeck counts up into the parent. So for a parent deck this breakdown ALREADY
         // covers the whole subtree — we must NOT sum the children again.
         val deckCounts = ankiHelper.getDeckDueBreakdown(deckId)
-        dataLayerManager.sendCards(
+        exchangeLog.outcome(dataLayerManager.sendCards(
             cards,
             remaining = deckCounts?.totalDue ?: cards.size,
             newRemaining = deckCounts?.newCount ?: 0,
             learnRemaining = deckCounts?.learnCount ?: 0,
             reviewRemaining = deckCounts?.reviewCount ?: 0,
             deckId = deckId
-        )
+        ))
     }
 
     /** Parsed review-answer request. */
@@ -212,12 +231,19 @@ class WearListenerService : WearableListenerService() {
                 applyAnswer(req)
                 req.uuid?.let { answerDedupe.markProcessed(it) }
             }
-            // Always send fresh cards back, even for a duplicate, so the watch re-syncs.
-            sendNextCards(req)
         } catch (e: Exception) {
             Log.e(TAG, "Error submitting review answer", e)
             // #8: don't leave the watch hanging on a spinner — surface the failure.
-            dataLayerManager.sendError("Couldn't save your answer: ${e.message}")
+            reportError("Couldn't save your answer: ${e.message ?: e.javaClass.simpleName}")
+            ackUri?.let { dataLayerManager.deleteAnswerItem(it) }
+            return
+        }
+        try {
+            // Always send fresh cards back, even for a duplicate, so the watch re-syncs.
+            sendNextCards(req)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending the next cards", e)
+            reportError("Your answer was saved, but the next card couldn't be sent: ${e.message ?: e.javaClass.simpleName}")
         } finally {
             // ACK by deleting the answer DataItem now that it's applied (or was a dup).
             ackUri?.let { dataLayerManager.deleteAnswerItem(it) }
@@ -306,7 +332,7 @@ class WearListenerService : WearableListenerService() {
                 "deckTotalDue=$deckTotalDue remaining=$remaining " +
                 "rawFirstNoteId=${rawNextCards.firstOrNull()?.noteId}"
         )
-        dataLayerManager.sendCards(
+        exchangeLog.outcome(dataLayerManager.sendCards(
             nextCards,
             remaining = remaining,
             newRemaining = if (nextCards.isEmpty()) 0 else deckCounts?.newCount ?: 0,
@@ -314,6 +340,6 @@ class WearListenerService : WearableListenerService() {
             reviewRemaining = if (nextCards.isEmpty()) 0 else deckCounts?.reviewCount ?: 0,
             deckId = req.deckId,
             ackedAnswerUuid = req.uuid
-        )
+        ))
     }
 }

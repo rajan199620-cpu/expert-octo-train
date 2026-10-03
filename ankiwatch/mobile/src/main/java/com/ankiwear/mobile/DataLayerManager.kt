@@ -84,31 +84,33 @@ class DataLayerManager(context: Context) {
     }
 
     /**
-     * Sends the deck list to the watch via DataClient.
+     * Sends the deck list to the watch via DataClient, cut to fit one DataItem. Returns what
+     * was sent, for the phone's status screen; throws if the Data Layer refused it.
      */
-    suspend fun sendDecks(decks: List<DeckData>) {
-        try {
-            val request = PutDataMapRequest.create(PATH_RESPONSE_DECKS).apply {
-                val deckMaps = ArrayList<DataMap>()
-                for (deck in decks) {
-                    val map = DataMap().apply {
-                        putLong(KEY_DECK_ID, deck.id)
-                        putString(KEY_DECK_NAME, deck.name)
-                        putInt(KEY_NEW_COUNT, deck.newCount)
-                        putInt(KEY_LEARN_COUNT, deck.learnCount)
-                        putInt(KEY_REVIEW_COUNT, deck.reviewCount)
-                    }
-                    deckMaps.add(map)
+    suspend fun sendDecks(decks: List<DeckData>): String {
+        val keep = PayloadBudget.decksThatFit(decks.map { it.name }, decks.map { it.totalDue > 0 })
+        val sent = keep.map { decks[it] }
+        val request = PutDataMapRequest.create(PATH_RESPONSE_DECKS).apply {
+            val deckMaps = ArrayList<DataMap>()
+            for (deck in sent) {
+                val map = DataMap().apply {
+                    putLong(KEY_DECK_ID, deck.id)
+                    putString(KEY_DECK_NAME, deck.name)
+                    putInt(KEY_NEW_COUNT, deck.newCount)
+                    putInt(KEY_LEARN_COUNT, deck.learnCount)
+                    putInt(KEY_REVIEW_COUNT, deck.reviewCount)
                 }
-                dataMap.putDataMapArrayList(KEY_DECKS, deckMaps)
-                dataMap.putLong(KEY_TIMESTAMP, System.currentTimeMillis())
+                deckMaps.add(map)
             }
-            request.setUrgent()
-            dataClient.putDataItem(request.asPutDataRequest()).await()
-            Log.d(TAG, "Sent ${decks.size} decks to watch")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error sending decks", e)
+            dataMap.putDataMapArrayList(KEY_DECKS, deckMaps)
+            dataMap.putLong(KEY_TIMESTAMP, System.currentTimeMillis())
         }
+        request.setUrgent()
+        val kb = (request.dataMap.toByteArray().size + 1023) / 1024
+        dataClient.putDataItem(request.asPutDataRequest()).await()
+        Log.d(TAG, "Sent ${sent.size}/${decks.size} decks to watch ($kb KB)")
+        return if (sent.size == decks.size) "sent ${sent.size} decks ($kb KB)"
+        else "sent ${sent.size} of ${decks.size} decks ($kb KB, size limit)"
     }
 
     /**
@@ -130,25 +132,22 @@ class DataLayerManager(context: Context) {
         reviewRemaining: Int = 0,
         deckId: Long,
         ackedAnswerUuid: String? = null
-    ) {
-        try {
-            val fitted = fitToDataItem(cards)
-            val request = PutDataMapRequest.create(PATH_RESPONSE_CARDS).apply {
-                dataMap.putDataMapArrayList(KEY_CARDS, ArrayList(fitted.map { cardToDataMap(it) }))
-                dataMap.putInt(KEY_REMAINING, remaining)
-                dataMap.putInt(KEY_NEW_REMAINING, newRemaining)
-                dataMap.putInt(KEY_LEARN_REMAINING, learnRemaining)
-                dataMap.putInt(KEY_REVIEW_REMAINING, reviewRemaining)
-                dataMap.putLong(KEY_DECK_ID, deckId)
-                ackedAnswerUuid?.let { dataMap.putString(KEY_ACKED_ANSWER_UUID, it) }
-                dataMap.putLong(KEY_TIMESTAMP, System.currentTimeMillis())
-            }
-            request.setUrgent()
-            dataClient.putDataItem(request.asPutDataRequest()).await()
-            Log.d(TAG, "Sent ${fitted.size}/${cards.size} cards to watch (deck=$deckId remaining=$remaining)")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error sending cards", e)
+    ): String {
+        val fitted = fitToDataItem(cards)
+        val request = PutDataMapRequest.create(PATH_RESPONSE_CARDS).apply {
+            dataMap.putDataMapArrayList(KEY_CARDS, ArrayList(fitted.map { cardToDataMap(it) }))
+            dataMap.putInt(KEY_REMAINING, remaining)
+            dataMap.putInt(KEY_NEW_REMAINING, newRemaining)
+            dataMap.putInt(KEY_LEARN_REMAINING, learnRemaining)
+            dataMap.putInt(KEY_REVIEW_REMAINING, reviewRemaining)
+            dataMap.putLong(KEY_DECK_ID, deckId)
+            ackedAnswerUuid?.let { dataMap.putString(KEY_ACKED_ANSWER_UUID, it) }
+            dataMap.putLong(KEY_TIMESTAMP, System.currentTimeMillis())
         }
+        request.setUrgent()
+        dataClient.putDataItem(request.asPutDataRequest()).await()
+        Log.d(TAG, "Sent ${fitted.size}/${cards.size} cards to watch (deck=$deckId remaining=$remaining)")
+        return "sent ${fitted.size} card${if (fitted.size == 1) "" else "s"}, $remaining due"
     }
 
     /**

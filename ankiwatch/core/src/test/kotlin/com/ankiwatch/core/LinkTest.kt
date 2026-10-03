@@ -60,6 +60,16 @@ class LinkTest {
     }
 
     @Test
+    fun silentPhoneAppPointsToThePhonesRequestLine() {
+        val ready = Link.classify(listOf("Galaxy A56"), listOf("Galaxy A56"))
+        assertTrue(Link.watchNoReply(ready).contains("Last watch request"))
+        // A missing or mismatched phone app keeps its own, more specific message.
+        val missing = Link.classify(emptyList(), listOf("Galaxy A56"))
+        assertEquals(Link.watchMessage(missing), Link.watchNoReply(missing))
+        assertTrue(Link.watchNoReply(null).contains("Last watch request"))
+    }
+
+    @Test
     fun notYetChecked() {
         assertEquals("Checking…", Link.phoneRow(null))
         assertNull(Link.watchMessage(null))

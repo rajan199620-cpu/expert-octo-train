@@ -179,6 +179,35 @@ class PayloadBudgetTest {
     }
 
     @Test
+    fun smallDeckListIsSentWhole() {
+        val names = listOf("Law", "Law::BNS", "Law::BNS::Chapter III - General Exceptions")
+        assertEquals(listOf(0, 1, 2), PayloadBudget.decksThatFit(names, listOf(true, false, true)))
+    }
+
+    @Test
+    fun hugeDeckListKeepsDueDecksFirstInOrder() {
+        // 3,000 long subdeck names: well over the DataItem limit.
+        val names = (0 until 3_000).map { "UPSC::ANTHRO+::Paper ${it % 2 + 1}::Unit ${it / 10}::Topic $it — " + "x".repeat(60) }
+        val hasDue = names.indices.map { it % 3 == 0 }
+        val kept = PayloadBudget.decksThatFit(names, hasDue)
+        val bytes = kept.sumOf { PayloadBudget.DECK_OVERHEAD_BYTES + PayloadBudget.utf8Length(names[it]) }
+        assertTrue("kept $bytes bytes", bytes <= PayloadBudget.MAX_BYTES)
+        assertTrue(kept.isNotEmpty())
+        assertEquals(kept.sorted(), kept) // original order
+        // Every due deck that fits is kept before any deck with nothing due.
+        val keptDue = kept.count { hasDue[it] }
+        val allDue = hasDue.count { it }
+        val keptIdle = kept.size - keptDue
+        assertTrue("dropped due decks while keeping idle ones", keptIdle == 0 || keptDue == allDue)
+    }
+
+    @Test
+    fun aSingleOversizedNameDoesNotStopTheRest() {
+        val names = listOf("x".repeat(200_000), "Law", "Anthro")
+        assertEquals(listOf(1, 2), PayloadBudget.decksThatFit(names, listOf(true, true, true)))
+    }
+
+    @Test
     fun utf8Length() {
         assertEquals(1, PayloadBudget.utf8Length("a"))
         assertEquals(2, PayloadBudget.utf8Length("§"))
