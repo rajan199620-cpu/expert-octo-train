@@ -8,11 +8,17 @@
 #
 # The address is the "IP address & Port" under Developer options > Wireless debugging on the
 # watch. Pair once first:  adb pair <ip>:<pairing port> <pairing code>
+# adb is taken from $ADB, else PATH, else an adb next to this script.
 set -euo pipefail
 
 PACKAGE=com.ankiwatch.cloze
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ADB="${ADB:-adb}"
+if [ -z "${ADB:-}" ]; then
+  if command -v adb >/dev/null 2>&1; then ADB=adb
+  elif [ -x "$HERE/adb" ]; then ADB="$HERE/adb"
+  else ADB=adb
+  fi
+fi
 if [ $# -lt 1 ]; then
   echo "usage: install.sh <watch-ip:port> [--phone]   (set ADB=/path/to/adb if adb isn't on PATH)" >&2
   exit 1
@@ -25,19 +31,35 @@ watch_feature() {
   "$ADB" -s "$1" shell pm has-feature android.hardware.type.watch 2>/dev/null | tr -d '\r' | tail -n 1 || true
 }
 
-install_apk() {
+# --no-streaming copies the APK over first and then installs it on the device itself, so a
+# Wi-Fi hiccup shows up as a failed copy (retried below) rather than a reasonless failure.
+install_once() {
   local serial="$1" apk="$2" out
-  if [ ! -f "$apk" ]; then
-    echo "Missing $apk - run this script from the unzipped download." >&2
-    exit 1
-  fi
-  echo "Installing $(basename "$apk") on $serial ..."
-  out="$("$ADB" -s "$serial" install -r "$apk" 2>&1 || true)"
+  out="$("$ADB" -s "$serial" install -r --no-streaming "$apk" 2>&1 || true)"
   if grep -qE "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match" <<<"$out"; then
     # A build signed with a different key: remove the old one first.
-    echo "  Signing key changed - reinstalling (review history lives in AnkiDroid, nothing is lost)."
-    "$ADB" -s "$serial" uninstall "$PACKAGE" >/dev/null || true
-    out="$("$ADB" -s "$serial" install "$apk" 2>&1 || true)"
+    echo "  Signing key changed - reinstalling (review history lives in AnkiDroid, nothing is lost)." >&2
+    "$ADB" -s "$serial" uninstall "$PACKAGE" >/dev/null 2>&1 || true
+    out="$("$ADB" -s "$serial" install --no-streaming "$apk" 2>&1 || true)"
+  fi
+  printf '%s' "$out"
+}
+
+device_answered() { grep -qE "Success|Failure \[|INSTALL_" <<<"$1"; }
+
+install_apk() {
+  local serial="$1" apk="$2" over_wifi="${3:-}" out
+  if [ ! -f "$apk" ]; then
+    echo "Missing $apk - copy all files from the download next to this script." >&2
+    exit 1
+  fi
+  echo "Installing $(basename "$apk") ($(( $(wc -c <"$apk") / 1048576 )) MB) on $serial ..."
+  out="$(install_once "$serial" "$apk")"
+  if ! device_answered "$out"; then
+    # No answer from the device's installer: the transfer was cut off.
+    echo "  The transfer was cut off; reconnecting and trying once more ..."
+    if [ -n "$over_wifi" ]; then "$ADB" connect "$serial" >/dev/null 2>&1 || true; fi
+    out="$(install_once "$serial" "$apk")"
   fi
   if grep -q "INSTALL_FAILED_MISSING_SHARED_LIBRARY" <<<"$out"; then
     echo "$serial is not a Wear OS watch, so it refuses the watch app." >&2
@@ -46,6 +68,12 @@ install_apk() {
   if ! grep -q "Success" <<<"$out"; then
     echo "Install failed on $serial:" >&2
     echo "$out" >&2
+    if [ -n "$over_wifi" ] && ! device_answered "$out"; then
+      echo "The Wi-Fi link to the watch dropped during the copy. Put the watch on its charger and keep" >&2
+      echo "its screen on, turn the watch's Bluetooth off until the install is done (Wear OS may switch" >&2
+      echo "Wi-Fi off while Bluetooth is connected), check the port under Wireless debugging, and run" >&2
+      echo "this again. Turn Bluetooth back on afterwards." >&2
+    fi
     exit 1
   fi
   echo "  OK"
@@ -75,7 +103,7 @@ if [ "$(watch_feature "$WATCH")" = "false" ]; then
   echo "under Settings > Developer options > Wireless debugging > IP address & Port." >&2
   exit 1
 fi
-install_apk "$WATCH" "$HERE/ankiwatch-watch.apk"
+install_apk "$WATCH" "$HERE/ankiwatch-watch.apk" wifi
 
 echo
 echo "Done. Open AnkiWatch Phone on the phone once (it asks for AnkiDroid access), then AnkiWatch on the watch."

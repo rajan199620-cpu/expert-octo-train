@@ -1,15 +1,16 @@
 # Installs AnkiWatch on your phone and Galaxy Watch from a Windows PC.
 #
-# Put this script next to ankiwatch-phone.apk and ankiwatch-watch.apk (the files from the
-# CI download), then in PowerShell:
+# Copy everything from the CI download (this script and both APKs) into your platform-tools
+# folder, next to adb.exe, then in PowerShell, in that folder:
 #
-#   .\install.ps1 -Watch 192.168.1.23:41235            # watch only (phone APK opened on the phone)
-#   .\install.ps1 -Watch 192.168.1.23:41235 -Phone     # watch + phone over USB debugging
+#   powershell -ExecutionPolicy Bypass -File .\install.ps1 -Watch 192.168.1.23:41235
+#   powershell -ExecutionPolicy Bypass -File .\install.ps1 -Watch 192.168.1.23:41235 -Phone
 #
-# -Watch is the "IP address & Port" shown under Developer options > Wireless debugging on
-# the watch. Pair once first:  adb pair <ip>:<pairing port> <pairing code>
-#
-# If adb isn't on your PATH, pass its location: -Adb .\adb.exe
+# ("-ExecutionPolicy Bypass" lets Windows run this downloaded script once, without changing
+# any setting.) -Watch is the "IP address & Port" shown under Developer options > Wireless
+# debugging on the watch. Pair once first:  .\adb.exe pair <ip>:<pairing port> <code>
+# -Phone also installs the phone app on a phone connected by USB with USB debugging on.
+# adb is found next to this script or in the current folder; otherwise pass -Adb <path>.
 param(
     [Parameter(Mandatory = $true)][string]$Watch,
     [switch]$Phone,
@@ -17,14 +18,24 @@ param(
 )
 
 # Not "Stop": Windows PowerShell 5.1 turns anything adb prints on stderr into a terminating
-# error under "Stop", which would abort before the signature-mismatch retry below.
+# error under "Stop", which would abort before the retries below.
 $ErrorActionPreference = "Continue"
 $Package = "com.ankiwatch.cloze"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-if (-not (Get-Command $Adb -ErrorAction SilentlyContinue)) {
-    Write-Error "adb not found. Install Android SDK Platform-Tools and pass -Adb <path to adb.exe>."
+function Fail([string]$Message) {
+    # Plain red text: Write-Error would bury the advice under PowerShell's code-line noise.
+    Write-Host $Message -ForegroundColor Red
     exit 1
+}
+
+if ($Adb -eq "adb" -and -not (Get-Command adb -ErrorAction SilentlyContinue)) {
+    foreach ($candidate in @((Join-Path $Here "adb.exe"), (Join-Path (Get-Location) "adb.exe"))) {
+        if (Test-Path $candidate) { $Adb = $candidate; break }
+    }
+}
+if (-not (Get-Command $Adb -ErrorAction SilentlyContinue)) {
+    Fail "adb not found. Put this script in the platform-tools folder (next to adb.exe), or pass -Adb <path to adb.exe>."
 }
 
 function Invoke-Adb([string[]]$Arguments) {
@@ -41,26 +52,44 @@ function Get-WatchFeature([string]$Serial) {
     return $lines[-1]
 }
 
-function Install-Apk([string]$Serial, [string]$Apk) {
-    if (-not (Test-Path $Apk)) {
-        Write-Error "Missing $Apk - run this script from the unzipped download."
-        exit 1
-    }
-    Write-Host "Installing $(Split-Path -Leaf $Apk) on $Serial ..."
-    $out = Invoke-Adb @("-s", $Serial, "install", "-r", $Apk)
+# --no-streaming copies the APK over first and then installs it on the device itself, so a
+# Wi-Fi hiccup shows up as a failed copy (retried below) rather than a reasonless failure.
+function Install-Once([string]$Serial, [string]$Apk) {
+    $out = Invoke-Adb @("-s", $Serial, "install", "-r", "--no-streaming", $Apk)
     if ($out -match "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match") {
         # A build signed with a different key: remove the old one first.
         Write-Host "  Signing key changed - reinstalling (review history lives in AnkiDroid, nothing is lost)."
         Invoke-Adb @("-s", $Serial, "uninstall", $Package) | Out-Null
-        $out = Invoke-Adb @("-s", $Serial, "install", $Apk)
+        $out = Invoke-Adb @("-s", $Serial, "install", "--no-streaming", $Apk)
+    }
+    return $out
+}
+
+function Install-Apk([string]$Serial, [string]$Apk, [switch]$OverWifi) {
+    if (-not (Test-Path $Apk)) {
+        Fail "Missing $Apk - copy all files from the download next to this script."
+    }
+    $mb = [math]::Round((Get-Item $Apk).Length / 1MB, 1)
+    Write-Host "Installing $(Split-Path -Leaf $Apk) ($mb MB) on $Serial ..."
+    $out = Install-Once $Serial $Apk
+    if ($out -notmatch "Success" -and $out -notmatch "Failure \[|INSTALL_") {
+        # No answer from the device's installer: the transfer was cut off.
+        Write-Host "  The transfer was cut off; reconnecting and trying once more ..."
+        if ($OverWifi) { Invoke-Adb @("connect", $Serial) | Out-Null }
+        $out = Install-Once $Serial $Apk
     }
     if ($out -match "INSTALL_FAILED_MISSING_SHARED_LIBRARY") {
-        Write-Error "$Serial is not a Wear OS watch, so it refuses the watch app."
-        exit 1
+        Fail "$Serial is not a Wear OS watch, so it refuses the watch app."
     }
     if ($out -notmatch "Success") {
-        Write-Error "Install failed on ${Serial}:`n$out"
-        exit 1
+        $hint = ""
+        if ($OverWifi -and $out -notmatch "Failure \[|INSTALL_") {
+            $hint = "`nThe Wi-Fi link to the watch dropped during the copy. Put the watch on its charger and keep " +
+                "its screen on, turn the watch's Bluetooth off until the install is done (Wear OS may switch " +
+                "Wi-Fi off while Bluetooth is connected), check the port under Wireless debugging, and run " +
+                "this again. Turn Bluetooth back on afterwards."
+        }
+        Fail "Install failed on ${Serial}:`n$out$hint"
     }
     Write-Host "  OK"
 }
@@ -72,12 +101,10 @@ if ($Phone) {
         ForEach-Object { ($_ -split "\s+")[0] } |
         Select-Object -First 1
     if (-not $phoneSerial) {
-        Write-Error "No phone found over USB. Enable USB debugging on the phone and accept the prompt."
-        exit 1
+        Fail "No phone found over USB. Enable USB debugging on the phone and accept the prompt."
     }
     if ((Get-WatchFeature $phoneSerial) -eq "true") {
-        Write-Error "$phoneSerial (USB) is a watch, not a phone. Connect the phone with USB debugging."
-        exit 1
+        Fail "$phoneSerial (USB) is a watch, not a phone. Connect the phone with USB debugging."
     }
     Install-Apk $phoneSerial (Join-Path $Here "ankiwatch-phone.apk")
     # Same permission the app asks for on first launch.
@@ -87,11 +114,10 @@ if ($Phone) {
 Write-Host (Invoke-Adb @("connect", $Watch))
 # Both apps share one package name, so the watch app on a phone would replace the phone app.
 if ((Get-WatchFeature $Watch) -eq "false") {
-    Write-Error ("$Watch is not a watch (it looks like a phone). Use the address shown on the WATCH " +
+    Fail ("$Watch is not a watch (it looks like a phone). Use the address shown on the WATCH " +
         "under Settings > Developer options > Wireless debugging > IP address & Port.")
-    exit 1
 }
-Install-Apk $Watch (Join-Path $Here "ankiwatch-watch.apk")
+Install-Apk $Watch (Join-Path $Here "ankiwatch-watch.apk") -OverWifi
 
 Write-Host ""
 Write-Host "Done. Open AnkiWatch Phone on the phone once (it asks for AnkiDroid access), then AnkiWatch on the watch."

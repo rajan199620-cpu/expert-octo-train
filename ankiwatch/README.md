@@ -42,8 +42,11 @@ download the **ankiwatch-apks** artifact (you must be signed in). Unzip it. It c
 ### 2. Get adb on the PC
 
 Download **SDK Platform-Tools** from
-<https://developer.android.com/tools/releases/platform-tools>, unzip it (for example to
-`C:\platform-tools`) and copy the unzipped AnkiWatch files into that folder.
+<https://developer.android.com/tools/releases/platform-tools> and unzip it (for example to
+`C:\platform-tools`). Then unzip the AnkiWatch download and copy **all** its files into that
+same folder: running `dir` there must list `adb.exe`, `install.ps1` and
+`ankiwatch-watch.apk` side by side. Open PowerShell in that folder (Shift + right-click in
+the folder → *Open PowerShell window here*, or `cd` to it).
 
 ### 3. Phone app
 
@@ -75,13 +78,29 @@ refuses the watch file ("App not installed").
 
 ### 5. Install on the watch
 
+The watch app is about 19 MB, and a watch tends to drop Wi-Fi to save power while it is
+linked to the phone over Bluetooth. So for the install: put the watch on its charger, keep
+its screen on, and turn the watch's Bluetooth off (Settings → Connections) until it is done.
+Then, in the platform-tools folder:
+
 ```powershell
-.\install.ps1 -Watch 192.168.1.23:41235 -Adb .\adb.exe
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -Watch 192.168.1.23:41235
 ```
 
-(macOS/Linux: `ADB=./adb ./install.sh 192.168.1.23:41235`.) The script checks that the
-address really is the watch before installing anything. Open **AnkiWatch** on the watch:
-your decks appear; tap one to start.
+`-ExecutionPolicy Bypass` lets Windows run the downloaded script this once; it changes no
+setting. (macOS/Linux: `./install.sh 192.168.1.23:41235`.) The script checks that the
+address really is the watch, copies the app over before installing it, and retries once,
+reconnecting, if the copy is cut off.
+
+Without the script, the same thing by hand:
+
+```powershell
+.\adb.exe connect 192.168.1.23:41235
+.\adb.exe -s 192.168.1.23:41235 install -r --no-streaming .\ankiwatch-watch.apk
+```
+
+When it says **Success**, turn the watch's Bluetooth back on (the app reaches the phone over
+it) and open **AnkiWatch** on the watch: your decks appear; tap one to start.
 
 Turn Wireless debugging off again afterwards if you like; it only matters for installing.
 
@@ -119,6 +138,15 @@ Never commit the keystore; this repository is public.
 - **"Phone not connected" on the watch**: the phone must be within Bluetooth range of the
   watch (or both on Wi-Fi) with AnkiWatch Phone installed.
 - **"AnkiWatch needs permission"**: open AnkiWatch Phone and allow AnkiDroid access.
+- **`adb: failed to install ankiwatch-watch.apk:` with nothing after it**: the transfer to
+  the watch was cut off mid-way (a reason after the colon would mean the watch refused the
+  app). Charger, screen on, watch Bluetooth off, check the port, then install again with
+  `--no-streaming` as in step 5.
+- **`The term '.\install.ps1' is not recognized`** or **`-File ... does not exist`**: the
+  script isn't in the folder you are in; copy all files from the download next to
+  `adb.exe` (step 2).
+- **`running scripts is disabled on this system`**: start it as
+  `powershell -ExecutionPolicy Bypass -File .\install.ps1 ...` (step 5).
 - **Cards look like plain text**: only cloze note types (Enhanced Cloze, Cloze) get the
   cloze layout; other notes show their template with formatting kept.
 - Images show as `[image]` and audio is skipped; the watch has no web view to run card
