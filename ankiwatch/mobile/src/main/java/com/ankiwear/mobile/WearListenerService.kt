@@ -1,14 +1,12 @@
 package com.ankiwear.mobile
 
 import android.content.Context
-import android.net.Uri
 import android.os.PowerManager
 import android.util.Log
 import com.ankiwatch.core.Wire
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMap
-import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.delay
@@ -44,10 +42,15 @@ class WearListenerService : WearableListenerService() {
     private lateinit var answerDedupe: AnswerDedupeStore
     private lateinit var powerManager: PowerManager
     private lateinit var exchangeLog: ExchangeLog
+    private lateinit var answerSync: AnswerSync
 
     companion object {
         private const val TAG = "WearListenerService"
         private const val WAKELOCK_TIMEOUT_MS = 30_000L
+        // A watch back from an offline session can bring hundreds of grades at once, and an
+        // offline download reads hundreds of notes. The lock is released as soon as the work
+        // is done; this only caps it.
+        private const val LONG_WAKELOCK_TIMEOUT_MS = 10 * 60_000L
     }
 
     override fun onCreate() {
@@ -58,6 +61,7 @@ class WearListenerService : WearableListenerService() {
         answerDedupe = AnswerDedupeStore(this)
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         exchangeLog = ExchangeLog(this)
+        answerSync = AnswerSync(ankiHelper, dataLayerManager, answerDedupe, exchangeLog)
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
@@ -72,13 +76,20 @@ class WearListenerService : WearableListenerService() {
                 val data = messageEvent.data
                 runProcessing { handleCardRequest(data) }
             }
+            Wire.PATH_REQUEST_OFFLINE -> {
+                exchangeLog.request("offline download")
+                val data = messageEvent.data
+                runProcessing(LONG_WAKELOCK_TIMEOUT_MS) { handleOfflineRequest(data) }
+            }
             // Legacy path: an older watch build that still sends answers as messages. No
             // UUID, so no dedupe/ack — but still applied so those users aren't broken.
             DataLayerManager.PATH_REVIEW_ANSWER -> {
                 val data = messageEvent.data
                 runProcessing {
-                    val req = parseAnswer(DataMap.fromByteArray(data), uuid = null)
-                    handleAnswer(req, ackUri = null)
+                    val answer = WatchAnswer.from(DataMap.fromByteArray(data))
+                    exchangeLog.request("answer")
+                    exchangeLog.outcome(answerSync.applyOne(answer).name.lowercase())
+                    sendNextCards(answer)
                 }
             }
             else -> Log.w(TAG, "Unknown message path: ${messageEvent.path}")
@@ -86,34 +97,37 @@ class WearListenerService : WearableListenerService() {
     }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
-        // The watch writes review answers as DataItems under /answer/<uuid>. Collect them
-        // (a burst of taps can arrive in one buffer) and process in timestamp order so
-        // grades are applied in the order the user tapped them.
-        val answers = dataEvents
-            .filter { it.type == DataEvent.TYPE_CHANGED }
-            .mapNotNull { event ->
-                val path = event.dataItem.uri.path ?: return@mapNotNull null
-                if (!path.startsWith(DataLayerManager.PATH_ANSWER_PREFIX)) return@mapNotNull null
-                val map = DataMapItem.fromDataItem(event.dataItem).dataMap
-                event.dataItem.uri to map
-            }
-            .sortedBy { it.second.getLong(DataLayerManager.KEY_TIMESTAMP) }
+        // The watch writes review answers as DataItems under /answer/<uuid>. Rather than
+        // apply just the ones in this event, apply everything queued, in the order it was
+        // given on the watch: after an offline session hundreds arrive over several events.
+        val anyAnswer = dataEvents.any { event ->
+            event.type == DataEvent.TYPE_CHANGED &&
+                event.dataItem.uri.path?.startsWith(DataLayerManager.PATH_ANSWER_PREFIX) == true
+        }
+        if (!anyAnswer) return
+        runProcessing(LONG_WAKELOCK_TIMEOUT_MS) { syncAnswers() }
+    }
 
-        if (answers.isEmpty()) return
-
-        val buries = answers.count { it.second.getInt(DataLayerManager.KEY_EASE, -1) == Wire.EASE_BURY }
-        exchangeLog.request(
-            when {
-                answers.size == 1 -> if (buries == 1) "bury" else "answer"
-                else -> "${answers.size} answers"
-            }
-        )
-        runProcessing {
-            for ((uri, map) in answers) {
-                val uuid = map.getString(DataLayerManager.KEY_ANSWER_UUID)
-                val req = parseAnswer(map, uuid = uuid)
-                handleAnswer(req, ackUri = uri)
-            }
+    /**
+     * Applies the queued answers. Problems are reported to the watch; a live answer gets the
+     * next cards back, offline ones don't (the watch already has its cards).
+     */
+    private suspend fun syncAnswers() {
+        val report = answerSync.run() ?: return
+        report.stopped?.let {
+            reportError("Your grades are safe on the watch but didn't go into AnkiDroid yet: $it. They go in next time.")
+            return
+        }
+        if (report.malformed > 0) {
+            reportError("${report.malformed} grade${if (report.malformed == 1) "" else "s"} from the watch couldn't be read and were skipped.")
+        }
+        val replyTo = report.replyTo ?: return
+        try {
+            // Always send fresh cards back, even for a duplicate, so the watch re-syncs.
+            sendNextCards(replyTo)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending the next cards", e)
+            reportError("Your answer was saved, but the next card couldn't be sent: ${e.message ?: e.javaClass.simpleName}")
         }
     }
 
@@ -121,12 +135,12 @@ class WearListenerService : WearableListenerService() {
      * Runs [block] synchronously under a short wake lock and the processing mutex, keeping
      * the service bound and the CPU awake until the AnkiDroid write + response are done.
      */
-    private fun runProcessing(block: suspend () -> Unit) {
+    private fun runProcessing(timeoutMs: Long = WAKELOCK_TIMEOUT_MS, block: suspend () -> Unit) {
         val wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
             "AnkiWatch:processing"
         )
-        wakeLock.acquire(WAKELOCK_TIMEOUT_MS)
+        wakeLock.acquire(timeoutMs)
         try {
             runBlocking { messageMutex.withLock { block() } }
         } catch (e: Exception) {
@@ -176,10 +190,40 @@ class WearListenerService : WearableListenerService() {
                 return
             }
 
+            // Grades still queued (say, from an offline session) go in first, so the cards
+            // sent back don't include ones already answered on the watch.
+            answerSync.run(log = false)
             sendCardsForDeck(deckId)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling card request", e)
             reportError("Error fetching cards: ${e.message ?: e.javaClass.simpleName}")
+        }
+    }
+
+    /**
+     * Sends the watch a deck's whole due queue to review without the phone. Grades still
+     * queued from an earlier session go in first, so the download doesn't bring back cards
+     * already answered.
+     */
+    private suspend fun handleOfflineRequest(data: ByteArray) {
+        try {
+            val dataMap = DataMap.fromByteArray(data)
+            val deckId = dataMap.getLong(DataLayerManager.KEY_DECK_ID)
+            val deckName = dataMap.getString(DataLayerManager.KEY_DECK_NAME).orEmpty()
+            if (!ankiHelper.isAnkiDroidInstalled()) {
+                reportError("AnkiDroid is not installed on this phone.")
+                return
+            }
+            if (!ankiHelper.hasPermission()) {
+                reportError("AnkiWatch needs permission to access AnkiDroid. Please open AnkiWatch Phone on your phone.")
+                return
+            }
+            answerSync.run(log = false)
+            val pack = buildOfflinePack(ankiHelper, deckId, deckName)
+            exchangeLog.outcome(dataLayerManager.sendOfflinePack(pack))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error preparing the offline download", e)
+            reportError("The phone couldn't prepare the offline download: ${e.message ?: e.javaClass.simpleName}")
         }
     }
 
@@ -209,108 +253,11 @@ class WearListenerService : WearableListenerService() {
         ))
     }
 
-    /** Parsed review-answer request. */
-    private data class AnswerRequest(
-        val noteId: Long,
-        val cardOrd: Int,
-        val ease: Int,
-        val timeTaken: Long,
-        val deckId: Long,
-        val uuid: String?
-    )
-
-    private fun parseAnswer(dataMap: DataMap, uuid: String?): AnswerRequest =
-        AnswerRequest(
-            noteId = dataMap.getLong(DataLayerManager.KEY_NOTE_ID),
-            cardOrd = dataMap.getInt(DataLayerManager.KEY_CARD_ORD),
-            // -1, not getInt's default 0: an answer without an ease must never read as Bury.
-            ease = dataMap.getInt(DataLayerManager.KEY_EASE, -1),
-            timeTaken = dataMap.getLong(DataLayerManager.KEY_TIME_TAKEN),
-            deckId = dataMap.getLong(DataLayerManager.KEY_DECK_ID),
-            uuid = uuid
-        )
-
-    private suspend fun handleAnswer(req: AnswerRequest, ackUri: Uri?) {
-        try {
-            val alreadyApplied = req.uuid != null && answerDedupe.isProcessed(req.uuid)
-            if (alreadyApplied) {
-                Log.d(TAG, "Answer ${req.uuid} already applied — skipping write, refreshing watch")
-            } else {
-                applyAnswer(req)
-                req.uuid?.let { answerDedupe.markProcessed(it) }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error submitting review answer", e)
-            // #8: don't leave the watch hanging on a spinner — surface the failure.
-            reportError("Couldn't save your answer: ${e.message ?: e.javaClass.simpleName}")
-            ackUri?.let { dataLayerManager.deleteAnswerItem(it) }
-            return
-        }
-        try {
-            // Always send fresh cards back, even for a duplicate, so the watch re-syncs.
-            sendNextCards(req)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error sending the next cards", e)
-            reportError("Your answer was saved, but the next card couldn't be sent: ${e.message ?: e.javaClass.simpleName}")
-        } finally {
-            // ACK by deleting the answer DataItem now that it's applied (or was a dup).
-            ackUri?.let { dataLayerManager.deleteAnswerItem(it) }
-        }
-    }
-
-    /**
-     * Applies the grade to AnkiDroid, mirroring what its reviewer UI does (select deck →
-     * warm up scheduler → answer), with a couple of retries for the cold-start case.
-     */
-    private suspend fun applyAnswer(req: AnswerRequest): Boolean {
-        // Thrown, so handleAnswer reports it to the watch and drops the item.
-        require(Wire.isAnswerEase(req.ease)) { "unknown answer (ease ${req.ease})" }
-        if (req.ease == Wire.EASE_BURY) {
-            val buried = ankiHelper.buryCard(req.noteId, req.cardOrd)
-            Log.d(TAG, "Bury noteId=${req.noteId} cardOrd=${req.cardOrd}: $buried")
-            return buried
-        }
-        if (req.deckId != 0L) {
-            val selectedOk = ankiHelper.setSelectedDeck(req.deckId)
-            delay(50) // brief settle for AnkiDroid to process the selection
-            val warmedNoteId = ankiHelper.warmUpScheduler(req.deckId)
-            Log.d(TAG, "Pre-answer setup: selectedOk=$selectedOk warmedNoteId=$warmedNoteId " +
-                "want=${req.noteId} (match=${warmedNoteId == req.noteId})")
-        }
-
-        var answered = ankiHelper.answerCard(req.noteId, req.cardOrd, req.ease, req.timeTaken)
-
-        if (!answered && req.deckId != 0L) {
-            Log.w(TAG, "answerCard attempt 1 failed — re-selecting deck and retrying...")
-            for (attempt in 2..3) {
-                delay(100L * attempt)
-                ankiHelper.setSelectedDeck(req.deckId)
-                delay(50)
-                ankiHelper.warmUpScheduler(req.deckId)
-                delay(50)
-                answered = ankiHelper.answerCard(req.noteId, req.cardOrd, req.ease, req.timeTaken)
-                if (answered) {
-                    Log.d(TAG, "answerCard succeeded on attempt $attempt")
-                    break
-                }
-                Log.w(TAG, "answerCard attempt $attempt failed")
-            }
-        }
-
-        if (answered) {
-            Log.d(TAG, "Answered card noteId=${req.noteId} ease=${req.ease} deckId=${req.deckId}")
-        } else {
-            Log.w(TAG, "answerCard failed after all retries — card noteId=${req.noteId} " +
-                "cardOrd=${req.cardOrd} may be stale or already answered.")
-        }
-        return answered
-    }
-
     /**
      * Queries the post-answer schedule and sends the next card(s) to the watch, handling
      * AnkiDroid's REVIEW_INFO_URI quirks (see inline comments).
      */
-    private suspend fun sendNextCards(req: AnswerRequest) {
+    private suspend fun sendNextCards(req: WatchAnswer) {
         if (req.deckId == 0L) return
 
         // Brief settle so AnkiDroid's deck-count cache reflects the write before we query.

@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,7 +54,13 @@ fun DeckListScreen(
     onDeckSelected: (DeckInfo) -> Unit,
     onRefresh: () -> Unit = {},
     /** Epoch millis of the most recent decks response, or null if none yet. */
-    lastUpdatedMillis: Long? = null
+    lastUpdatedMillis: Long? = null,
+    title: String = "Decks",
+    /** Shows Refresh at the end; off when the list is only for picking a deck. */
+    showRefresh: Boolean = true,
+    /** Opens offline review; with [offlineSummary] as the chip's second line. */
+    onOffline: (() -> Unit)? = null,
+    offlineSummary: String? = null
 ) {
     val listState = rememberScalingLazyListState()
 
@@ -100,8 +107,25 @@ fun DeckListScreen(
         item {
             ListHeader {
                 Text(
-                    text = "Decks",
+                    text = title,
                     style = MaterialTheme.typography.title3
+                )
+            }
+        }
+
+        if (onOffline != null) {
+            item {
+                Chip(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                        .testTag(DeckListTags.OFFLINE),
+                    onClick = onOffline,
+                    colors = ChipDefaults.secondaryChipColors(),
+                    label = { Text("Offline review", maxLines = 1) },
+                    secondaryLabel = if (offlineSummary != null) {
+                        { Text(offlineSummary, maxLines = 1) }
+                    } else null
                 )
             }
         }
@@ -124,7 +148,7 @@ fun DeckListScreen(
         // Refresh chip at the end of the list — placed after decks so it doesn't push
         // the list down on initial view, but is reachable with a quick scroll-down to
         // pull fresh deck counts from AnkiDroid without leaving the screen.
-        item {
+        if (showRefresh) item {
             Chip(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -142,12 +166,17 @@ fun DeckListScreen(
 
         // "Updated 5s ago" caption beneath Refresh — keeps the user oriented about
         // whether the counts they're looking at are fresh.
-        if (lastUpdatedMillis != null) {
+        if (showRefresh && lastUpdatedMillis != null) {
             item {
                 LastUpdatedLabel(lastUpdatedMillis = lastUpdatedMillis)
             }
         }
     }
+}
+
+/** Test tags for the deck list. */
+object DeckListTags {
+    const val OFFLINE = "deck-list-offline"
 }
 
 @Composable

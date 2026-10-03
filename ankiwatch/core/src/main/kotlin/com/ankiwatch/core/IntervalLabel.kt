@@ -12,7 +12,8 @@ object IntervalLabel {
 
     /** Milliseconds the label stands for, or null when it isn't a recognisable interval. */
     fun millis(label: String): Long? {
-        val text = label.trim().trimStart('<', '~', '≈', '>').trim()
+        // Translated labels may carry bidi isolation marks and non-breaking spaces.
+        val text = label.filterNot { it in INVISIBLE }.replace(SPACES, " ").trim().trimStart('<', '~', '≈', '>').trim()
         val match = PATTERN.matchEntire(text) ?: return null
         val amount = match.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return null
         val unit = UNITS[match.groupValues[2].lowercase()] ?: return null
@@ -22,6 +23,8 @@ object IntervalLabel {
     }
 
     private val PATTERN = Regex("""(\d{1,9}(?:[.,]\d{1,6})?)\s*(\p{L}+)\.?""")
+    private const val INVISIBLE = "\u2066\u2067\u2068\u2069\u200E\u200F\u200B\uFEFF"
+    private val SPACES = Regex("[\u00A0\u2007\u2009\u202F]")
 
     private const val MAX_MS = 1_000.0 * 86_400 * 366 * 1_000 // a thousand years
 

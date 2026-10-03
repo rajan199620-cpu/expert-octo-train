@@ -34,6 +34,14 @@ object Wire {
     // Legacy message-based answer path, still accepted by the phone.
     const val PATH_REVIEW_ANSWER = "/review/answer"
 
+    // Reviewing without the phone: the watch asks for a deck's whole due queue (message);
+    // the phone answers with one DataItem carrying the encoded OfflinePack as an Asset.
+    const val PATH_REQUEST_OFFLINE = "/request/offline"
+    const val PATH_OFFLINE_PACK = "/offline/pack"
+
+    /** Most cards one offline download holds; AnkiDroid's daily limits usually give fewer. */
+    const val OFFLINE_CARD_LIMIT = 1_000
+
     const val CAPABILITY_PHONE = "ankiwatch_phone"
     const val CAPABILITY_WATCH = "ankiwatch_watch"
 
@@ -60,6 +68,15 @@ object Wire {
     const val KEY_NEXT_REVIEW_TIMES = "next_review_times"
     const val KEY_ANSWER_UUID = "answer_uuid"
     const val KEY_ACKED_ANSWER_UUID = "acked_answer_uuid"
+
+    // Offline downloads and the answers given from them.
+    const val KEY_PACK = "pack"
+    const val KEY_PACK_ID = "pack_id"
+    const val KEY_CARD_COUNT = "card_count"
+    /** On an answer given from a download: the phone applies it without sending cards back. */
+    const val KEY_OFFLINE = "offline"
+    /** The watch's running number for its answers: the phone applies them in this order. */
+    const val KEY_SEQ = "seq"
 
     // Cloze cards: raw cloze field, tested cloze number (0 = not a cloze card), and the
     // answer-side extras as parallel label/value arrays.

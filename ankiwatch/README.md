@@ -2,7 +2,8 @@
 
 Review your AnkiDroid collection on a Wear OS watch, built for a **Galaxy Watch 6** and for
 **Enhanced Cloze** decks. AnkiDroid on your phone stays in charge: it schedules the cards,
-records your answers and syncs with AnkiWeb as usual. The watch is a remote for it.
+records your answers and syncs with AnkiWeb as usual. The watch is a remote for it, and can
+take a deck along when the phone stays behind.
 
 Based on [AnkiWatch](https://github.com/OleksandrShabaldas/AnkiWatch) by Oleksandr Shabaldas
 (MIT, upstream commit `80d78a3`). See [What changed from upstream](#what-changed-from-upstream).
@@ -27,6 +28,36 @@ double press of Home.
 
 If the bottom button doesn't grade, check that the same Customize keys screen has the Back
 key set to its default *Go back*.
+
+## Reviewing without your phone
+
+For a walk, the gym or a class: download a deck while the phone is near, then review it on
+the watch for as long as you like, with the phone at home or switched off.
+
+1. **Download** (phone nearby): Decks → **Offline review** → **Download a deck**, and pick
+   the deck (a parent deck brings its subdecks). It takes a few seconds.
+2. **Review** (no phone needed): open AnkiWatch. The *Phone not connected* screen offers
+   **Review offline**; the deck list has **Offline review**. Tap the deck and review as usual:
+   buttons, side button, Bury.
+3. **Back home**: your grades go into AnkiDroid by themselves, in the order you gave them.
+   The Offline screen shows how many are still waiting for the phone. Opening AnkiWatch
+   Phone also applies any that are waiting.
+
+How it behaves:
+
+- Cards you press Again on, and new cards in their learning steps, come back after
+  AnkiDroid's own delays (shown on the buttons the first time). When only those are left,
+  the watch says when the next one is due; **Show it now** brings it early.
+- The download is what AnkiDroid had due at that moment, within its daily limits (at most
+  1,000 cards). Learning cards that fall due later aren't in it; download again to refresh.
+- AnkiDroid schedules each card from your grades when they arrive, exactly as if you had
+  answered on the phone. Review dates (days) come out the same; learning steps (minutes)
+  count from when the grades reach the phone.
+- Don't review the same cards on the phone while the watch has them offline: a card graded
+  in both places counts twice. Cards you review on the watch while connected are crossed
+  off its downloads automatically.
+- A new download waits until the grades from earlier ones have reached the phone, so it
+  never brings back cards you already did.
 
 ## Install (Galaxy Watch 6 + a PC)
 
@@ -163,6 +194,9 @@ Never commit the keystore; this repository is public.
   checked against an answer-visibility oracle (a covered answer never appears, an open one
   always does), mutation fuzzing of real card layouts, a sanitizer that must not change what
   is shown, truncation that must never uncover an answer, 1 MB and 50,000-deep inputs.
+  Offline review: the download format (exact round trips, damaged, oversized and unpacking
+  bombs refused), AnkiDroid's interval labels, and the offline queue (AnkiDroid's default
+  learning steps, learn-ahead, waiting, random sessions with restarts that must end).
   Deliberately injected bugs are caught by the suite.
 - Watch UI on a round Wear OS emulator: covered answers absent from the screen while walking
   the whole note, the tested cloze and its answer on screen when each side opens (checked by
@@ -172,12 +206,19 @@ Never commit the keystore; this repository is public.
   mode, a 40-section note, malformed input. Every control on 192, 204 and 227 dp round
   screens at font sizes from 0.85× to 2×: labels whole and inside the circle up to 1.3×
   (the largest watch setting), the chips under the card wrapping instead of overlapping at
-  any size. Screenshots captured.
+  any size. Offline review with no phone and a fake clock (learning cards coming back,
+  waiting, *Show it now*, side button, Bury, a restart mid-session), a 100-card random
+  offline session, the Offline screen's states, and the watch's download store (restarts,
+  damaged files, overlapping decks, 300 random operations). Screenshots captured.
 - Phone code against the real AnkiDroid app on an emulator: cloze fields and numbers, deck
   counts, answers landing in AnkiDroid's scheduler, Bury (the card leaves today's queue, its
   siblings stay; burying a whole deck empties today's queue; a stale or bogus bury fails
   cleanly), oversized notes trimmed under the Bluetooth payload limit, and a multi-deck
-  answer loop with buries mixed in.
+  answer loop with buries mixed in. Offline review: a download is the deck in AnkiDroid's
+  own order with labels the watch can read; the same grades given live on one deck and
+  offline on its twin (applied later, delivered shuffled) leave identical schedules; a whole
+  offline session asks for as many answers per card as AnkiDroid does live; duplicated,
+  out-of-order and unreadable grades; 200 offline grades from ten decks in one go.
 - The downloadable APKs themselves: on a phone emulator the watch APK must be refused and
   the phone APK must install and keep running; on the Wear OS emulator the watch APK must.
   The install scripts are run against a fake adb (watch, phone, wrong address, a watch on

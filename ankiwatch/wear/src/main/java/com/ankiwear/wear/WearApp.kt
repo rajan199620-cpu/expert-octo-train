@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -16,6 +17,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+import com.ankiwatch.core.CardKey
 import com.ankiwatch.core.Link
 import com.ankiwear.wear.model.CardData
 import com.ankiwear.wear.model.CardType
@@ -23,17 +25,27 @@ import com.ankiwear.wear.model.DeckInfo
 import com.ankiwear.wear.screens.DeckListScreen
 import com.ankiwear.wear.screens.DisconnectedScreen
 import com.ankiwear.wear.screens.ErrorScreen
+import com.ankiwear.wear.screens.OfflineReviewScreen
+import com.ankiwear.wear.screens.OfflineScreen
+import com.ankiwear.wear.offline.OfflineStore
 import com.ankiwear.wear.screens.ReviewScreen
 import com.ankiwear.wear.theme.AnkiWearTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
-fun WearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs? = null, demo: Boolean = false) {
+fun WearApp(
+    dataLayerClient: DataLayerClient,
+    prefs: ReviewPrefs? = null,
+    demo: Boolean = false,
+    offlineStore: OfflineStore? = null
+) {
     if (demo) {
         DemoWearApp(prefs)
     } else {
-        LiveWearApp(dataLayerClient, prefs)
+        LiveWearApp(dataLayerClient, prefs, offlineStore)
     }
 }
 
@@ -92,7 +104,7 @@ private fun DemoWearApp(prefs: ReviewPrefs?) {
 }
 
 @Composable
-private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
+private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, offlineStore: OfflineStore?) {
     AnkiWearTheme {
         val navController = rememberSwipeDismissableNavController()
         val scope = rememberCoroutineScope()
@@ -108,6 +120,19 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
         val isConnected by dataLayerClient.isPhoneConnected.collectAsState()
         val phoneLink by dataLayerClient.phoneLink.collectAsState()
         val decksLastUpdated by dataLayerClient.decksLastUpdated.collectAsState()
+        val pendingGrades by dataLayerClient.pendingGrades.collectAsState()
+        val download by dataLayerClient.download.collectAsState()
+        val offlineVersion by dataLayerClient.offlineVersion.collectAsState()
+
+        // The downloaded decks, read off the main thread whenever they change.
+        var offlinePacks by remember { mutableStateOf(emptyList<OfflineStore.Summary>()) }
+        LaunchedEffect(offlineVersion) {
+            offlinePacks = withContext(Dispatchers.IO) { offlineStore?.summaries().orEmpty() }
+        }
+        // Where a screen that can't reach the phone sends you, when there is something to review.
+        val openOffline: (() -> Unit)? = if (offlineStore != null && offlinePacks.isNotEmpty()) {
+            { navController.navigate("offline") }
+        } else null
 
         var isLoadingDecks by remember { mutableStateOf(true) }
         var timedOut by remember { mutableStateOf(false) }
@@ -212,6 +237,7 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                 if (event == Lifecycle.Event.ON_RESUME) {
                     scope.launch {
                         dataLayerClient.checkConnection()
+                        dataLayerClient.refreshPendingGrades()
                         when (currentRoute) {
                             "decks" -> dataLayerClient.requestDecks()
                             "review" -> selectedDeck?.let {
@@ -234,6 +260,7 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                 when {
                     !isConnected && decks.isEmpty() && error == null && !isLoadingDecks -> {
                         DisconnectedScreen(
+                            onOffline = openOffline,
                             onRetry = {
                                 timedOut = false
                                 isLoadingDecks = true
@@ -260,6 +287,7 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                             // rather than blaming a slow start. Otherwise point at the phone's
                             // record of the request.
                             message = Link.watchNoReply(phoneLink),
+                            onOffline = openOffline,
                             onRetry = {
                                 timedOut = false
                                 isLoadingDecks = true
@@ -276,6 +304,7 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                     error != null -> {
                         ErrorScreen(
                             message = error,
+                            onOffline = openOffline,
                             onRetry = {
                                 scope.launch {
                                     dataLayerClient.clearError()
@@ -307,7 +336,11 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                                     dataLayerClient.requestDecks()
                                 }
                             },
-                            lastUpdatedMillis = decksLastUpdated
+                            lastUpdatedMillis = decksLastUpdated,
+                            onOffline = if (offlineStore != null) {
+                                { navController.navigate("offline") }
+                            } else null,
+                            offlineSummary = offlineSummary(offlinePacks, pendingGrades)
                         )
                     }
                 }
@@ -358,6 +391,7 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                 if (reviewFetchTimedOut && currentCard == null) {
                     ErrorScreen(
                         message = "Couldn't reach your phone to load the next card. Tap retry — this usually clears once the phone-side service wakes up.",
+                        onOffline = openOffline,
                         onRetry = {
                             reviewFetchTimedOut = false
                             isFetchingCards = true
@@ -390,6 +424,13 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                         // The answer is written as a guaranteed-delivery DataItem; the phone
                         // applies it and sends back the next scheduled cards. Even if the
                         // link is down right now, the grade is queued and applies later.
+                        if (offlineStore != null && offlinePacks.isNotEmpty()) {
+                            // A downloaded copy of this card no longer needs reviewing offline.
+                            scope.launch(Dispatchers.IO) {
+                                offlineStore.markDone(CardKey(noteId, cardOrd))
+                                dataLayerClient.offlineChanged()
+                            }
+                        }
                         selectedDeck?.let { deck ->
                             val expectedTick = cardsResponseCount
                             scope.launch {
@@ -422,6 +463,90 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?) {
                     }
                 )
             }
+
+            composable("offline") {
+                // Keep the phone and grade status current while this screen is up.
+                var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        dataLayerClient.checkConnection()
+                        dataLayerClient.refreshPendingGrades()
+                        now = System.currentTimeMillis()
+                        delay(5_000)
+                    }
+                }
+                OfflineScreen(
+                    packs = offlinePacks,
+                    pendingGrades = pendingGrades,
+                    download = download,
+                    phoneReachable = isConnected,
+                    now = now,
+                    onReview = { navController.navigate("offline-review/${it.deckId}") },
+                    onDownload = { navController.navigate("offline-pick") },
+                    onRemove = { pack ->
+                        scope.launch {
+                            withContext(Dispatchers.IO) { offlineStore?.remove(pack.deckId) }
+                            dataLayerClient.offlineChanged()
+                        }
+                    },
+                    onDismissDownload = { dataLayerClient.clearDownload() }
+                )
+            }
+
+            composable("offline-pick") {
+                DeckListScreen(
+                    decks = decks,
+                    isLoading = decks.isEmpty(),
+                    title = "Download a deck",
+                    showRefresh = false,
+                    onDeckSelected = { deck ->
+                        scope.launch { dataLayerClient.requestOfflinePack(deck) }
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable("offline-review/{deckId}") { entry ->
+                val deckId = entry.arguments?.getString("deckId")?.toLongOrNull()
+                val queue = remember(deckId) { deckId?.let { offlineStore?.open(it) } }
+                if (queue == null) {
+                    ErrorScreen(
+                        message = "This download is gone. Download the deck again while your phone is near.",
+                        onRetry = { navController.popBackStack() }
+                    )
+                    return@composable
+                }
+                OfflineReviewScreen(
+                    queue = queue,
+                    pendingGrades = pendingGrades,
+                    focusMode = focusMode,
+                    onFocusModeChange = {
+                        focusMode = it
+                        prefs?.focusMode = it
+                    },
+                    onAnswered = { card, ease, timeTakenMs ->
+                        // Stored first: if the watch dies right here, the worst case is a
+                        // card shown again, never a grade sent twice.
+                        offlineStore?.save(queue)
+                        scope.launch {
+                            withContext(Dispatchers.IO) { offlineStore?.markDone(card.key, exceptDeckId = queue.pack.deckId) }
+                            dataLayerClient.offlineChanged()
+                            dataLayerClient.sendAnswer(card.noteId, card.cardOrd, ease, timeTakenMs, queue.pack.deckId, offline = true)
+                        }
+                    },
+                    onExit = { navController.popBackStack() }
+                )
+            }
         }
+    }
+}
+
+/** The deck list's offline chip, second line. */
+private fun offlineSummary(packs: List<OfflineStore.Summary>, pendingGrades: Int): String = when {
+    pendingGrades > 0 -> "$pendingGrades grade${if (pendingGrades == 1) "" else "s"} waiting for your phone"
+    packs.isEmpty() -> "Review without your phone"
+    else -> {
+        val left = packs.sumOf { it.remaining }
+        "${packs.size} deck${if (packs.size == 1) "" else "s"} · $left card${if (left == 1) "" else "s"} left"
     }
 }

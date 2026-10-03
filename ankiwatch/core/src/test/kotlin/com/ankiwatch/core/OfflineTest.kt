@@ -48,7 +48,9 @@ class OfflineTest {
             "1.5h" to 90 * minute, "1,5h" to 90 * minute, "4d" to 4 * day, "1.2mo" to Math.round(1.2 * 30 * day),
             "2y" to 2 * 365 * day, "1w" to 7 * day, " 4d " to 4 * day, "4d." to 4 * day, "~3d" to 3 * day,
             "≈2d" to 2 * day, "1 min" to minute, "10 mins" to 10 * minute, "2 days" to 2 * day, "3 hrs" to 180 * minute,
-            "1 Month" to 30 * day, "0s" to 0L
+            "1 Month" to 30 * day, "0s" to 0L,
+            // Fluent's isolation marks and the spaces translations use.
+            "\u20681\u2069m" to minute, "4\u00A0d" to 4 * day, "10\u202Fmin" to 10 * minute, "\u200E3d" to 3 * day
         )
         for ((label, ms) in cases) assertEquals(label, ms, IntervalLabel.millis(label))
     }

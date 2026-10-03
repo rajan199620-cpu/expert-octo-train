@@ -4,21 +4,26 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.ankiwatch.core.Link
+import com.ankiwatch.core.OfflinePack
+import com.ankiwatch.core.OfflinePackCodec
 import com.ankiwatch.core.Wire
 import com.ankiwatch.core.PayloadBudget
+import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataMap
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.NodeClient
 import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.tasks.await
 
 /**
  * Manages communication with the Wear OS watch via the Wearable Data Layer API.
  */
-class DataLayerManager(context: Context) {
+class DataLayerManager(context: Context) : AnswerQueue {
 
     private val dataClient: DataClient = Wearable.getDataClient(context)
     private val messageClient: MessageClient = Wearable.getMessageClient(context)
@@ -151,11 +156,44 @@ class DataLayerManager(context: Context) {
     }
 
     /**
+     * Sends a deck's offline download: one DataItem whose Asset holds the encoded pack (an
+     * Asset may be far larger than a DataItem's 100 KiB). Returns what was sent, for the
+     * status screen; throws if the Data Layer refused it.
+     */
+    suspend fun sendOfflinePack(pack: OfflinePack): String {
+        val bytes = OfflinePackCodec.encode(pack)
+        val request = PutDataMapRequest.create(Wire.PATH_OFFLINE_PACK).apply {
+            dataMap.putAsset(Wire.KEY_PACK, Asset.createFromBytes(bytes))
+            dataMap.putLong(Wire.KEY_PACK_ID, pack.id)
+            dataMap.putLong(KEY_DECK_ID, pack.deckId)
+            dataMap.putString(KEY_DECK_NAME, pack.deckName)
+            dataMap.putInt(Wire.KEY_CARD_COUNT, pack.cards.size)
+            dataMap.putLong(KEY_TIMESTAMP, System.currentTimeMillis())
+        }
+        request.setUrgent()
+        dataClient.putDataItem(request.asPutDataRequest()).await()
+        val kb = (bytes.size + 1023) / 1024
+        Log.d(TAG, "Sent offline pack ${pack.id}: ${pack.cards.size} cards, $kb KB")
+        return "sent ${pack.cards.size} card${if (pack.cards.size == 1) "" else "s"} for offline review ($kb KB)"
+    }
+
+    /** Every answer the watch has queued that hasn't been applied and deleted yet. */
+    override suspend fun pendingAnswers(): List<QueuedAnswer> {
+        val uri = Uri.Builder().scheme(PutDataRequest.WEAR_URI_SCHEME).path(PATH_ANSWER_PREFIX).build()
+        val buffer = dataClient.getDataItems(uri, DataClient.FILTER_PREFIX).await()
+        try {
+            return buffer.map { it.uri to DataMapItem.fromDataItem(it).dataMap }
+        } finally {
+            buffer.release()
+        }
+    }
+
+    /**
      * Deletes a processed answer DataItem. Doubles as the ACK: once the item is gone the
      * watch's queued grade has been fully applied. Best-effort — the phone's persistent
      * dedupe is the real guard against double-application if this delete doesn't stick.
      */
-    suspend fun deleteAnswerItem(uri: Uri) {
+    override suspend fun deleteAnswerItem(uri: Uri) {
         try {
             val removed = dataClient.deleteDataItems(uri).await()
             Log.d(TAG, "Deleted answer item $uri (removed=$removed)")
@@ -249,14 +287,18 @@ internal fun fitToDataItem(cards: List<CardData>): List<CardData> {
     val count = PayloadBudget.cardsThatFit(texts)
     val kept = cards.take(count)
     if (count > 1 || texts[0].byteSize() <= PayloadBudget.MAX_BYTES) return kept
-    val shrunk = PayloadBudget.shrink(texts[0])
-    val first = cards[0]
-    return listOf(
-        first.copy(
-            question = shrunk.question,
-            answer = shrunk.answer,
-            cloze = first.cloze?.copy(content = shrunk.content, extras = shrunk.extras)
-        )
+    return listOf(cards[0].fitted())
+}
+
+/** The card itself, or shortened to fit one DataItem if it is too long on its own. */
+internal fun CardData.fitted(): CardData {
+    val text = toCardText()
+    if (text.byteSize() <= PayloadBudget.MAX_BYTES) return this
+    val shrunk = PayloadBudget.shrink(text)
+    return copy(
+        question = shrunk.question,
+        answer = shrunk.answer,
+        cloze = cloze?.copy(content = shrunk.content, extras = shrunk.extras)
     )
 }
 

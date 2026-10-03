@@ -5,6 +5,8 @@ import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import java.io.File
+import com.ankiwear.wear.offline.OfflineStore
 import com.ankiwear.wear.review.SideButtonTracker
 import com.ankiwear.wear.review.SideButtons
 
@@ -19,14 +21,15 @@ class MainActivity : ComponentActivity() {
         // lose their place mid-review. The flag is automatically ignored once the
         // activity goes to background (home button, app switch, etc.).
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        dataLayerClient = DataLayerClient(this)
+        val offlineStore = OfflineStore(File(filesDir, "offline"))
+        dataLayerClient = DataLayerClient(this, offlineStore)
         val prefs = ReviewPrefs(this)
         // Demo mode shows built-in sample decks without a phone: handy for trying the UI
         // and for the CI screenshot run (adb shell am start ... --ez demo true).
         val demo = intent?.getBooleanExtra(EXTRA_DEMO, false) == true
 
         setContent {
-            WearApp(dataLayerClient, prefs = prefs, demo = demo)
+            WearApp(dataLayerClient, prefs = prefs, demo = demo, offlineStore = offlineStore)
         }
     }
 

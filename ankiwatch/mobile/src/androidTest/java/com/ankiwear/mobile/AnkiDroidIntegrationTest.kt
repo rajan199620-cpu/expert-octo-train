@@ -11,7 +11,12 @@ import androidx.test.rule.GrantPermissionRule
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
+import com.google.android.gms.wearable.DataMap
+import kotlinx.coroutines.runBlocking
 import com.ankiwatch.core.CardRenderer
+import com.ankiwatch.core.IntervalLabel
+import com.ankiwatch.core.OfflinePackCodec
+import com.ankiwatch.core.OfflineQueue
 import com.ankiwatch.core.PayloadBudget
 import com.ankiwatch.core.RenderOptions
 import com.ankiwatch.core.Wire
@@ -23,6 +28,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.UUID
 import java.util.regex.Pattern
 import kotlin.random.Random
 
@@ -381,5 +387,244 @@ class AnkiDroidIntegrationTest {
         assertTrue("no buries in the mix", buried.isNotEmpty())
         assertTrue("fetch+answer took ${perAnswer}ms", perAnswer < 2_000)
         assertTrue(PayloadBudget.MAX_BYTES < 100 * 1024)
+    }
+
+    // ── Offline review: download, then grades applied later in a batch ──────────────────
+
+    /** A deck of cloze notes; [textOf] maps each note to its text, the same in a twin deck. */
+    private class Deck(val id: Long, val textOf: Map<Long, String>)
+
+    private fun deckWith(name: String, texts: List<String>): Deck {
+        val model = stockCloze()
+        val id = createDeck(name)
+        // Top-level decks: the shared "AnkiWatch CI" parent's daily limits can't interfere.
+        return Deck(id, texts.associateBy { addNote(model, id, listOf(it, "") + List(model.fields.size - 2) { "" }) })
+    }
+
+    /** What the watch writes for an answer, as the phone will read it from the Data Layer. */
+    private fun queued(noteId: Long, ord: Int, ease: Int?, deckId: Long, seq: Long, offline: Boolean = true): QueuedAnswer {
+        val uuid = UUID.randomUUID().toString()
+        val map = DataMap().apply {
+            putString(Wire.KEY_ANSWER_UUID, uuid)
+            putLong(Wire.KEY_NOTE_ID, noteId)
+            putInt(Wire.KEY_CARD_ORD, ord)
+            ease?.let { putInt(Wire.KEY_EASE, it) }
+            putLong(Wire.KEY_TIME_TAKEN, 4_000)
+            putLong(Wire.KEY_DECK_ID, deckId)
+            putLong(Wire.KEY_TIMESTAMP, 1_700_000_000_000 + seq * 1_000)
+            putBoolean(Wire.KEY_OFFLINE, offline)
+            putLong(Wire.KEY_SEQ, seq)
+        }
+        return Uri.parse("wear://watch${Wire.PATH_ANSWER_PREFIX}$uuid") to map
+    }
+
+    /** The Data Layer's queue of answers, in memory: what the phone sees once the watch is back. */
+    private class FakeQueue(items: List<QueuedAnswer>) : AnswerQueue {
+        val items = items.toMutableList()
+        override suspend fun pendingAnswers(): List<QueuedAnswer> = items.toList()
+        override suspend fun deleteAnswerItem(uri: Uri) {
+            items.removeAll { it.first == uri }
+        }
+    }
+
+    private fun sync(queue: FakeQueue): AnswerSync.Report =
+        runBlocking { AnswerSync(helper, queue, AnswerDedupeStore(context), ExchangeLog(context)).run() }!!
+
+    /** Each due card's labels for Again, Hard and Good (Easy may carry AnkiDroid's random fuzz). */
+    private fun dueLabels(deck: Deck): Map<Pair<String, Int>, List<String>> =
+        helper.getScheduledCards(deck.id, limit = 100).associate { (deck.textOf.getValue(it.noteId) to it.cardOrd) to it.nextReviewTimes.take(3) }
+
+    private fun counts(deck: Deck) = helper.getDeckDueBreakdown(deck.id)!!.let { Triple(it.newCount, it.learnCount, it.reviewCount) }
+
+    @Test
+    fun anOfflineDownloadIsTheDeckAsAnkiDroidWouldServeIt() {
+        val deck = deckWith("AnkiWatch offline pack ${System.nanoTime()}", (1..8).map { n ->
+            (1..(1 + n % 3)).joinToString(" ") { "w$n {{c$it::s$n-$it}}" }
+        })
+        val start = SystemClock.uptimeMillis()
+        val pack = buildOfflinePack(helper, deck.id, "Offline")
+        val ms = SystemClock.uptimeMillis() - start
+        assertEquals(17, pack.cards.size)
+        assertEquals(helper.getDeckDueBreakdown(deck.id)!!.totalDue, pack.cards.size)
+        val live = helper.getScheduledCards(deck.id, limit = 100)
+        assertEquals("not AnkiDroid's order", live.map { it.noteId to it.cardOrd }, pack.cards.map { it.noteId to it.cardOrd })
+        for (card in pack.cards) {
+            assertEquals(card.cardOrd + 1, card.clozeNumber)
+            assertEquals(4, card.nextReviewTimes.size)
+            // The watch times learning cards from these: every one must be readable.
+            for (label in card.nextReviewTimes) assertNotNull("unreadable label '$label'", IntervalLabel.millis(label))
+        }
+        val bytes = OfflinePackCodec.encode(pack)
+        assertEquals(pack, OfflinePackCodec.decode(bytes))
+        Log.i(TAG, "offline pack: ${pack.cards.size} cards in ${ms}ms, ${bytes.size} bytes, labels ${pack.cards.first().nextReviewTimes}")
+    }
+
+    /**
+     * The same first answers, given live on one deck and offline on its twin (recorded by the
+     * watch's queue, applied later in a shuffled batch): AnkiDroid must end up with the very
+     * same schedule on both.
+     */
+    @Test
+    fun offlineGradesScheduleExactlyLikeLiveOnes() {
+        val texts = (1..10).map { n -> "w$n {{c1::a$n}} {{c2::b$n}}" }
+        val nano = System.nanoTime()
+        val live = deckWith("AnkiWatch live $nano", texts)
+        val offline = deckWith("AnkiWatch offline $nano", texts)
+        val grades = listOf(1, 2, 3, 4, Wire.EASE_BURY)
+
+        val applier = AnswerApplier(helper, AnswerDedupeStore(context))
+        helper.setSelectedDeck(live.id)
+        val liveOrder = helper.getScheduledCards(live.id, limit = 100)
+        assertEquals(20, liveOrder.size)
+        runBlocking {
+            liveOrder.forEachIndexed { i, card ->
+                val answer = WatchAnswer(UUID.randomUUID().toString(), card.noteId, card.cardOrd, grades[i % grades.size], 4_000, live.id)
+                assertEquals(AnswerApplier.Result.APPLIED, applier.apply(answer))
+            }
+        }
+
+        val pack = buildOfflinePack(helper, offline.id, "Offline")
+        val queue = OfflineQueue(pack)
+        val recorded = ArrayList<QueuedAnswer>()
+        pack.cards.forEachIndexed { i, card ->
+            queue.answer(card.key, grades[i % grades.size], i * 5_000L)
+            recorded += queued(card.noteId, card.cardOrd, grades[i % grades.size], offline.id, seq = i + 1L)
+        }
+        SystemClock.sleep(1_500) // grades reach the phone a while later
+        val fake = FakeQueue(recorded.shuffled(Random(1)))
+        val report = sync(fake)
+        assertEquals(20, report.applied)
+        assertEquals(null, report.stopped)
+        assertEquals(null, report.replyTo)
+        assertTrue("items left behind", fake.items.isEmpty())
+
+        assertEquals(counts(live), counts(offline))
+        val liveDue = dueLabels(live)
+        Log.i(TAG, "after first answers: ${counts(live)}, due: $liveDue")
+        assertEquals(12, liveDue.size) // Again, Hard and Good leave cards in learning
+        assertEquals(liveDue, dueLabels(offline))
+    }
+
+    /**
+     * A whole session: Again/Hard/Good/Easy/Bury on first sight, then Good until each card is
+     * done. Offline, the watch decides when a learning card comes back; it must ask for exactly
+     * as many answers per card as AnkiDroid does live, and leave the deck in the same state.
+     */
+    @Test
+    fun aWholeOfflineSessionAsksForWhatAnkiDroidWould() {
+        val texts = (1..6).map { n -> "v$n {{c1::a$n}} {{c2::b$n}}" }
+        val nano = System.nanoTime()
+        val live = deckWith("AnkiWatch live session $nano", texts)
+        val offline = deckWith("AnkiWatch offline session $nano", texts)
+        val grades = listOf(1, 2, 3, 4, Wire.EASE_BURY)
+
+        val applier = AnswerApplier(helper, AnswerDedupeStore(context))
+        helper.setSelectedDeck(live.id)
+        val position = helper.getScheduledCards(live.id, limit = 100)
+            .mapIndexed { i, c -> (live.textOf.getValue(c.noteId) to c.cardOrd) to i }.toMap()
+        val liveCounts = HashMap<Pair<String, Int>, Int>()
+        runBlocking {
+            var guard = 0
+            while (true) {
+                val top = helper.getScheduledCards(live.id, limit = 1).firstOrNull() ?: break
+                val key = live.textOf.getValue(top.noteId) to top.cardOrd
+                val n = liveCounts[key] ?: 0
+                val ease = if (n == 0) grades[position.getValue(key) % grades.size] else 3
+                applier.apply(WatchAnswer(UUID.randomUUID().toString(), top.noteId, top.cardOrd, ease, 3_000, live.id))
+                liveCounts[key] = n + 1
+                assertTrue("live session doesn't end", ++guard < 200)
+            }
+        }
+
+        val pack = buildOfflinePack(helper, offline.id, "Offline")
+        val queue = OfflineQueue(pack)
+        val offlineCounts = HashMap<Pair<String, Int>, Int>()
+        val recorded = ArrayList<QueuedAnswer>()
+        var now = 0L
+        var seq = 0L
+        loop@ while (true) {
+            when (val next = queue.next(now)) {
+                is OfflineQueue.Next.Show -> {
+                    val card = next.card
+                    val key = offline.textOf.getValue(card.noteId) to card.cardOrd
+                    val n = offlineCounts[key] ?: 0
+                    val ease = if (n == 0) grades[pack.cards.indexOf(card) % grades.size] else 3
+                    queue.answer(card.key, ease, now)
+                    recorded += queued(card.noteId, card.cardOrd, ease, offline.id, ++seq)
+                    offlineCounts[key] = n + 1
+                    now += 8_000
+                }
+                is OfflineQueue.Next.Wait -> now = next.until
+                OfflineQueue.Next.Finished -> break@loop
+            }
+            assertTrue("offline session doesn't end", seq < 200)
+        }
+        Log.i(TAG, "live answers per card: $liveCounts")
+        Log.i(TAG, "offline answers per card: $offlineCounts")
+        assertEquals(liveCounts, offlineCounts)
+
+        val report = sync(FakeQueue(recorded.shuffled(Random(2))))
+        assertEquals(recorded.size, report.applied)
+        assertEquals(counts(live), counts(offline))
+        assertEquals(dueLabels(live), dueLabels(offline))
+    }
+
+    @Test
+    fun queuedGradesGoInOnceAndInTheOrderGiven() {
+        val deck = deckWith("AnkiWatch order ${System.nanoTime()}", listOf("x {{c1::one}}", "y {{c1::two}}", "z {{c1::three}}"))
+        helper.setSelectedDeck(deck.id)
+        val (c1, c2, c3) = helper.getScheduledCards(deck.id, limit = 10)
+        val items = listOf(
+            queued(c1.noteId, 0, 1, deck.id, seq = 1), // Again …
+            queued(c1.noteId, 0, 3, deck.id, seq = 2), // … then Good: the second learning step
+            queued(c2.noteId, 0, 4, deck.id, seq = 3), // Easy: graduated
+            queued(c3.noteId, 0, Wire.EASE_BURY, deck.id, seq = 4)
+        )
+        // Delivered backwards: applying Good before Again would leave c1 relearning instead.
+        val first = sync(FakeQueue(items.reversed()))
+        assertEquals(4, first.applied)
+        assertEquals(Triple(0, 1, 0), counts(deck))
+        val due = helper.getScheduledCards(deck.id, limit = 10)
+        assertEquals(listOf(c1.noteId), due.map { it.noteId })
+        val afterFirst = dueLabels(deck)
+
+        // Redelivered (a delete that didn't stick): nothing is applied twice.
+        val again = sync(FakeQueue(items))
+        assertEquals(0, again.applied)
+        assertEquals(4, again.duplicates)
+        assertEquals(afterFirst, dueLabels(deck))
+
+        // An item without an ease is skipped, not read as Bury; a live answer last gets a reply.
+        val broken = queued(c1.noteId, 0, null, deck.id, seq = 10)
+        val liveOne = queued(c1.noteId, 0, 3, deck.id, seq = 11, offline = false)
+        val fake = FakeQueue(listOf(liveOne, broken))
+        val third = sync(fake)
+        assertEquals(1, third.malformed)
+        assertEquals(1, third.applied)
+        assertEquals(c1.noteId, third.replyTo?.noteId)
+        assertTrue(fake.items.isEmpty())
+        assertEquals(Triple(0, 0, 0), counts(deck)) // Good on the second step graduated c1
+    }
+
+    @Test
+    fun aBigOfflineBacklogGoesInQuickly() {
+        // Ten decks of twenty new cards, all answered offline and delivered at once.
+        val nano = System.nanoTime()
+        val decks = (1..10).map { d -> deckWith("AnkiWatch backlog $d $nano", (1..10).map { n -> "d$d n$n {{c1::a}} {{c2::b}}" }) }
+        val rnd = Random(3)
+        var seq = 0L
+        val recorded = ArrayList<QueuedAnswer>()
+        for (deck in decks) {
+            val pack = buildOfflinePack(helper, deck.id, "Backlog")
+            assertEquals(20, pack.cards.size)
+            for (card in pack.cards) recorded += queued(card.noteId, card.cardOrd, listOf(3, 4, 4, Wire.EASE_BURY)[rnd.nextInt(4)], deck.id, ++seq)
+        }
+        val start = SystemClock.uptimeMillis()
+        val report = sync(FakeQueue(recorded.shuffled(rnd)))
+        val perAnswer = (SystemClock.uptimeMillis() - start) / recorded.size
+        Log.i(TAG, "backlog: ${recorded.size} offline grades applied in ${perAnswer}ms each: ${report.outcome}")
+        assertEquals(200, report.applied)
+        assertTrue("${perAnswer}ms per grade", perAnswer < 500)
+        for (deck in decks) assertEquals(0, counts(deck).first)
     }
 }

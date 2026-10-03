@@ -8,16 +8,21 @@ import com.ankiwatch.core.Wire
 import com.ankiwear.wear.model.CardData
 import com.ankiwear.wear.model.ClozeCard
 import com.ankiwear.wear.model.DeckInfo
+import com.ankiwear.wear.offline.AnswerSequence
+import com.ankiwear.wear.offline.Download
+import com.ankiwear.wear.offline.OfflineStore
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataItem
 import com.google.android.gms.wearable.DataMap
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.NodeClient
 import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,14 +32,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Watch-side client for communicating with the phone module via the Wearable Data Layer.
  */
-class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
+class DataLayerClient(
+    context: Context,
+    /** Where offline downloads go; null where there are none (tests, demo). */
+    private val offlineStore: OfflineStore? = null
+) : DataClient.OnDataChangedListener,
     MessageClient.OnMessageReceivedListener {
+
+    private val sequence = AnswerSequence(context)
 
     private val dataClient: DataClient = Wearable.getDataClient(context)
     private val messageClient: MessageClient = Wearable.getMessageClient(context)
@@ -104,6 +116,18 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
     private val _decksLastUpdated = MutableStateFlow<Long?>(null)
     val decksLastUpdated: StateFlow<Long?> = _decksLastUpdated.asStateFlow()
 
+    /** Grades given on the watch that the phone hasn't put into AnkiDroid yet. */
+    private val _pendingGrades = MutableStateFlow(0)
+    val pendingGrades: StateFlow<Int> = _pendingGrades.asStateFlow()
+
+    /** The offline download asked for last, and how it went. */
+    private val _download = MutableStateFlow<Download>(Download.Idle)
+    val download: StateFlow<Download> = _download.asStateFlow()
+
+    /** Goes up whenever the stored downloads change, so screens listing them refresh. */
+    private val _offlineVersion = MutableStateFlow(0)
+    val offlineVersion: StateFlow<Int> = _offlineVersion.asStateFlow()
+
     companion object {
         private const val TAG = "DataLayerClient"
 
@@ -164,12 +188,14 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
      * /response/decks is usually already sitting locally (#4).
      */
     suspend fun loadCachedData() {
+        val packs = ArrayList<DataItem>()
         try {
             val buffer = dataClient.dataItems.await()
             try {
                 var latestDecks: DataMap? = null
                 var latestDecksTime = -1L
                 for (item in buffer) {
+                    if (item.uri.path == Wire.PATH_OFFLINE_PACK) packs.add(item.freeze())
                     if (item.uri.path == PATH_RESPONSE_DECKS) {
                         val map = DataMapItem.fromDataItem(item).dataMap
                         val t = map.getLong(KEY_TIMESTAMP, 0L)
@@ -189,6 +215,9 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
         } catch (e: Exception) {
             Log.w(TAG, "loadCachedData failed: ${e.message}")
         }
+        // A download that arrived while the app was in the background.
+        packs.forEach { importPack(it) }
+        refreshPendingGrades()
     }
 
     /**
@@ -217,14 +246,85 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
     }
 
     /**
+     * Asks the phone for [deck]'s whole due queue, to review without it. The cards come back
+     * as a DataItem ([Wire.PATH_OFFLINE_PACK]) and land in the offline store.
+     */
+    suspend fun requestOfflinePack(deck: DeckInfo) {
+        _download.value = Download.Waiting(deck.name, System.currentTimeMillis())
+        val dataMap = DataMap().apply {
+            putLong(KEY_DECK_ID, deck.id)
+            putString(KEY_DECK_NAME, deck.name)
+        }
+        if (!sendMessageToPhone(Wire.PATH_REQUEST_OFFLINE, dataMap.toByteArray())) {
+            _download.value = Download.Failed(_errorMessage.value ?: "Phone not connected")
+        }
+    }
+
+    fun clearDownload() {
+        _download.value = Download.Idle
+    }
+
+    /** Re-reads the stored downloads after the app changed them (an answer, a removal). */
+    fun offlineChanged() {
+        _offlineVersion.value = _offlineVersion.value + 1
+    }
+
+    /** Counts the grades still waiting for the phone (each is a DataItem until applied). */
+    suspend fun refreshPendingGrades() {
+        try {
+            val uri = Uri.Builder().scheme(PutDataRequest.WEAR_URI_SCHEME).path(PATH_ANSWER_PREFIX).build()
+            val buffer = dataClient.getDataItems(uri, DataClient.FILTER_PREFIX).await()
+            try {
+                _pendingGrades.value = buffer.count
+            } finally {
+                buffer.release()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't count queued grades: ${e.message}")
+        }
+    }
+
+    /** Stores a download from the phone and removes its DataItem (the cards can be large). */
+    private suspend fun importPack(item: DataItem) {
+        val store = offlineStore ?: return
+        try {
+            val map = DataMapItem.fromDataItem(item).dataMap
+            val asset = map.getAsset(Wire.KEY_PACK) ?: throw IOException("the download holds no cards")
+            val bytes = dataClient.getFdForAsset(asset).await().inputStream.use { it.readBytes() }
+            val summary = store.import(bytes)
+            Log.d(TAG, "Stored offline download for ${summary.deckName}: ${summary.total} cards")
+            if (_download.value is Download.Waiting) _download.value = Download.Ready(summary)
+            offlineChanged()
+            try {
+                dataClient.deleteDataItems(item.uri).await()
+            } catch (e: Exception) {
+                Log.w(TAG, "Couldn't remove the download's DataItem: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Offline download failed", e)
+            _download.value = Download.Failed("The download didn't arrive intact (${e.message ?: e.javaClass.simpleName}). Try again.")
+        }
+    }
+
+    /**
      * Queues a review answer as a DataItem. Unlike a message, a DataItem is persisted and
      * guaranteed-delivery: an answer tapped while the phone is unreachable is applied once
      * the link returns rather than silently lost. Each answer gets a unique UUID (in both
      * the path and the payload) so the phone can dedupe redeliveries and ack completion.
      */
-    suspend fun sendAnswer(noteId: Long, cardOrd: Int, ease: Int, timeTakenMs: Long, deckId: Long) {
+    suspend fun sendAnswer(
+        noteId: Long,
+        cardOrd: Int,
+        ease: Int,
+        timeTakenMs: Long,
+        deckId: Long,
+        /** Given from an offline download: the phone applies it without sending cards back. */
+        offline: Boolean = false
+    ) {
         val uuid = UUID.randomUUID().toString()
         val request = PutDataMapRequest.create("$PATH_ANSWER_PREFIX$uuid").apply {
+            dataMap.putBoolean(Wire.KEY_OFFLINE, offline)
+            dataMap.putLong(Wire.KEY_SEQ, sequence.next())
             dataMap.putString(KEY_ANSWER_UUID, uuid)
             dataMap.putLong(KEY_NOTE_ID, noteId)
             dataMap.putInt(KEY_CARD_ORD, cardOrd)
@@ -237,11 +337,12 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
         try {
             val item = dataClient.putDataItem(request.asPutDataRequest()).await()
             pendingAnswers[uuid] = item.uri
-            Log.d(TAG, "Queued answer $uuid (guaranteed delivery)")
+            Log.d(TAG, "Queued answer $uuid (guaranteed delivery, offline=$offline)")
         } catch (e: Exception) {
             Log.e(TAG, "Error queueing answer", e)
             _errorMessage.value = "Couldn't queue your answer: ${e.message}"
         }
+        refreshPendingGrades()
     }
 
     /**
@@ -286,17 +387,27 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
     // --- Data Layer callbacks ---
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
+        var answersChanged = false
         for (event in dataEvents) {
-            if (event.type != DataEvent.TYPE_CHANGED) continue
             val path = event.dataItem.uri.path ?: continue
-            // Ignore our own answer writes echoing back through the local data store.
-            if (path.startsWith(PATH_ANSWER_PREFIX)) continue
-            val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
+            // Our own answers: written here, deleted by the phone once applied.
+            if (path.startsWith(PATH_ANSWER_PREFIX)) {
+                answersChanged = true
+                continue
+            }
+            if (event.type != DataEvent.TYPE_CHANGED) continue
             when (path) {
-                PATH_RESPONSE_DECKS -> handleDecksResponse(dataMap)
-                PATH_RESPONSE_CARDS -> handleCardsResponse(dataMap)
+                PATH_RESPONSE_DECKS -> handleDecksResponse(DataMapItem.fromDataItem(event.dataItem).dataMap)
+                PATH_RESPONSE_CARDS -> handleCardsResponse(DataMapItem.fromDataItem(event.dataItem).dataMap)
+                // Read the cards off the main thread; the event's item is only valid until
+                // this callback returns, hence the frozen copy.
+                Wire.PATH_OFFLINE_PACK -> {
+                    val item = event.dataItem.freeze()
+                    ioScope.launch { importPack(item) }
+                }
             }
         }
+        if (answersChanged) ioScope.launch { refreshPendingGrades() }
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
@@ -304,6 +415,7 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
             PATH_STATUS_ERROR -> {
                 val errorMsg = String(messageEvent.data)
                 Log.e(TAG, "Error from phone: $errorMsg")
+                if (_download.value is Download.Waiting) _download.value = Download.Failed(errorMsg)
                 _errorMessage.value = errorMsg
                 _phoneReportedError.value = true
             }
@@ -369,7 +481,8 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
             "review=${_reviewRemaining.value}), firstNoteId=${cardList.firstOrNull()?.noteId}")
     }
 
-    private suspend fun sendMessageToPhone(path: String, data: ByteArray) {
+    /** Sends [data] to the phone; false (with the reason in [errorMessage]) if it couldn't. */
+    private suspend fun sendMessageToPhone(path: String, data: ByteArray): Boolean {
         try {
             val nodeIds = phoneNodeIds()
             if (nodeIds.isEmpty()) {
@@ -378,16 +491,18 @@ class DataLayerClient(context: Context) : DataClient.OnDataChangedListener,
                 _phoneLink.value = link
                 _isPhoneConnected.value = false
                 _errorMessage.value = Link.watchMessage(link) ?: "Phone not connected"
-                return
+                return false
             }
             _isPhoneConnected.value = true
             for (id in nodeIds) {
                 messageClient.sendMessage(id, path, data).await()
             }
             Log.d(TAG, "Sent message to phone: $path")
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Error sending message to phone", e)
             _errorMessage.value = "Communication error: ${e.message}"
+            return false
         }
     }
 

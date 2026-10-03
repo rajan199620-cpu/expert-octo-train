@@ -48,6 +48,13 @@ class MainActivity : ComponentActivity() {
     private lateinit var ankiHelper: AnkiDroidHelper
     private lateinit var dataLayerManager: DataLayerManager
     private lateinit var exchangeLog: ExchangeLog
+    private lateinit var answerSync: AnswerSync
+
+    // Answers seen queued on the previous check. One still queued a check later means the
+    // listener service didn't get to it (Android may keep it asleep): apply it from here.
+    private var lastQueued = emptySet<String>()
+    @Volatile
+    private var syncing = false
 
     private var uiState by mutableStateOf(PhoneUiState())
 
@@ -63,6 +70,7 @@ class MainActivity : ComponentActivity() {
         ankiHelper = AnkiDroidHelper(this)
         dataLayerManager = DataLayerManager(this)
         exchangeLog = ExchangeLog(this)
+        answerSync = AnswerSync(ankiHelper, dataLayerManager, AnswerDedupeStore(this), exchangeLog)
 
         setContent {
             MaterialTheme {
@@ -78,7 +86,27 @@ class MainActivity : ComponentActivity() {
                     // Query first, then copy the state as it is now: copying before the
                     // suspending call could write back a deck list replaced meanwhile.
                     val link = dataLayerManager.watchLink()
-                    uiState = uiState.copy(watchLink = link, lastExchange = exchangeLog.summary())
+                    val queued = try {
+                        dataLayerManager.pendingAnswers().map { it.first.toString() }.toSet()
+                    } catch (e: Exception) {
+                        emptySet()
+                    }
+                    if (!syncing && queued.any { it in lastQueued }) {
+                        syncing = true
+                        launch(Dispatchers.IO) {
+                            try {
+                                answerSync.run()
+                            } finally {
+                                syncing = false
+                            }
+                        }
+                    }
+                    lastQueued = queued
+                    uiState = uiState.copy(
+                        watchLink = link,
+                        lastExchange = exchangeLog.summary(),
+                        queuedGrades = queued.size
+                    )
                     delay(WATCH_CHECK_INTERVAL_MS)
                 }
             }
@@ -128,6 +156,8 @@ data class PhoneUiState(
     val watchLink: Link.Status? = null,
     /** The watch's last request and what the phone did with it; null if it never asked. */
     val lastExchange: String? = null,
+    /** Grades from the watch waiting to go into AnkiDroid. */
+    val queuedGrades: Int = 0,
     val decks: List<DeckData> = emptyList()
 )
 
@@ -180,6 +210,14 @@ fun PhoneScreen(state: PhoneUiState, currentVersion: String = "") {
                 text = "Last watch request: " + (state.lastExchange ?: "none yet (the watch hasn't asked this phone for anything)"),
                 style = MaterialTheme.typography.bodySmall
             )
+            if (state.queuedGrades > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Grades from the watch going into AnkiDroid: ${state.queuedGrades}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Spacer(modifier = Modifier.height(24.dp))
 
             if (state.decks.isNotEmpty()) {

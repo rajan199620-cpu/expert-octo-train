@@ -88,6 +88,7 @@ object ReviewTags {
     const val SHOW_ANSWER = "show-answer"
     const val FOCUS_TOGGLE = "focus-toggle"
     const val BURY = "bury"
+    const val HEADER = "review-header"
     fun block(index: Int) = "block-$index"
     fun extraBlock(extra: Int, index: Int) = "extra-$extra-$index"
     fun ease(ease: Int) = "ease-$ease"
@@ -107,6 +108,8 @@ fun ReviewScreen(
     onFocusModeChange: (Boolean) -> Unit = {},
     /** Offer Bury; it reaches [onAnswer] with ease [Wire.EASE_BURY]. */
     allowBury: Boolean = true,
+    /** Shown at the top instead of the queue counts (offline: "Offline · 12 left"). */
+    header: String? = null,
     onAnswer: (noteId: Long, cardOrd: Int, ease: Int, timeTakenMs: Long) -> Unit,
     onFinished: () -> Unit
 ) {
@@ -202,15 +205,30 @@ fun ReviewScreen(
         // Colored per-category counter — matches AnkiDroid's blue·red·green display.
         // The current card type's number is underlined so the user knows which queue
         // they're working through.
-        QueueCounterRow(
-            newCount = newRemaining,
-            learnCount = learnRemaining,
-            reviewCount = reviewRemaining,
-            activeType = currentCardType,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 10.dp)
-        )
+        if (header != null) {
+            Text(
+                text = header,
+                fontSize = 12.sp,
+                color = MaterialTheme.colors.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp)
+                    .testTag(ReviewTags.HEADER)
+            )
+        } else {
+            QueueCounterRow(
+                newCount = newRemaining,
+                learnCount = learnRemaining,
+                reviewCount = reviewRemaining,
+                activeType = currentCardType,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp)
+            )
+        }
 
         CardBody(
             rendered = rendered,

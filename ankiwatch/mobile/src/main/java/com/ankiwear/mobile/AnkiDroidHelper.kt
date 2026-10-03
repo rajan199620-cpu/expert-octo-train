@@ -151,6 +151,9 @@ class AnkiDroidHelper(private val context: Context) {
     fun getScheduledCards(deckId: Long, limit: Int = 3): List<CardData> {
         val cards = mutableListOf<CardData>()
         val models = HashMap<Long, ModelInfo?>()
+        // A note's cloze cards often come together (an offline download fetches hundreds):
+        // read each note's fields once.
+        val notes = HashMap<Long, Pair<Long, List<String>>?>()
         try {
             val cursor = contentResolver.query(
                 REVIEW_INFO_URI,
@@ -169,7 +172,7 @@ class AnkiDroidHelper(private val context: Context) {
                         parseNextReviewTimes(it.getString(nextReviewIdx))
                     } else emptyList()
 
-                    cards.add(buildCard(noteId, cardOrd, buttonCount, nextReviewTimes, models))
+                    cards.add(buildCard(noteId, cardOrd, buttonCount, nextReviewTimes, models, notes))
                 }
             }
         } catch (e: UnsatisfiedLinkError) {
@@ -190,9 +193,10 @@ class AnkiDroidHelper(private val context: Context) {
         cardOrd: Int,
         buttonCount: Int,
         nextReviewTimes: List<String>,
-        models: MutableMap<Long, ModelInfo?>
+        models: MutableMap<Long, ModelInfo?>,
+        notes: MutableMap<Long, Pair<Long, List<String>>?> = HashMap()
     ): CardData {
-        val cloze = getClozePayload(noteId, cardOrd, models)
+        val cloze = getClozePayload(noteId, cardOrd, models, notes)
         val (question, answer) = if (cloze != null) "" to "" else getCardContent(noteId, cardOrd)
         return CardData(
             noteId = noteId,
@@ -209,10 +213,11 @@ class AnkiDroidHelper(private val context: Context) {
     internal fun getClozePayload(
         noteId: Long,
         cardOrd: Int,
-        models: MutableMap<Long, ModelInfo?> = HashMap()
+        models: MutableMap<Long, ModelInfo?> = HashMap(),
+        notes: MutableMap<Long, Pair<Long, List<String>>?> = HashMap()
     ): ClozePayload? {
         return try {
-            val (modelId, fields) = getNoteFields(noteId) ?: return null
+            val (modelId, fields) = notes.getOrPut(noteId) { getNoteFields(noteId) } ?: return null
             val model = models.getOrPut(modelId) { getModelInfo(modelId) } ?: return null
             when (val plan = NotePlanner.plan(model.type, model.fieldNames, fields, cardOrd)) {
                 is NotePlanner.Plan.Cloze -> ClozePayload(
