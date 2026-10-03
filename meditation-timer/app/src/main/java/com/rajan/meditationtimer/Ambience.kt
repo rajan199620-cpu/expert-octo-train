@@ -15,6 +15,7 @@ enum class Ambience(val label: String) {
     OFF("Off"),
     RAIN("Rain"),
     BIRDS("Birds"),
+    RAIN_AND_BIRDS("Rain & birds"),
     CUSTOM("My recording"),
 }
 
@@ -41,7 +42,7 @@ abstract class Soundscape(val sampleRate: Int, seed: Long) {
     protected fun lp(hz: Float) = (1 - exp(-2 * PI * hz / sampleRate)).toFloat()
 
     /** Fills [out] with [frames] interleaved stereo frames, each sample within -1..1. */
-    fun render(out: FloatArray, frames: Int) {
+    open fun render(out: FloatArray, frames: Int) {
         for (i in 0 until frames) {
             frame()
             out[2 * i] = soft(left)
@@ -54,12 +55,13 @@ abstract class Soundscape(val sampleRate: Int, seed: Long) {
     protected abstract fun frame()
 
     /** Transparent below 0.8, rounds anything louder so a burst can never clip. */
-    private fun soft(x: Float): Float = if (abs(x) < 0.8f) x else (0.8f + 0.2f * tanh((abs(x) - 0.8f) / 0.2f)).let { if (x < 0) -it else it }
+    protected fun soft(x: Float): Float = if (abs(x) < 0.8f) x else (0.8f + 0.2f * tanh((abs(x) - 0.8f) / 0.2f)).let { if (x < 0) -it else it }
 
     companion object {
         fun create(kind: Ambience, sampleRate: Int, seed: Long = System.nanoTime()): Soundscape? = when (kind) {
             Ambience.RAIN -> Rain(sampleRate, seed)
             Ambience.BIRDS -> Birds(sampleRate, seed)
+            Ambience.RAIN_AND_BIRDS -> Mix(Rain(sampleRate, seed), 0.7f, Birds(sampleRate, seed + 1), 0.9f)
             else -> null
         }
     }
@@ -171,8 +173,8 @@ class Rain(rate: Int, seed: Long) : Soundscape(rate, seed) {
 
 /**
  * A morning garden: a soft breeze under a few birds at different distances, each with its own
- * kind of song (a slow whistle, quick chirps, a trill, a varied carol, and a distant koel), each
- * singing every several seconds. Far birds are quieter and duller; a light reverb places them.
+ * kind of song (a slow whistle and a farther one answering, a dove's low coo, a gentle carol, and
+ * a distant koel), each singing every several seconds. Far birds are quieter and duller; a light reverb places them.
  */
 class Birds(rate: Int, seed: Long) : Soundscape(rate, seed) {
     private val breezeA = lp(420f); private val breezeB = lp(1800f)
@@ -206,30 +208,34 @@ class Birds(rate: Int, seed: Long) : Soundscape(rate, seed) {
                         t += len + ms(between(60f, 120f))
                     }
                 }
-                1 -> repeat(4 + (rand() * 6).toInt()) { // quick down-slurred chirps
-                    val len = ms(between(35f, 60f))
-                    out.add(Note(t, len, between(5200f, 7000f), between(2600f, 3400f), 0f, 0f, 0.8f, 0.6f))
-                    t += len + ms(between(45f, 90f))
-                }
-                2 -> { // a trill that swells and fades
-                    val n = 12 + (rand() * 14).toInt()
-                    val f = between(3400f, 4200f)
-                    repeat(n) { k ->
-                        val len = ms(28f)
-                        val swell = sin(PI * (k + 0.5) / n).toFloat()
-                        out.add(Note(t, len, f, f * 1.25f, 0f, 0f, 0.35f + 0.65f * swell, 1.4f))
-                        t += ms(between(55f, 65f))
+                // No quick chirps or trills: sharp, fast notes startle rather than soothe, so every
+                // note here is long and glides slowly (the limits are [MIN_NOTE_MS] and [MAX_GLIDE_HZ_PER_SEC]).
+                1 -> { // spotted dove: a soft low "croo-cru-cru", the calmest sound in an Indian garden
+                    val f = between(430f, 520f)
+                    repeat(3 + (rand() * 2).toInt()) { n ->
+                        val len = ms(if (n == 0) between(420f, 520f) else between(260f, 340f))
+                        out.add(Note(t, len, f * (if (n == 0) 1.06f else 1f), f * 0.96f, 0f, 0f, 1f, 1f))
+                        t += len + ms(between(140f, 220f))
                     }
                 }
-                3 -> repeat(5 + (rand() * 6).toInt()) { // varied carol: slurs and warbles
-                    val len = ms(between(90f, 200f))
-                    val f = between(2200f, 4400f)
+                2 -> { // a second, farther whistler answering the first, lower and slower
+                    val base = between(2100f, 2600f)
+                    repeat(2 + (rand() * 2).toInt()) { n ->
+                        val len = ms(between(420f, 600f))
+                        val f = base * (if (n % 2 == 0) 1f else between(0.88f, 0.94f))
+                        out.add(Note(t, len, f, f * between(0.98f, 1.02f), 0f, 0f, 0.85f, 1f))
+                        t += len + ms(between(150f, 260f))
+                    }
+                }
+                3 -> repeat(4 + (rand() * 3).toInt()) { // gentle carol: slow slurs with a soft waver
+                    val len = ms(between(200f, 340f))
+                    val f = between(2300f, 3600f)
                     when ((rand() * 3).toInt()) {
-                        0 -> out.add(Note(t, len, f, f * between(1.15f, 1.4f), 0f, 0f, 0.8f, 1f))
-                        1 -> out.add(Note(t, len, f * between(1.15f, 1.4f), f, 0f, 0f, 0.8f, 1f))
-                        else -> out.add(Note(t, len, f, f, between(25f, 40f), between(150f, 400f), 0.7f, 1f))
+                        0 -> out.add(Note(t, len, f, f * between(1.06f, 1.18f), 0f, 0f, 0.8f, 1f))
+                        1 -> out.add(Note(t, len, f * between(1.06f, 1.18f), f, 0f, 0f, 0.8f, 1f))
+                        else -> out.add(Note(t, len, f, f, between(4f, 6f), between(30f, 60f), 0.75f, 1f))
                     }
-                    t += len + ms(between(40f, 110f))
+                    t += len + ms(between(120f, 220f))
                 }
                 else -> { // distant koel: a rising "ku-oo", repeated, each a little higher
                     var f = between(650f, 750f)
@@ -273,10 +279,15 @@ class Birds(rate: Int, seed: Long) : Soundscape(rate, seed) {
         }
     }
 
+    /** Tests only: [count] songs from every bird, each note as [length ms, start Hz, end Hz, vibrato Hz]. */
+    internal fun sampleNotes(count: Int): List<FloatArray> = birds.flatMap { bird ->
+        List(count) { bird.song() }.flatten().map { n -> floatArrayOf(n.length * 1000f / sampleRate, n.f0, n.f1, n.vibHz) }
+    }
+
     private val birds = listOf(
         Bird(0, 0.30f, 0.35f),
-        Bird(1, 0.75f, 0.25f),
-        Bird(2, 0.15f, 0.60f),
+        Bird(1, 0.75f, 0.30f),
+        Bird(2, 0.15f, 0.70f),
         Bird(3, 0.60f, 0.45f),
         Bird(4, 0.85f, 0.95f),
     )
@@ -327,6 +338,27 @@ class Birds(rate: Int, seed: Long) : Soundscape(rate, seed) {
         r += dryR + 0.35f * verbR.process(dryR + dryL * 0.3f)
         left = l; right = r
     }
+}
+
+/** Shortest note and slowest glide any bird may sing: long, slow notes calm; quick chirps startle. */
+internal const val MIN_NOTE_MS = 150f
+internal const val MAX_GLIDE_HZ_PER_SEC = 6000f
+internal const val MAX_VIBRATO_HZ = 8f
+
+/** Two soundscapes at once (rain with birds over it), each a little lower so the sum isn't louder. */
+class Mix(private val a: Soundscape, private val gainA: Float, private val b: Soundscape, private val gainB: Float) :
+    Soundscape(a.sampleRate, 0) {
+    private var bufA = FloatArray(0)
+    private var bufB = FloatArray(0)
+
+    override fun render(out: FloatArray, frames: Int) {
+        if (bufA.size < frames * 2) { bufA = FloatArray(frames * 2); bufB = FloatArray(frames * 2) }
+        a.render(bufA, frames)
+        b.render(bufB, frames)
+        for (i in 0 until frames * 2) out[i] = soft(bufA[i] * gainA + bufB[i] * gainB)
+    }
+
+    override fun frame() {}
 }
 
 /**

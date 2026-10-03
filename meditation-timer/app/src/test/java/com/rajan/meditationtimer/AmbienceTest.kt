@@ -59,7 +59,7 @@ class AmbienceTest {
 
     @Test
     fun bothSoundsStayInRangeAndAtAComfortableLevel() {
-        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS)) {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
             val x = render(kind, 60)
             assertTrue("$kind has NaN", x.none { it.isNaN() })
             val peak = x.maxOf { abs(it) }
@@ -72,7 +72,7 @@ class AmbienceTest {
 
     @Test
     fun aThirtyMinuteSitNeitherFadesAwayNorBuildsUp() {
-        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS)) {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
             val x = render(kind, 30 * 60, seed = 9)
             val minute = rate * 2 * 60
             val levels = (0 until 30).map { rms(x, it * minute, (it + 1) * minute) }
@@ -84,7 +84,7 @@ class AmbienceTest {
 
     @Test
     fun leftAndRightAreDifferentSoItSurroundsYou() {
-        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS)) {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
             val x = render(kind, 20)
             var lr = 0.0; var ll = 0.0; var rr = 0.0
             for (i in 0 until x.size / 2) { val l = x[2 * i].toDouble(); val r = x[2 * i + 1].toDouble(); lr += l * r; ll += l * l; rr += r * r }
@@ -103,6 +103,25 @@ class AmbienceTest {
         // Birdsong lives roughly 2–7 kHz; the breeze sits low; together most energy is in those bands.
         bandShare(birds, 2000.0, 7500.0).let { assertTrue("birds song band $it", it > 0.15) }
         bandShare(birds, 7500.0, 16_000.0).let { assertTrue("birds top $it", it < 0.05) }
+    }
+
+    @Test
+    fun noBirdChirpsOrTrillsOnlyLongSlowNotes() {
+        // Thousands of songs from every bird: no note short or quick-gliding enough to read as a
+        // chirp, and no fast warble.
+        for (seed in 1L..20L) {
+            val notes = Birds(rate, seed).sampleNotes(50)
+            assertTrue(notes.isNotEmpty())
+            for (n in notes) {
+                val (ms, f0, f1, vib) = n.toList()
+                assertTrue("note of $ms ms", ms >= MIN_NOTE_MS)
+                val glide = abs(f1 - f0) / (ms / 1000f)
+                assertTrue("glide $glide Hz/s ($f0→$f1 in $ms ms)", glide <= MAX_GLIDE_HZ_PER_SEC)
+                assertTrue("vibrato $vib Hz", vib <= MAX_VIBRATO_HZ)
+            }
+        }
+        // And in the sound itself: almost nothing up where chirps live.
+        bandShare(render(Ambience.BIRDS, 60, seed = 5), 5000.0, 16_000.0).let { assertTrue("birds above 5 kHz $it", it < 0.03) }
     }
 
     @Test
@@ -131,7 +150,7 @@ class AmbienceTest {
 
     @Test
     fun cheapEnoughToRunAllSitLong() {
-        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS)) {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
             render(kind, 5) // warm up the JIT
             val t = System.nanoTime()
             render(kind, 60)

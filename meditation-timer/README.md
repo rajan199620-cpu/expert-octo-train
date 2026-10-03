@@ -63,7 +63,9 @@ so they fold into one summary line; "Change" opens them.
 **Check-in before a sit**: tapping a feeling only selects it (tap again to clear); the sit starts
 when you tap **Begin** in the check-in, so there's a moment to settle. "Not now" goes back.
 
-**Background sound** (Sit → Change → Sound & stillness, off by default): **Rain**, **Birds**, or
+**Background sound** (Sit → Change → Sound & stillness, off by default): **Rain**, **Birds** (a
+breeze, two whistlers, a dove's low coo, a gentle carol and a distant koel; no quick chirps or
+trills: every note is at least 150 ms and glides slowly), **Rain & birds** together, or
 **My recording** (any audio file on the phone, looped). Rain and birdsong are generated on the
 phone as it plays, so they never loop or repeat and add nothing to the download. The sound has its
 own volume (separate from the bell), fades in over 8 s, fades out on pause, dips under every bell
