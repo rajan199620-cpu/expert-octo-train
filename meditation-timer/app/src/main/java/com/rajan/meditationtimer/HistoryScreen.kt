@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -184,7 +186,8 @@ fun HistoryTab() {
 /** Two headline numbers from Trends; tapping opens the full charts. */
 @Composable
 private fun Highlights(checkIns: CheckInSummary?, noticing: List<NoticingPoint>, onOpen: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    // Equal heights, whichever label wraps.
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         checkIns?.let {
             val shift = it.averageShift
             HighlightTile(
@@ -203,9 +206,9 @@ private fun Highlights(checkIns: CheckInSummary?, noticing: List<NoticingPoint>,
 
 @Composable
 private fun HighlightTile(value: String, label: String, modifier: Modifier, onOpen: () -> Unit) {
-    GlassCard(modifier.clickable(onClick = onOpen), padding = 16.dp) {
+    GlassCard(modifier.fillMaxHeight().clickable(onClick = onOpen), padding = 16.dp) {
         Text(value, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("Trends ›", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
     }
 }
@@ -271,7 +274,7 @@ private fun WeekCard(week: List<Pair<LocalDate, Boolean?>>, summary: HistorySumm
             add("${formatDuration(summary.last7DaysSec)} in the last 7 days")
             if (summary.currentStreak >= 2) add("✦\u00A0${streakLabel(summary.currentStreak)}")
             // A forgiving streak says when it forgave, so the rule is never a surprise.
-            if (summary.currentStreak >= 2 && streak.restThisWeek) add("rest day used this week")
+            if (summary.currentStreak >= 2 && streak.restThisWeek) add("rest\u00A0day\u00A0used")
         }
         Text(parts.joinToString("  ·  "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
