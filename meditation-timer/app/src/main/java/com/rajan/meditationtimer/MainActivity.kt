@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -189,6 +191,19 @@ private fun App(
     val accent = Accent(main, second)
     var showPrinciples by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = showPrinciples && !inSession) { showPrinciples = false }
+    // First run only (or when asked for again from the Guide): two questions and how to sit.
+    val context = LocalContext.current
+    var welcome by rememberSaveable {
+        mutableStateOf(Welcome.needed(prefs.welcomeDone, prefs.everSaved, SessionLog.get(context).records.value.isNotEmpty()))
+    }
+    var beginFirstSit by rememberSaveable { mutableStateOf(false) }
+    // A sit started some other way (the launcher shortcut) means the welcome isn't needed.
+    LaunchedEffect(inSession) {
+        if (inSession && welcome) {
+            welcome = false
+            prefs.welcomeDone = true
+        }
+    }
 
     MeditationTheme(accent) {
         AmbientBackground(accent) {
@@ -200,6 +215,7 @@ private fun App(
                     // A session takes over whole; otherwise the principles archive or the chosen tab.
                     val screen: Any = when {
                         inSession -> session
+                        welcome -> WELCOME
                         showPrinciples -> PRINCIPLES
                         else -> tab
                     }
@@ -214,12 +230,21 @@ private fun App(
                         when (target) {
                             is SessionState -> TimerTab(target, prefs, onTestBell, onHistory = { onTab(Tab.HISTORY) }, onPrinciples = {})
                             PRINCIPLES -> PrinciplesScreen(onBack = { showPrinciples = false })
+                            WELCOME -> WelcomeScreen(prefs) { begin ->
+                                welcome = false
+                                showPrinciples = false
+                                onTab(Tab.SIT)
+                                beginFirstSit = begin
+                            }
                             Tab.SIT -> TimerTab(
                                 SessionState.Idle,
                                 prefs,
                                 onTestBell,
                                 onHistory = { onTab(Tab.HISTORY) },
                                 onPrinciples = { showPrinciples = true },
+                                onWelcome = { welcome = true },
+                                autoBegin = beginFirstSit,
+                                onAutoBegin = { beginFirstSit = false },
                             )
                             Tab.BREATHE -> BreathTab(prefs, onBreathDone)
                             Tab.MALA -> MalaTab(mala, onMalaTap, onMalaChange)
@@ -227,7 +252,7 @@ private fun App(
                         }
                     }
                 }
-                if (!inSession) {
+                if (!inSession && !welcome) {
                     TabBar(tab) {
                         showPrinciples = false
                         onTab(it)
@@ -240,6 +265,7 @@ private fun App(
 
 private const val SESSION = "session"
 private const val PRINCIPLES = "principles"
+private const val WELCOME = "welcome"
 
 /** Floating glass bar; the selected tab glows in its own colour. */
 @Composable

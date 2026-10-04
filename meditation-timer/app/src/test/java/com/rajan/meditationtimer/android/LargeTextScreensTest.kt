@@ -92,6 +92,27 @@ class LargeTextScreensTest {
         compose.onNodeWithText("Begin  ·", substring = true).assertExists()
     }
 
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun `welcome and guide at large text`() {
+        compose.onNodeWithText("Guide").performScrollTo().performClick()
+        compose.onNodeWithText("How to sit").performClick()
+        compose.waitForIdle()
+        captureScreenRoboImage("build/outputs/roborazzi/large-09-guide.png")
+        compose.onNodeWithText("Show the welcome again").performScrollTo().performClick()
+        compose.waitForIdle()
+        shot("10-welcome")
+        compose.onNodeWithText("I sit regularly").performScrollTo().performClick()
+        compose.onNodeWithText("I'll decide later").performScrollTo().performClick()
+        compose.waitForIdle()
+        shot("11-welcome-how-to-sit")
+        // The first-sit button is pinned below the text, so it's never pushed off screen.
+        compose.onNodeWithText("Begin my first sit  ·  20 min").assertExists()
+        compose.onNodeWithText("Look around first").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Begin  ·  20 min").assertExists()
+    }
+
     @Test
     fun `running and finished screens`() {
         compose.mainClock.autoAdvance = false

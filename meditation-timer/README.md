@@ -6,6 +6,35 @@ timer is opt-in, so the defaults behave exactly like the plain timer.
 **Download:** [meditation-timer.apk](https://github.com/rajan199620-cpu/expert-octo-train/releases/download/apk/meditation-timer.apk)
 always serves the newest build (CI republishes it on every push).
 
+**Welcome and Guide** (first run, then whenever you want it)
+- On first launch, a **three-step welcome** modelled on Headspace and Calm:
+  1. "Have you meditated before?" sets where you start. New is 5 min and 3 days a week; a
+     little is 10 min and 4 days; regularly is 20 min and 5 days.
+  2. "When could you sit most days?" ties a reminder to a habit you already have, such as
+     waking, lunch, getting home or bed. The notification permission is asked right here, in
+     context, as Android's guidance says.
+  3. **How to sit** in three points, then **Begin my first sit**. It goes through the usual
+     check-in, so nothing starts until you tap Begin.
+- **Skip** is on every step, and tapping an answer moves on. People who have used the app
+  before (any history or saved settings) never see the welcome.
+- There's **no tour of the screens**. NN/g's test of up-front tutorials (70 users) found they
+  didn't make people faster or more successful, and the tasks felt harder. Each screen here
+  explains itself where you use it instead.
+- **Guide** (Sit screen → Guide) is reference for when you want it. It has ten short topics,
+  and one opens at a time:
+  - how to sit
+  - how long and how often (citing Basso et al. 2019: 13 min a day helped after 8 weeks,
+    not 4)
+  - a sit step by step
+  - noticing
+  - bells and sound
+  - Breathe and Mala
+  - lessons
+  - History
+  - shortcuts
+  - your data
+- The Guide can also show the welcome again.
+
 **Sit** (the core)
 - **Opening bell** a few seconds after you tap Begin (default 5 s), so you know it is running
   without opening your eyes.

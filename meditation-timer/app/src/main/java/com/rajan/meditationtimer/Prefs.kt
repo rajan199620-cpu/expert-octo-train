@@ -130,6 +130,20 @@ class Prefs(context: Context) {
             putString(KEY_REMINDER_CUE, value.cue)
         }
 
+    /** Set once the first-run welcome is finished or skipped; it never shows by itself again. */
+    var welcomeDone: Boolean
+        get() = sp.getBoolean(KEY_WELCOME_DONE, false)
+        set(value) = sp.edit { putBoolean(KEY_WELCOME_DONE, value) }
+
+    /** Every Begin saves the sit's settings, so this is true for anyone who has used the app. */
+    val everSaved: Boolean get() = sp.contains(KEY_DURATION)
+
+    /** The welcome's first answer: a length to start at and a weekly goal to match. */
+    fun applyExperience(experience: Experience) {
+        saveTimer(timerConfig.copy(durationSec = experience.minutes * 60), volume, alertMode, autoDnd)
+        weeklyGoal = experience.weeklyGoal
+    }
+
     /** The day the "on this day" note was put away: it stays hidden until tomorrow. */
     var memoryHiddenOn: String?
         get() = sp.getString(KEY_MEMORY_HIDDEN, null)
@@ -156,6 +170,7 @@ class Prefs(context: Context) {
         val version = kotlinx.coroutines.flow.MutableStateFlow(0)
 
         private const val KEY_WEEKLY_GOAL = "weekly_goal"
+        private const val KEY_WELCOME_DONE = "welcome_done"
         private const val KEY_AMBIENCE = "ambience"
         private const val KEY_AMBIENCE_VOLUME = "ambience_volume"
         private const val KEY_AMBIENCE_URI = "ambience_uri"

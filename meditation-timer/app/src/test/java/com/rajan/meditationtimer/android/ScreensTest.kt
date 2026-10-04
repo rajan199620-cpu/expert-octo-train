@@ -1,5 +1,6 @@
 package com.rajan.meditationtimer
 
+import android.Manifest
 import android.app.Application
 import android.graphics.Color
 import android.widget.FrameLayout
@@ -32,6 +33,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -73,6 +75,8 @@ class ScreensTest {
         SessionLog.resetForTests()
         File(app.filesDir, "sessions.csv").delete()
         app.getSharedPreferences("settings", 0).edit().clear().commit()
+        // Most tests start on the Sit screen; the welcome's own tests turn this back off.
+        Prefs(app).welcomeDone = true
         SessionRepository.reset()
         SessionRepository.startCounting(false)
     }
@@ -155,6 +159,99 @@ class ScreensTest {
         assertTrue(SessionRepository.counting)
         val started = shadowOf(app).nextStartedService
         assertEquals(MeditationService::class.java.name, started.component?.className)
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun `first run welcome asks two questions, teaches how to sit, then begins the first sit`() {
+        Prefs(app).welcomeDone = false
+        shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        launch()
+        compose.onNodeWithText("Have you meditated before?").assertExists()
+        compose.onNodeWithText("Breathe").assertDoesNotExist() // no tab bar until it's done
+        shot("19-welcome-experience")
+        compose.onNodeWithText("I'm new to this").performClick()
+        compose.waitForIdle()
+        assertEquals(5 * 60, Prefs(app).timerConfig.durationSec)
+        assertEquals(3, Prefs(app).weeklyGoal)
+        compose.onNodeWithText("When could you sit most days?").assertExists()
+        shot("20-welcome-time")
+        // Back keeps the answer; answering again moves on.
+        compose.onNodeWithText("‹ Back").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("I'm new to this").assertIsSelected()
+        compose.onNodeWithText("I'm new to this").performClick()
+        compose.onNodeWithText("Before bed").performClick()
+        compose.waitForIdle()
+        assertEquals(Reminder(true, 21 * 60 + 30, "Before bed"), Prefs(app).reminder)
+        compose.onNodeWithText("Come back, again and again").assertExists()
+        shot("21-welcome-how-to-sit")
+        assertFalse(Prefs(app).welcomeDone)
+        compose.onNodeWithText("Begin my first sit  ·  5 min").performClick()
+        compose.waitForIdle()
+        assertTrue(Prefs(app).welcomeDone)
+        // The same Begin as always: the check-in, and nothing starts until Begin is tapped.
+        compose.onNodeWithText("How do you feel right now?").assertExists()
+        assertNull(shadowOf(app).nextStartedService)
+        compose.onNode(hasText("Begin  ·  5 min") and hasAnyAncestor(isDialog())).performClick()
+        compose.waitForIdle()
+        assertEquals(MeditationService::class.java.name, shadowOf(app).nextStartedService?.component?.className)
+        assertEquals(0, SessionRepository.pendingBefore)
+    }
+
+    @Test
+    fun `skip keeps the usual settings, and someone who has sat before never sees the welcome`() {
+        Prefs(app).welcomeDone = false
+        launch()
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Begin  ·  20 min").assertExists()
+        assertTrue(Prefs(app).welcomeDone)
+        assertFalse(Prefs(app).reminder.enabled)
+        scenario?.close()
+        // Updating from a version without the welcome: history, but no welcome flag.
+        app.getSharedPreferences("settings", 0).edit().clear().commit()
+        seed(days = 3)
+        launch()
+        compose.onNodeWithText("Have you meditated before?").assertDoesNotExist()
+        compose.onNodeWithText("Begin  ·", substring = true).assertExists()
+        scenario?.close()
+        // Or no history, but settings saved by a Begin.
+        SessionLog.resetForTests()
+        File(app.filesDir, "sessions.csv").delete()
+        app.getSharedPreferences("settings", 0).edit().clear().putInt("duration_min", 15).commit()
+        launch()
+        compose.onNodeWithText("Have you meditated before?").assertDoesNotExist()
+        compose.onNodeWithText("Begin  ·  15 min").assertExists()
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun `guide opens one topic at a time and can bring the welcome back`() {
+        launch()
+        compose.onNodeWithText("Guide").performScrollTo().performClick()
+        compose.onNodeWithText("A sit, step by step").assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/22-guide.png")
+        compose.onNodeWithText("seconds to change your mind", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("A sit, step by step").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("seconds to change your mind", substring = true).assertExists()
+        // Opening another closes the first, so the sheet never becomes a wall of text.
+        compose.onNodeWithText("Bells, sound and silence").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("seconds to change your mind", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Vibrate only", substring = true).assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/23-guide-topic.png")
+        // The guide names the cue options exactly as the Sound sheet does.
+        val text = Guide.topics(AutoBackup.LOCATION).flatMap { it.points }.joinToString("\n")
+        for (mode in AlertMode.entries) assertTrue(mode.label, text.contains(mode.label))
+        compose.onNodeWithText("Show the welcome again").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Have you meditated before?").assertExists()
+        // Skipping a replay changes nothing.
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Begin  ·  20 min").assertExists()
     }
 
     @Test

@@ -104,6 +104,9 @@ fun TimerTab(
     onTestBell: (Float, AlertMode) -> Unit,
     onHistory: () -> Unit,
     onPrinciples: () -> Unit,
+    onWelcome: () -> Unit = {},
+    autoBegin: Boolean = false,
+    onAutoBegin: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val log = remember { SessionLog.get(context) }
@@ -132,6 +135,7 @@ fun TimerTab(
             // Re-created when settings are restored, so the restored values show at once.
             SessionState.Idle -> key(settingsVersion) { SetupScreen(
                 prefs, streak, hasHistory = records.isNotEmpty(), memory, recapReady, onTestBell, onHistory, onRestore = restore, onPrinciples,
+                onWelcome, autoBegin, onAutoBegin,
             ) { config, volume, mode, dnd, before ->
                 // Only for the lock-screen countdown; the session runs either way.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -176,6 +180,9 @@ private fun SetupScreen(
     onHistory: () -> Unit,
     onRestore: () -> Unit,
     onPrinciples: () -> Unit,
+    onWelcome: () -> Unit,
+    autoBegin: Boolean,
+    onAutoBegin: () -> Unit,
     onBegin: (SessionConfig, Float, AlertMode, Boolean, Int) -> Unit,
 ) {
     val context = LocalContext.current
@@ -197,6 +204,20 @@ private fun SetupScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { dndAccess = dnd.hasAccess }
 
     val lesson = rememberLessonIndex()
+
+    // Begin: save this sit as the usual one, then the check-in (if on) or straight into the sit.
+    fun begin() {
+        val config = SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval)
+        prefs.saveTimer(config, volume, alertMode, autoDnd)
+        if (prefs.checkIns) checkingIn = config else onBegin(config, volume, alertMode, autoDnd, 0)
+    }
+    // "Begin my first sit" at the end of the welcome goes through the same Begin as the button.
+    LaunchedEffect(autoBegin) {
+        if (autoBegin) {
+            onAutoBegin()
+            begin()
+        }
+    }
 
     // Begin stays pinned at the bottom; everything else scrolls above it.
     Column(Modifier.widthIn(max = 480.dp).fillMaxSize()) {
@@ -256,17 +277,15 @@ private fun SetupScreen(
             SettingRow("Sound & stillness", soundSummary(alertMode, autoDnd, prefs)) { sheet = SHEET_SOUND }
             HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = Color.White.copy(alpha = 0.08f))
             SettingRow("Practice tools", toolsSummary(prefs)) { sheet = SHEET_TOOLS }
+            HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = Color.White.copy(alpha = 0.08f))
+            SettingRow("Guide", "How to sit, and how each part of the app works") { sheet = SHEET_GUIDE }
         }
 
         Spacer(Modifier.height(8.dp))
     }
     GradientButton(
         "Begin  ·  $minutes min",
-        onClick = {
-            val config = SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval)
-            prefs.saveTimer(config, volume, alertMode, autoDnd)
-            if (prefs.checkIns) checkingIn = config else onBegin(config, volume, alertMode, autoDnd, 0)
-        },
+        onClick = ::begin,
         modifier = Modifier.padding(vertical = 8.dp),
     )
     }
@@ -306,6 +325,9 @@ private fun SetupScreen(
             }
         }
         SHEET_TOOLS -> AppSheet("Practice tools", onDismiss = ::closeSheet) { PracticeTools(prefs) }
+        SHEET_GUIDE -> AppSheet("Guide", onDismiss = ::closeSheet) {
+            GuideContent(onReplayWelcome = { closeSheet(); onWelcome() })
+        }
     }
     // Choosing a feeling only records it; the sit starts when you tap Begin, not before.
     checkingIn?.let { config ->
@@ -785,6 +807,7 @@ fun streakLabel(days: Int) = when (days) {
 private const val SHEET_BELLS = "bells"
 private const val SHEET_SOUND = "sound"
 private const val SHEET_TOOLS = "tools"
+private const val SHEET_GUIDE = "guide"
 
 /** What each settings row says it's set to, so most days there's no need to open it. */
 private fun bellsSummary(opening: Int, closing: Int, interval: Int, bellAtEnd: Boolean): String = buildList {
