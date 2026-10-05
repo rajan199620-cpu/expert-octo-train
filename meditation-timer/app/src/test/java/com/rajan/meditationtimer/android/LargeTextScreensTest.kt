@@ -52,6 +52,7 @@ class LargeTextScreensTest {
         SessionLog.resetForTests()
         File(app.filesDir, "sessions.csv").delete()
         app.getSharedPreferences("settings", 0).edit().clear().commit()
+        Prefs(app).readingSeenOn = LocalDate.now().toString()
         SessionRepository.reset()
         SessionRepository.startCounting(false)
         RuntimeEnvironment.setFontScale(1.5f)
@@ -89,6 +90,22 @@ class LargeTextScreensTest {
         compose.onNodeWithText("Background sound").performScrollTo()
         captureScreenRoboImage("build/outputs/roborazzi/large-02b-sound.png")
         compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.onNodeWithText("Begin  ·", substring = true).assertExists()
+    }
+
+    @Test
+    fun `the day's reading at large text`() {
+        scenario?.close()
+        Prefs(app).readingSeenOn = null
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitForIdle()
+        shot("12-reading")
+        // Next stays pinned below the text however large it is.
+        compose.onNodeWithText("Next").performClick()
+        compose.waitForIdle()
+        shot("13-reading-problem")
+        compose.onNodeWithText("Continue").performClick()
+        compose.waitForIdle()
         compose.onNodeWithText("Begin  ·", substring = true).assertExists()
     }
 

@@ -9,6 +9,7 @@ enum class Evidence(val label: String) {
     EXPERIMENT("Lab experiment"),
     OBSERVATIONAL("Observational study"),
     SMALL("Small study — treat as preliminary"),
+    CASE("Case report — shows it can happen, not how often"),
     THEORY("Theory / narrative review"),
 }
 

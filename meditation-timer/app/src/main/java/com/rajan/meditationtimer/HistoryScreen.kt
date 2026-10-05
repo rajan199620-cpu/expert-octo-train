@@ -93,6 +93,7 @@ fun HistoryTab() {
     val goal = remember { Prefs(context).weeklyGoal }
     val weekGoal = remember(activeDays, goal) { History.weekGoal(activeDays, today, goal) }
     val streak = remember(activeDays) { History.streak(activeDays, today) }
+    val standing = remember(records) { Compare.standing(records, zone, today) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showBackup by rememberSaveable { mutableStateOf(false) }
 
@@ -122,6 +123,7 @@ fun HistoryTab() {
                 when (tab) {
                     0 -> {
                         item { WeekCard(week, summary, weekGoal, streak) }
+                        standing?.let { item { CompareCard(it) } }
                         item { MonthRecapCard(records, zone, today) }
                         // Headlines from Trends, each a door to the full chart (as Apple Fitness does).
                         if (checkIns != null || noticing.isNotEmpty()) {
@@ -180,6 +182,49 @@ fun HistoryTab() {
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+/**
+ * Where your practice stands among other people who meditate, from published surveys. The
+ * headline is the strictest comparison (experienced meditators); tap for the others and sources.
+ */
+@Composable
+private fun CompareCard(standing: Standing) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    val primary = MaterialTheme.colorScheme.primary
+    GlassCard(Modifier.fillMaxWidth().clickable { open = !open }) {
+        Text("How you compare", style = MaterialTheme.typography.labelMedium, color = primary)
+        Text(Compare.headline(standing.experienced), style = MaterialTheme.typography.displaySmall, color = primary)
+        Text(
+            "among ${Compare.EXPERIENCED.who}, by how often you sit",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Text(Compare.summary(standing), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (open) {
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+            CompareLine(
+                "Experienced meditators: 41% sit daily, 30% more than weekly, 11% weekly, 18% less often.",
+                "${Compare.EXPERIENCED.detail} · ${Compare.EXPERIENCED.source}",
+            )
+            CompareLine(Compare.indiaLine(standing), "${Compare.INDIA.detail}; includes religious meditation · ${Compare.INDIA.source}")
+            CompareLine(Compare.appLine(standing), "Logged use by 655 new users of the Medito app · ${Compare.APP_SOURCE}")
+            Text(
+                "Survey answers are people's own reports, which tend to flatter, so treat the percentiles as rough.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontStyle = FontStyle.Italic,
+            )
+        }
+        Text(if (open) "Less" else "Sources and more comparisons  ›", style = MaterialTheme.typography.labelMedium, color = primary)
+    }
+}
+
+@Composable
+private fun CompareLine(text: String, source: String) {
+    Column {
+        Text(text, style = MaterialTheme.typography.bodyMedium)
+        Text(source, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

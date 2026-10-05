@@ -32,6 +32,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.time.LocalDate
 
 /** Lets a screen take over the volume keys while it is showing (e.g. the breath-count check). */
 object VolumeKeys {
@@ -59,6 +62,9 @@ class MainActivity : ComponentActivity() {
     private var tab by mutableStateOf(Tab.SIT)
     private var mala by mutableStateOf(MalaCount())
     private var pendingQuickStart = false
+    /** The day's reading is waiting to be shown; set each time the app comes to the front. */
+    private var readingDue by mutableStateOf(false)
+    private var readingDay by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,6 +94,12 @@ class MainActivity : ComponentActivity() {
                 onMalaChange = { mala = it; prefs.mala = it },
                 onTestBell = { volume, mode -> chime.ring(volume, mode) },
                 onBreathDone = { chime.ring(prefs.volume, AlertMode.BELL) },
+                reading = readingDue,
+                readingDay = readingDay,
+                onReadingDone = {
+                    readingDue = false
+                    prefs.readingSeenOn = LocalDate.now().toString()
+                },
             )
         }
     }
@@ -99,6 +111,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        val quickStart = pendingQuickStart
         // Started here rather than in onCreate: a foreground service must be started while we're visible.
         if (pendingQuickStart) {
             pendingQuickStart = false
@@ -108,6 +121,16 @@ class MainActivity : ComponentActivity() {
                 SessionRepository.startCounting(prefs.countDistractions)
                 MeditationService.start(this, prefs.timerConfig, prefs.volume, prefs.alertMode, prefs.autoDnd)
             }
+        }
+        // Whenever the app comes to the front, the day's reading opens first until it has been read
+        // or skipped today: not over a sit that's running or just ended, and not when a shortcut
+        // asked for a sit straight away.
+        val today = LocalDate.now()
+        if (!quickStart && SessionRepository.state.value is SessionState.Idle &&
+            Reading.due(prefs.dailyReading, prefs.readingSeenOn, today)
+        ) {
+            readingDay = today.toString()
+            readingDue = true
         }
     }
 
@@ -180,6 +203,9 @@ private fun App(
     onMalaChange: (MalaCount) -> Unit,
     onTestBell: (Float, AlertMode) -> Unit,
     onBreathDone: () -> Unit,
+    reading: Boolean,
+    readingDay: String,
+    onReadingDone: () -> Unit,
 ) {
     val session by SessionRepository.state.collectAsStateWithLifecycle()
     // A running or just-finished sit takes over the whole screen.
@@ -216,6 +242,7 @@ private fun App(
                     val screen: Any = when {
                         inSession -> session
                         welcome -> WELCOME
+                        reading -> READING
                         showPrinciples -> PRINCIPLES
                         else -> tab
                     }
@@ -233,8 +260,27 @@ private fun App(
                             WELCOME -> WelcomeScreen(prefs) { begin ->
                                 welcome = false
                                 showPrinciples = false
+                                // The welcome already taught how to sit: no reading on top of it today.
+                                onReadingDone()
                                 onTab(Tab.SIT)
                                 beginFirstSit = begin
+                            }
+                            READING -> {
+                                val lesson = rememberLessonIndex()
+                                // A new day moves on to the next common problem; the same day keeps it.
+                                val problem = remember(readingDay) {
+                                    val today = LocalDate.now()
+                                    val i = Reading.problemIndex(prefs.readingProblem, prefs.readingProblemDay, today)
+                                    prefs.readingProblem = i
+                                    prefs.readingProblemDay = today.toString()
+                                    Problems.forIndex(i)
+                                }
+                                key(readingDay) {
+                                    ReadingScreen(lesson, problem) {
+                                        showPrinciples = false
+                                        onReadingDone()
+                                    }
+                                }
                             }
                             Tab.SIT -> TimerTab(
                                 SessionState.Idle,
@@ -252,7 +298,7 @@ private fun App(
                         }
                     }
                 }
-                if (!inSession && !welcome) {
+                if (!inSession && !welcome && !reading) {
                     TabBar(tab) {
                         showPrinciples = false
                         onTab(it)
@@ -266,6 +312,7 @@ private fun App(
 private const val SESSION = "session"
 private const val PRINCIPLES = "principles"
 private const val WELCOME = "welcome"
+private const val READING = "reading"
 
 /** Floating glass bar; the selected tab glows in its own colour. */
 @Composable

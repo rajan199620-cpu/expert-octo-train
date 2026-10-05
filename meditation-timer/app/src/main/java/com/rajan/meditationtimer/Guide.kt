@@ -34,11 +34,14 @@ object Guide {
             listOf(
                 "Choose a length and tap Begin. If check-ins are on, note how you feel, then tap Begin " +
                     "again when you're ready. Nothing starts until you do.",
-                "The opening bell rings a few seconds later. Interval bells, if you set them, bring you back " +
-                    "to the breath; the closing bell says the end is near.",
+                "Settle-in breaths come first (Bells & breaths): slow breathing, in for 4 and out for 6, with a " +
+                    "light buzz at each. Then the opening bell starts the sit and the breath is left natural. Interval " +
+                    "bells bring you back; the closing bell says the end is near.",
                 "Pause holds the time and the bells. End gives you ${SessionClock.END_CONFIRM_MS / 1000} " +
                     "seconds to change your mind. Sits under a minute aren't saved.",
                 "Afterwards, say how you feel and how the sit went, and add a line to your journal if you like. All optional.",
+                "Before you stand, tense your legs and flex your feet for a few seconds, then rise slowly: blood " +
+                    "pressure can dip in the first seconds of standing.",
             ),
         ),
         GuideTopic(
@@ -53,9 +56,9 @@ object Guide {
         ),
         GuideTopic(
             "Bells, sound and silence",
-            "The Bells and Sound & stillness rows",
+            "The Bells & breaths and Sound & stillness rows",
             listOf(
-                "Bells: when the opening, interval and closing bells ring.",
+                "Bells & breaths: settle-in breaths, and when the opening, interval and closing bells ring.",
                 "Bell, Bell + vibrate, or Vibrate only for sitting next to someone. Test plays it at the volume you set.",
                 "Background sound: rain, birdsong, both, or a recording of your own. It fades in, dips under " +
                     "every bell and fades out at the end. Listen plays 10 seconds.",
@@ -81,6 +84,8 @@ object Guide {
                 "A new lesson comes with each day you sit, so a missed day never skips one. Each has something " +
                     "to try in today's sit; Why & research says where it comes from.",
                 "Earlier lessons opens the ones you've had so far.",
+                "The app opens each day on the day's reading: the lesson with all its research, then one common " +
+                    "problem. It shows once a day; switch it off in Practice tools.",
             ),
         ),
         GuideTopic(
@@ -90,6 +95,8 @@ object Guide {
                 "Overview: this week against your goal, the month in review, and your highlights. Tap a highlight for Trends.",
                 "Trends: what a sit changes in how you feel, how often you noticed wandering, and a calendar of the last weeks.",
                 "Sessions: every sit, newest first, with your notes.",
+                "How you compare (Overview): how often you sit against published surveys of experienced " +
+                    "meditators, adults in India and new app users.",
                 "On the Sit screen, a note you wrote a week, a month or a year ago today may come back. Hide puts it away until tomorrow.",
             ),
         ),

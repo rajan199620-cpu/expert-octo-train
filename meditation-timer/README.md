@@ -35,6 +35,47 @@ always serves the newest build (CI republishes it on every push).
   - your data
 - The Guide can also show the welcome again.
 
+**Today's reading** (first thing each day)
+- **What it is:** opening the app shows the day's lesson with its research in full (finding,
+  source and strength of evidence). Next brings one **common problem**, then you continue to
+  the sit.
+- **How often:** it shows on every open until it has been read or skipped that day, then not
+  again until tomorrow. It never interrupts a running sit or a one-tap sit from the widget or a
+  shortcut. Switch it off in Practice tools.
+- **Common problems:** 15 of them, including:
+  - restlessness and drowsiness;
+  - an idea you want to write down;
+  - an itch, and numb legs;
+  - noise, the phone, coughs;
+  - missing a day;
+  - anxiety, strong emotions, unusual sensations;
+  - dizziness while breathing, and standing up.
+
+  Each answers whether to act on it, what it does and what to do, with studies (e.g.
+  Masicampo & Baumeister 2011, Scullin et al. 2018, Bowen & Marlatt 2009, Goldberg et al.
+  2022). Evidence studied outside meditation is labelled "indirect". All 15 are in Guide →
+  Common problems.
+
+**Settle-in breaths and standing up**
+- **Settle-in breaths** (Bells & breaths; on by default, 1 minute; Off/30 s/1/2/5 min): slow
+  breathing, 4 s in and 6 s out, with a light buzz at each change. The opening bell rings as
+  it ends and the sit uses the natural breath.
+- **Why they're optional:** meditation doesn't require a breathing technique, and no trial
+  shows one improves the sit that follows. But slow breathing reliably calms the body within a
+  single session (Laborde et al. 2022 meta-analysis; Magnon et al. 2021; Van Diest et al.
+  2014), so it's an option, on by default.
+- **At the end:** there's no research case for closing breaths. The evidence is about
+  standing up: blood pressure can dip in the first seconds, and tensing the legs first
+  reduces it (Sheikh et al. 2022). Long cross-legged sits can press a nerve (Afacan et al.
+  2025). So the finish screen says how to stand.
+
+**How you compare** (History → Overview)
+- **The headline:** how often you sat in the last 4 weeks against 1,120 experienced
+  meditators (Vieten et al. 2018: 41% daily, 30% more than weekly, 11% weekly, 18% less), as
+  a percentile. In the top band it shows "Top 41%", since no survey can rank people within it.
+- **A tap shows:** Indian adults (Pew Research Center 2021: 32% daily, 48% weekly) and new
+  meditation-app users (Adams et al. 2026: half do 16 minutes or less in their first month).
+
 **Sit** (the core)
 - **Opening bell** a few seconds after you tap Begin (default 5 s), so you know it is running
   without opening your eyes.

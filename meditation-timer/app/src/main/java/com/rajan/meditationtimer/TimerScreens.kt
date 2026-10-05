@@ -25,6 +25,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
@@ -81,6 +82,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -196,6 +198,7 @@ private fun SetupScreen(
     var closing by rememberSaveable { mutableIntStateOf(saved.closingBellSec) }
     var bellAtEnd by rememberSaveable { mutableStateOf(saved.bellAtEnd) }
     var interval by rememberSaveable { mutableIntStateOf(saved.intervalMin) }
+    var settle by rememberSaveable { mutableIntStateOf(saved.settleSec) }
     var volume by rememberSaveable { mutableFloatStateOf(prefs.volume) }
     var alertMode by rememberSaveable { mutableStateOf(prefs.alertMode) }
     var autoDnd by rememberSaveable { mutableStateOf(prefs.autoDnd) }
@@ -207,7 +210,7 @@ private fun SetupScreen(
 
     // Begin: save this sit as the usual one, then the check-in (if on) or straight into the sit.
     fun begin() {
-        val config = SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval)
+        val config = SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval, settle)
         prefs.saveTimer(config, volume, alertMode, autoDnd)
         if (prefs.checkIns) checkingIn = config else onBegin(config, volume, alertMode, autoDnd, 0)
     }
@@ -272,7 +275,7 @@ private fun SetupScreen(
         // Set-once settings as three rows that say what's set; each opens only its own sheet
         // (Insight Timer's timer screen works the same way), instead of one long fold-out.
         GlassCard(Modifier.fillMaxWidth(), padding = 6.dp) {
-            SettingRow("Bells", bellsSummary(opening, closing, interval, bellAtEnd)) { sheet = SHEET_BELLS }
+            SettingRow("Bells & breaths", bellsSummary(settle, opening, closing, interval, bellAtEnd)) { sheet = SHEET_BELLS }
             HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = Color.White.copy(alpha = 0.08f))
             SettingRow("Sound & stillness", soundSummary(alertMode, autoDnd, prefs)) { sheet = SHEET_SOUND }
             HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = Color.White.copy(alpha = 0.08f))
@@ -291,13 +294,23 @@ private fun SetupScreen(
     }
     fun closeSheet() {
         sheet = null
-        prefs.saveTimer(SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval), volume, alertMode, autoDnd)
+        prefs.saveTimer(SessionConfig(minutes * 60, opening, closing, bellAtEnd, interval, settle), volume, alertMode, autoDnd)
         SitWidget.refresh(context)
     }
     when (sheet) {
-        SHEET_BELLS -> AppSheet("Bells", onDismiss = ::closeSheet) {
-            SectionLabel("Opening bell", "Rings this long after you tap Begin")
-            ChipRow(listOf(5, 10, 15, 30), opening, { "${it}s" }) { opening = it }
+        SHEET_BELLS -> AppSheet("Bells & breaths", onDismiss = ::closeSheet) {
+            SectionLabel(
+                "Settle-in breaths",
+                "Slow breaths to start, in for 4 and out for 6, with a light buzz at each so your eyes can close. " +
+                    "Slow breathing calms the body within minutes; the sit itself then uses your natural breath",
+            )
+            ChipRow(Settle.CHOICES_SEC, settle, Settle::label) { settle = it }
+            if (settle > 0) {
+                SectionLabel("Opening bell", "Rings as the settle-in breaths end, to start the sit proper")
+            } else {
+                SectionLabel("Opening bell", "Rings this long after you tap Begin")
+                ChipRow(listOf(5, 10, 15, 30), opening, { "${it}s" }) { opening = it }
+            }
             SectionLabel("Closing bell", "Rings this long before the session ends")
             ChipRow(listOf(5, 10, 30, 60), closing, ::secondsLabel) { closing = it }
             SectionLabel("Interval bells", "A soft reminder to come back to the breath")
@@ -387,7 +400,14 @@ private fun PracticeTools(prefs: Prefs) {
     }
 
     var goal by remember { mutableIntStateOf(prefs.weeklyGoal) }
+    var reading by remember { mutableStateOf(prefs.dailyReading) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ToggleRow(
+            "Today's reading when I open the app",
+            "Today's lesson and its research, then one common problem and what to do about it. Once a day, " +
+                "before the Sit screen.",
+            reading,
+        ) { reading = it; prefs.dailyReading = it }
         SectionLabel(
             "Weekly goal",
             "Days a week you mean to sit. One missed day a week is a rest day and keeps your streak.",
@@ -446,14 +466,18 @@ private fun PracticeTools(prefs: Prefs) {
     }
 }
 
+/** A setting that's on or off; the whole row is the switch, so it reads and taps as one. */
 @Composable
 private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
@@ -547,11 +571,24 @@ private fun RunningScreen(session: SessionState.Running) {
     // Paused, the ring dims and stops breathing, so the state reads at a glance.
     val still = session.clock.isPaused
     val ringAlpha by animateFloatAsState(if (still) 0.4f else 1f, tween(600), label = "dim")
+    // Settle-in breaths: the halo swells for each in-breath and ebbs for each out-breath.
+    val settleMs = remember(session.config) { Settle.lengthMs(session.config) }
+    val settling = if (still) null else Settle.at(elapsed, settleMs)
+    val breathGlow by animateFloatAsState(
+        when (settling?.phase) {
+            Settle.Phase.IN -> 1f
+            Settle.Phase.OUT -> 0.4f
+            null -> 0.55f
+        },
+        tween((settling?.msLeftInPhase ?: 600L).toInt()),
+        label = "breath",
+    )
 
     // Distraction counting: a tap anywhere (not on a button) or a volume key, with a light buzz
     // so it registers with eyes closed. Taps closer than half a second count once.
     val counting = SessionRepository.counting
-    val countingNow = counting && !still
+    // Counting starts with the sit proper, after any settle-in breaths.
+    val countingNow = counting && !still && settling == null
     val view = LocalView.current
     var lastNotice by remember { mutableLongStateOf(Long.MIN_VALUE / 2) }
     val notice: () -> Unit = {
@@ -592,7 +629,10 @@ private fun RunningScreen(session: SessionState.Running) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically),
     ) {
-        Box(Modifier.size(ring).glow(accent.main, if (still) 0.3f else pulse), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(ring).glow(accent.main, if (still) 0.3f else if (settling != null) breathGlow else pulse),
+            contentAlignment = Alignment.Center,
+        ) {
             Canvas(Modifier.fillMaxSize().padding(16.dp).alpha(ringAlpha)) {
                 val stroke = 6.dp.toPx()
                 drawCircle(Color.White.copy(alpha = 0.08f), style = Stroke(stroke))
@@ -610,6 +650,7 @@ private fun RunningScreen(session: SessionState.Running) {
                 Text(formatClock(remaining), style = MaterialTheme.typography.displayLarge)
                 val hint = when {
                     still -> "Paused · bells on hold"
+                    settling != null -> "${settling.phase.label} · ${(settling.msLeftInPhase + 999) / 1000}"
                     next != null -> cueHint(next, elapsed)
                     else -> null
                 }
@@ -643,6 +684,20 @@ private fun RunningScreen(session: SessionState.Running) {
                     if (mode == 1) {
                         Text(
                             "Take your time. Notifications can reach you while you’re paused.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    } else if (settling != null) {
+                        Text(
+                            "Settle in  ·  breath ${settling.breath} of ${settling.breaths}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            "In through the nose for 4, out slowly for 6. A light buzz marks each change, so you " +
+                                "can close your eyes. The bell starts the sit; then let the breath be natural.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -747,6 +802,15 @@ private fun FinishedScreen(session: SessionState.Finished, streak: Int, onSave: 
             )
         }
         if (streak > 0) Pill("✦\u00A0${streakLabel(streak)}")
+        // Blood pressure can dip in the first seconds of standing; tensing the legs first helps
+        // (Sheikh et al., Heart Rhythm 2022). A numb foot can't take weight safely.
+        Text(
+            "Before you stand: tense your legs and flex your feet for a few seconds, wait for any numbness " +
+                "to pass, then rise slowly.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
         if (session.noticed >= 0) {
             Text(
                 when (session.noticed) {
@@ -810,8 +874,8 @@ private const val SHEET_TOOLS = "tools"
 private const val SHEET_GUIDE = "guide"
 
 /** What each settings row says it's set to, so most days there's no need to open it. */
-private fun bellsSummary(opening: Int, closing: Int, interval: Int, bellAtEnd: Boolean): String = buildList {
-    add("Opening ${opening}s")
+private fun bellsSummary(settle: Int, opening: Int, closing: Int, interval: Int, bellAtEnd: Boolean): String = buildList {
+    add(if (settle > 0) "Settle-in ${Settle.label(settle)}" else "Opening ${opening}s")
     add("closing ${secondsLabel(closing)}")
     add(if (interval > 0) "every $interval min" else "no interval bells")
     if (bellAtEnd) add("bell at the end")
@@ -830,6 +894,7 @@ private fun soundSummary(mode: AlertMode, dnd: Boolean, prefs: Prefs): String = 
 }.joinToString(" · ")
 
 private fun toolsSummary(prefs: Prefs): String = buildList {
+    if (prefs.dailyReading) add("daily reading")
     val goal = prefs.weeklyGoal
     if (goal > 0) add("$goal days a week")
     if (prefs.countDistractions) add("counting")

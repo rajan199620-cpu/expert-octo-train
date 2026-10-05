@@ -39,6 +39,28 @@ class Chime(context: Context) {
 
     fun release() = bell.release()
 
+    /**
+     * A light buzz at the start of each settle-in breath: one short tap to breathe in, one longer,
+     * softer one to breathe out, so the pace can be followed with eyes closed.
+     */
+    fun breathTick(phase: Settle.Phase) {
+        breathTicks.incrementAndGet()
+        if (!vibrator.hasVibrator()) return
+        val (ms, amplitude) = if (phase == Settle.Phase.IN) 45L to 90 else 120L to 45
+        val effect = if (vibrator.hasAmplitudeControl()) {
+            VibrationEffect.createOneShot(ms, amplitude)
+        } else {
+            VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
+        }
+        @Suppress("DEPRECATION")
+        vibrator.vibrate(effect, alarmAttributes)
+    }
+
+    companion object {
+        /** Settle-in buzzes given so far: tests check the pacing with it. */
+        val breathTicks = java.util.concurrent.atomic.AtomicInteger(0)
+    }
+
     /** Two soft pulses, like a tap on the shoulder. Alarm usage so DND lets it through. */
     private fun vibrate() {
         if (!vibrator.hasVibrator()) return

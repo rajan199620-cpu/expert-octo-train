@@ -71,6 +71,33 @@ class ServiceStressTest {
     private val records get() = SessionLog.get(app).records.value
 
     @Test
+    fun `settle-in breaths buzz each in- and out-breath, hold while paused, and never change the sit`() {
+        MeditationService.start(app, SessionConfig(10 * 60, 5, 10, true, 0, settleSec = 60), 0.5f, AlertMode.VIBRATE, false)
+        Chime.breathTicks.set(0)
+        val s = Robolectric.buildService(MeditationService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        idle(1)
+        assertEquals("a buzz at Begin, to breathe in", 1, Chime.breathTicks.get())
+        idle(24) // 25 s: breaths at 0, 4, 10, 14, 20, 24
+        assertEquals(6, Chime.breathTicks.get())
+        s.deliver(MeditationService::pause)
+        idle(300)
+        assertEquals("no buzzing while paused", 6, Chime.breathTicks.get())
+        s.deliver(MeditationService::resume)
+        idle(60)
+        assertEquals("six breaths of in and out, then quiet", 12, Chime.breathTicks.get())
+        idle(600)
+        assertEquals(12, Chime.breathTicks.get())
+        assertEquals(600, (SessionRepository.state.value as SessionState.Finished).satSec)
+        assertEquals(600, records.single().actualSec)
+        // Without settle-in, no buzzing at all.
+        SessionRepository.reset()
+        Chime.breathTicks.set(0)
+        begin(minutes = 2)
+        idle(130)
+        assertEquals(0, Chime.breathTicks.get())
+    }
+
+    @Test
     fun `a full sit finishes on time and logs exactly once`() {
         begin(minutes = 10)
         idle(599)

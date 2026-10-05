@@ -34,14 +34,50 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun GuideContent(onReplayWelcome: () -> Unit) {
     val topics = remember { Guide.topics(AutoBackup.LOCATION.takeIf { AutoBackup.supported }) }
+    var section by rememberSaveable { mutableIntStateOf(0) }
     var open by rememberSaveable { mutableIntStateOf(-1) }
-    Text(
-        "How to sit, and how each part of the app works. Every screen also explains itself as you go.",
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    Segments(listOf("How it works", "Common problems"), section) { section = it; open = -1 }
+    if (section == 0) {
+        Text(
+            "How to sit, and how each part of the app works. Every screen also explains itself as you go.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Accordion(topics.size, open, { open = it }, { topics[it].title }, { topics[it].summary }) { i ->
+            for (point in topics[i].points) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("•", color = MaterialTheme.colorScheme.primary)
+                    Text(point, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+        TextButton(onClick = onReplayWelcome, modifier = Modifier.fillMaxWidth()) { Text("Show the welcome again") }
+    } else {
+        Text(
+            "What gets in the way of a sit, whether to act on it, and what research says to do. One comes with " +
+                "each day's reading.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val problems = Problems.ALL
+        Accordion(problems.size, open, { open = it }, { problems[it].title }, { problems[it].answer }) { i ->
+            ProblemDetails(problems[i])
+        }
+    }
+}
+
+/** A list of rows that each open in place, one at a time, so the list itself stays short. */
+@Composable
+private fun Accordion(
+    count: Int,
+    open: Int,
+    onOpen: (Int) -> Unit,
+    title: (Int) -> String,
+    summary: (Int) -> String,
+    content: @Composable (Int) -> Unit,
+) {
     GlassCard(Modifier.fillMaxWidth(), padding = 6.dp) {
-        topics.forEachIndexed { i, topic ->
+        for (i in 0 until count) {
             if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = Color.White.copy(alpha = 0.08f))
             val expanded = open == i
             Column {
@@ -50,13 +86,13 @@ fun GuideContent(onReplayWelcome: () -> Unit) {
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .semantics { stateDescription = if (expanded) "Open" else "Closed" }
-                        .clickable(role = Role.Button) { open = if (expanded) -1 else i }
+                        .clickable(role = Role.Button) { onOpen(if (expanded) -1 else i) }
                         .padding(horizontal = 12.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(topic.title, style = MaterialTheme.typography.titleMedium)
-                        Text(topic.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(title(i), style = MaterialTheme.typography.titleMedium)
+                        Text(summary(i), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Text(
                         if (expanded) "−" else "+",
@@ -69,17 +105,9 @@ fun GuideContent(onReplayWelcome: () -> Unit) {
                     Column(
                         Modifier.padding(start = 12.dp, end = 12.dp, bottom = 14.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        for (point in topic.points) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("•", color = MaterialTheme.colorScheme.primary)
-                                Text(point, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                    }
+                    ) { content(i) }
                 }
             }
         }
     }
-    TextButton(onClick = onReplayWelcome, modifier = Modifier.fillMaxWidth()) { Text("Show the welcome again") }
 }

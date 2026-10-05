@@ -101,6 +101,11 @@ class MeditationService : Service() {
         for (cue in BellSchedule.cues(config)) {
             if (cue.atMs > elapsed) handler.postDelayed({ ambient.duck(); chime.ring(volume, alertMode) }, cue.atMs - elapsed)
         }
+        // Settle-in breaths: a light buzz at each in- and out-breath until the opening bell.
+        // (A few ms pass between Begin and here, so the very first buzz is allowed a little grace.)
+        for ((at, phase) in Settle.ticks(Settle.lengthMs(config))) {
+            if (at + TICK_GRACE_MS >= elapsed) handler.postDelayed({ chime.breathTick(phase) }, (at - elapsed).coerceAtLeast(0))
+        }
         // Posted after the END bell (same delay, FIFO) so that bell is already ringing here.
         handler.postDelayed({ complete(config) }, (config.durationMs - elapsed).coerceAtLeast(0))
     }
@@ -281,11 +286,13 @@ class MeditationService : Service() {
         private const val EXTRA_END = "end"
         private const val EXTRA_VOLUME = "volume"
         private const val EXTRA_INTERVAL = "interval"
+        private const val EXTRA_SETTLE = "settle"
         private const val EXTRA_ALERT = "alert"
         private const val EXTRA_DND = "dnd"
         private const val CHANNEL_ID = "session"
         private const val NOTIFICATION_ID = 1
         private const val WAKE_LOCK_SLACK_MS = 60_000L
+        private const val TICK_GRACE_MS = 250L
 
         fun start(context: Context, config: SessionConfig, volume: Float, alertMode: AlertMode, autoDnd: Boolean) {
             val intent = Intent(context, MeditationService::class.java)
@@ -296,6 +303,7 @@ class MeditationService : Service() {
                 .putExtra(EXTRA_END, config.bellAtEnd)
                 .putExtra(EXTRA_VOLUME, volume)
                 .putExtra(EXTRA_INTERVAL, config.intervalMin)
+                .putExtra(EXTRA_SETTLE, config.settleSec)
                 .putExtra(EXTRA_ALERT, alertMode.ordinal)
                 .putExtra(EXTRA_DND, autoDnd)
             ContextCompat.startForegroundService(context, intent)
@@ -318,6 +326,7 @@ class MeditationService : Service() {
             closingBellSec = getIntExtra(EXTRA_CLOSING, 10),
             bellAtEnd = getBooleanExtra(EXTRA_END, false),
             intervalMin = getIntExtra(EXTRA_INTERVAL, 0),
+            settleSec = getIntExtra(EXTRA_SETTLE, 0),
         )
     }
 }

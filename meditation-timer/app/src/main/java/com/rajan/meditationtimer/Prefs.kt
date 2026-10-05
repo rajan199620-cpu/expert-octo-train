@@ -14,6 +14,7 @@ class Prefs(context: Context) {
             closingBellSec = sp.getInt(KEY_CLOSING, 10),
             bellAtEnd = sp.getBoolean(KEY_END, false),
             intervalMin = sp.getInt(KEY_INTERVAL, 0),
+            settleSec = sp.getInt(KEY_SETTLE, Settle.DEFAULT_SEC),
         )
     val volume: Float get() = sp.getFloat(KEY_VOLUME, 0.6f)
     val alertMode: AlertMode get() = enumOrDefault(sp.getString(KEY_ALERT, null), AlertMode.BELL)
@@ -26,6 +27,7 @@ class Prefs(context: Context) {
             putInt(KEY_CLOSING, config.closingBellSec)
             putBoolean(KEY_END, config.bellAtEnd)
             putInt(KEY_INTERVAL, config.intervalMin)
+            putInt(KEY_SETTLE, config.settleSec)
             putFloat(KEY_VOLUME, volume)
             putString(KEY_ALERT, alertMode.name)
             putBoolean(KEY_DND, autoDnd)
@@ -49,10 +51,10 @@ class Prefs(context: Context) {
 
     /** Everything that shapes your usual sit, for the backup file. */
     fun exportSettings(): Map<String, String> = buildMap {
-        for (key in listOf(KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET, KEY_WEEKLY_GOAL)) {
+        for (key in listOf(KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET, KEY_WEEKLY_GOAL, KEY_SETTLE)) {
             if (sp.contains(key)) put(key, sp.getInt(key, 0).toString())
         }
-        for (key in listOf(KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON)) {
+        for (key in listOf(KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON, KEY_DAILY_READING)) {
             if (sp.contains(key)) put(key, sp.getBoolean(key, false).toString())
         }
         if (sp.contains(KEY_REMINDER_TIME)) put(KEY_REMINDER_TIME, sp.getInt(KEY_REMINDER_TIME, 0).toString())
@@ -73,7 +75,8 @@ class Prefs(context: Context) {
                     KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET ->
                         value.toIntOrNull()?.let { putInt(key, it) }
                     KEY_WEEKLY_GOAL -> value.toIntOrNull()?.takeIf { it in 0..7 }?.let { putInt(key, it) }
-                    KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON ->
+                    KEY_SETTLE -> value.toIntOrNull()?.takeIf { it in Settle.CHOICES_SEC }?.let { putInt(key, it) }
+                    KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON, KEY_DAILY_READING ->
                         value.toBooleanStrictOrNull()?.let { putBoolean(key, it) }
                     KEY_REMINDER_TIME -> value.toIntOrNull()?.takeIf { it in 0 until 24 * 60 }?.let { putInt(key, it) }
                     KEY_REMINDER_CUE -> runCatching { java.net.URLDecoder.decode(value, "UTF-8") }.getOrNull()?.let { putString(key, it.limitText(60)) }
@@ -144,6 +147,24 @@ class Prefs(context: Context) {
         weeklyGoal = experience.weeklyGoal
     }
 
+    /** Today's lesson and one common problem, first thing when the app opens each day. */
+    var dailyReading: Boolean
+        get() = sp.getBoolean(KEY_DAILY_READING, true)
+        set(value) = sp.edit { putBoolean(KEY_DAILY_READING, value) }
+
+    /** The last day the reading was read through or skipped. */
+    var readingSeenOn: String?
+        get() = sp.getString(KEY_READING_SEEN, null)
+        set(value) = sp.edit { putString(KEY_READING_SEEN, value) }
+
+    /** The common problem the reading showed last, and on which day, so each new day brings the next. */
+    var readingProblem: Int
+        get() = sp.getInt(KEY_READING_PROBLEM, -1)
+        set(value) = sp.edit { putInt(KEY_READING_PROBLEM, value) }
+    var readingProblemDay: String?
+        get() = sp.getString(KEY_READING_PROBLEM_DAY, null)
+        set(value) = sp.edit { putString(KEY_READING_PROBLEM_DAY, value) }
+
     /** The day the "on this day" note was put away: it stays hidden until tomorrow. */
     var memoryHiddenOn: String?
         get() = sp.getString(KEY_MEMORY_HIDDEN, null)
@@ -171,6 +192,11 @@ class Prefs(context: Context) {
 
         private const val KEY_WEEKLY_GOAL = "weekly_goal"
         private const val KEY_WELCOME_DONE = "welcome_done"
+        private const val KEY_SETTLE = "settle_sec"
+        private const val KEY_DAILY_READING = "daily_reading"
+        private const val KEY_READING_SEEN = "reading_seen_on"
+        private const val KEY_READING_PROBLEM = "reading_problem"
+        private const val KEY_READING_PROBLEM_DAY = "reading_problem_day"
         private const val KEY_AMBIENCE = "ambience"
         private const val KEY_AMBIENCE_VOLUME = "ambience_volume"
         private const val KEY_AMBIENCE_URI = "ambience_uri"

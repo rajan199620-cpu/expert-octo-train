@@ -75,8 +75,9 @@ class ScreensTest {
         SessionLog.resetForTests()
         File(app.filesDir, "sessions.csv").delete()
         app.getSharedPreferences("settings", 0).edit().clear().commit()
-        // Most tests start on the Sit screen; the welcome's own tests turn this back off.
+        // Most tests start on the Sit screen; the welcome's and the reading's own tests undo these.
         Prefs(app).welcomeDone = true
+        Prefs(app).readingSeenOn = LocalDate.now().toString()
         SessionRepository.reset()
         SessionRepository.startCounting(false)
     }
@@ -165,6 +166,7 @@ class ScreensTest {
     @Test
     fun `first run welcome asks two questions, teaches how to sit, then begins the first sit`() {
         Prefs(app).welcomeDone = false
+        Prefs(app).readingSeenOn = null // a first-ever open: the reading is due too, but the welcome comes first
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         launch()
         compose.onNodeWithText("Have you meditated before?").assertExists()
@@ -190,6 +192,9 @@ class ScreensTest {
         compose.onNodeWithText("Begin my first sit  ·  5 min").performClick()
         compose.waitForIdle()
         assertTrue(Prefs(app).welcomeDone)
+        // The welcome already taught how to sit, so no reading piles on top of it today.
+        assertEquals(LocalDate.now().toString(), Prefs(app).readingSeenOn)
+        compose.onNodeWithText("Today's research").assertDoesNotExist()
         // The same Begin as always: the check-in, and nothing starts until Begin is tapped.
         compose.onNodeWithText("How do you feel right now?").assertExists()
         assertNull(shadowOf(app).nextStartedService)
@@ -211,6 +216,7 @@ class ScreensTest {
         scenario?.close()
         // Updating from a version without the welcome: history, but no welcome flag.
         app.getSharedPreferences("settings", 0).edit().clear().commit()
+        Prefs(app).readingSeenOn = LocalDate.now().toString()
         seed(days = 3)
         launch()
         compose.onNodeWithText("Have you meditated before?").assertDoesNotExist()
@@ -220,6 +226,7 @@ class ScreensTest {
         SessionLog.resetForTests()
         File(app.filesDir, "sessions.csv").delete()
         app.getSharedPreferences("settings", 0).edit().clear().putInt("duration_min", 15).commit()
+        Prefs(app).readingSeenOn = LocalDate.now().toString()
         launch()
         compose.onNodeWithText("Have you meditated before?").assertDoesNotExist()
         compose.onNodeWithText("Begin  ·  15 min").assertExists()
@@ -252,6 +259,165 @@ class ScreensTest {
         compose.onNodeWithText("Skip").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Begin  ·  20 min").assertExists()
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun `the day's reading opens first - research, Next, a common problem, then the sit`() {
+        Prefs(app).readingSeenOn = null
+        seed()
+        launch()
+        val lesson = Principles.forLesson(Principles.lessonIndex(SessionLog.get(app).records.value.map { it.day(zone) }.toSet(), LocalDate.now()))
+        compose.onNodeWithText("Today's research").assertExists()
+        compose.onNodeWithText(lesson.title).assertExists()
+        // The research itself is on the page, not folded away behind a button.
+        compose.onNodeWithText(lesson.finding).performScrollTo().assertExists()
+        compose.onNodeWithText(lesson.source).assertExists()
+        compose.onNodeWithText("Breathe").assertDoesNotExist() // nothing else until it's read or skipped
+        compose.onNodeWithText("Begin  ·", substring = true).assertDoesNotExist()
+        shot("24-reading-research")
+        compose.onNodeWithText("Next").performClick()
+        compose.waitForIdle()
+        val problem = Problems.forIndex(0)
+        compose.onNodeWithText("A common problem").assertExists()
+        compose.onNodeWithText(problem.title).assertExists()
+        compose.onNodeWithText(problem.answer).assertExists()
+        shot("25-reading-problem")
+        // Back goes to the research; Next again, then on to the sit.
+        compose.onNodeWithText("‹ Back").performClick()
+        compose.onNodeWithText("Today's research").assertExists()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Continue").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Begin  ·", substring = true).assertExists()
+        compose.onNodeWithText("Breathe").assertExists() // the tab bar is back
+        assertEquals(LocalDate.now().toString(), Prefs(app).readingSeenOn)
+        assertNull("reading starts nothing", shadowOf(app).nextStartedService)
+        // Opened again the same day: straight to the Sit screen.
+        scenario?.close()
+        launch()
+        compose.onNodeWithText("Today's research").assertDoesNotExist()
+        compose.onNodeWithText("Begin  ·", substring = true).assertExists()
+    }
+
+    @Test
+    fun `the reading returns the next day with the next problem, can be skipped, and switched off`() {
+        val prefs = Prefs(app)
+        prefs.readingSeenOn = LocalDate.now().minusDays(1).toString()
+        prefs.readingProblem = 0
+        prefs.readingProblemDay = LocalDate.now().minusDays(1).toString()
+        launch()
+        compose.onNodeWithText("Today's research").assertExists()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText(Problems.forIndex(1).title).assertExists()
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Begin  ·", substring = true).assertExists()
+        assertEquals(LocalDate.now().toString(), prefs.readingSeenOn)
+        scenario?.close()
+        // Switched off in Practice tools: never shown, even on a new day.
+        prefs.readingSeenOn = LocalDate.now().minusDays(1).toString()
+        launch()
+        compose.onNodeWithText("Skip").performClick()
+        compose.onNodeWithText("Practice tools").performScrollTo().performClick()
+        compose.onNodeWithText("Today's reading when I open the app").performClick()
+        assertFalse(prefs.dailyReading)
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        scenario?.close()
+        prefs.readingSeenOn = LocalDate.now().minusDays(2).toString()
+        launch()
+        compose.onNodeWithText("Today's research").assertDoesNotExist()
+        compose.onNodeWithText("Begin  ·", substring = true).assertExists()
+    }
+
+    @Test
+    fun `a one-tap sit from a shortcut isn't held up by the reading`() {
+        Prefs(app).readingSeenOn = null
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
+        scenario = ActivityScenario.launch(
+            android.content.Intent(app, MainActivity::class.java).setAction(MainActivity.ACTION_QUICK_SIT),
+        )
+        compose.waitForIdle()
+        assertEquals(MeditationService::class.java.name, shadowOf(app).nextStartedService?.component?.className)
+        compose.onNodeWithText("Today's research").assertDoesNotExist()
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun `settle-in breaths pace the start, then the sit proper begins`() {
+        launch()
+        compose.mainClock.autoAdvance = false
+        SessionRepository.startCounting(true)
+        val config = SessionConfig(1200, 5, 10, true, 0, settleSec = 60)
+        // 12 s in: the second breath, breathing in, 2 seconds of it left.
+        SessionRepository.update(SessionState.Running(SessionClock(SystemClock.elapsedRealtime() - 12_000), config))
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.onNodeWithText("Settle in  ·  breath 2 of 6").assertExists()
+        compose.onNodeWithText("Breathe in", substring = true).assertExists()
+        shot("26-settle-in")
+        // Taps don't count as noticing while settling in.
+        compose.onNodeWithText("Settle in  ·  breath 2 of 6").performClick()
+        compose.mainClock.advanceTimeBy(100)
+        assertEquals(0, SessionRepository.noticed.value)
+        // After the settle-in: the usual screen, and counting is on.
+        SessionRepository.update(SessionState.Running(SessionClock(SystemClock.elapsedRealtime() - 65_000), config))
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.onNodeWithText("Settle in", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Today’s focus", substring = true).performClick()
+        compose.mainClock.advanceTimeBy(100)
+        assertEquals(1, SessionRepository.noticed.value)
+    }
+
+    @Test
+    fun `bells and breaths sheet sets the settle-in, and off brings back the opening delay`() {
+        launch()
+        compose.onNodeWithText("Bells & breaths").performScrollTo().performClick()
+        compose.onNodeWithText("Settle-in breaths").assertExists()
+        // On by default (a minute), so the opening bell simply follows it.
+        compose.onNodeWithText("Rings as the settle-in breaths end", substring = true).assertExists()
+        compose.onAllNodesWithText("Off").onFirst().performClick() // the settle-in row comes first
+        compose.onNodeWithText("Rings this long after you tap Begin").assertExists()
+        compose.onNodeWithText("2 min").performClick()
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(120, Prefs(app).timerConfig.settleSec)
+        compose.onNodeWithText("Settle-in 2 min", substring = true).assertExists()
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun `history compares your practice with published surveys, sources a tap away`() {
+        seed()
+        launch()
+        compose.onAllNodesWithText("History").onLast().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("How you compare").assertExists()
+        // 24 of the last 28 days in the seeded history: the daily band.
+        compose.onNodeWithText("Top 41%").assertExists()
+        compose.onNodeWithText("You sat on 24 of the last 28 days", substring = true).assertExists()
+        compose.onNodeWithText("Pew Research Center", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Sources and more comparisons", substring = true).performClick()
+        compose.onNodeWithText("Pew Research Center", substring = true).performScrollTo().assertExists()
+        compose.onNodeWithText("Vieten et al.", substring = true).assertExists()
+        compose.onNodeWithText("Adams et al.", substring = true).assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/27-history-compare.png")
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun `guide lists the common problems, each answering whether to act`() {
+        launch()
+        compose.onNodeWithText("Guide").performScrollTo().performClick()
+        compose.onNodeWithText("Common problems").performClick()
+        compose.onNodeWithText("An itch").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Should you scratch it?").assertExists()
+        compose.onNodeWithText("Bowen & Marlatt", substring = true).performScrollTo().assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/28-guide-problems.png")
+        compose.onNodeWithText("An idea you want to write down").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Should you stop to write it?").assertExists()
+        compose.onNodeWithText("Should you scratch it?").assertDoesNotExist() // one open at a time
     }
 
     @Test
@@ -328,6 +494,7 @@ class ScreensTest {
         SessionRepository.finished(SessionConfig(1200, 5, 10, true, 0), start, 1200, before = 1, noticed = 7)
         compose.waitForIdle()
         compose.onNodeWithText("You caught the mind wandering 7 times", substring = true).assertExists()
+        compose.onNodeWithText("Before you stand", substring = true).assertExists()
         compose.onNodeWithText("How do you feel now?").assertExists()
         compose.onNodeWithText("How was the sit itself?").assertExists()
         shot("06-finished")

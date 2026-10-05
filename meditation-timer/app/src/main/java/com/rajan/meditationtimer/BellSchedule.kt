@@ -11,6 +11,8 @@ data class SessionConfig(
     val bellAtEnd: Boolean,
     /** Soft reminder bell every N minutes to come back to the breath; 0 = off. */
     val intervalMin: Int = 0,
+    /** Slow settle-in breaths before the opening bell, in seconds; 0 = off. See [Settle]. */
+    val settleSec: Int = 0,
 ) {
     val durationMs: Long get() = durationSec * 1000L
 }
@@ -27,7 +29,8 @@ object BellSchedule {
         val total = config.durationMs
         val cues = mutableListOf<TimedCue>()
 
-        val opening = config.openingBellSec * 1000L
+        // After settle-in breaths, the opening bell marks their end and the start of the sit proper.
+        val opening = maxOf(config.openingBellSec * 1000L, Settle.lengthMs(config))
         if (opening < total) cues += TimedCue(opening, Cue.OPENING)
 
         if (config.closingBellSec > 0) {
