@@ -245,7 +245,7 @@ class ScreensTest {
         assertTrue("a month title is shown", title > 0)
         compose.onNodeWithText("‹").performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("›").performClick()
+        compose.onAllNodesWithText("›").onFirst().performClick() // the month arrow comes before the settings rows' chevrons
         compose.waitForIdle()
         // Weekly goal: change it in its sheet; the row and the week line follow.
         openSheet("Weekly goal")
