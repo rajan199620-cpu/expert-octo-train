@@ -1,0 +1,635 @@
+package com.rajan.mindfield
+
+import android.Manifest
+import android.app.TimePickerDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import java.time.format.TextStyle
+import java.time.ZoneId
+import java.time.YearMonth
+import com.rajan.mindfield.core.WeekGoal
+import com.rajan.mindfield.core.Progress
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rajan.mindfield.core.AppState
+import com.rajan.mindfield.core.Category
+import com.rajan.mindfield.core.Codec
+import com.rajan.mindfield.core.Evidence
+import com.rajan.mindfield.core.Mode
+import com.rajan.mindfield.core.Schedule
+import com.rajan.mindfield.core.Stats
+import com.rajan.mindfield.core.Sync
+import com.rajan.mindfield.core.ThemeMode
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onSheet: (String?) -> Unit) {
+    val p = palette
+    val library = Store.library
+    val cloud by GoogleSync.state.collectAsStateWithLifecycle()
+    val days = Stats.checkInDays(state)
+    val streak = Progress.streak(days, today)
+    val longest = Stats.longestStreak(days)
+    val goal = Progress.weekGoal(days, today, state.settings.weeklyGoal)
+    val predictions = Stats.predictions(state, library)
+    val modes = Stats.modeCounts(state)
+    val life = Stats.lifeList(state)
+    val todayColor = state.assignments[today]?.conceptId?.let { library[it] }?.category?.accent(p.dark) ?: p.brand
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        // Who and how far.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.size(54.dp).clip(CircleShape).background(todayColor), contentAlignment = Alignment.Center) {
+                Text(cloud.email?.firstOrNull()?.uppercase() ?: "🔍", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Your field guide", style = MaterialTheme.typography.headlineSmall)
+                Text(cloud.email ?: "Not linked to Google yet", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+            }
+        }
+        Panel {
+            Row {
+                BigStat("Day", "${Stats.dayNumber(state, today)}", Modifier.weight(1f))
+                BigStat("Streak", "${streak.days}", Modifier.weight(1f))
+                BigStat("Best", "$longest", Modifier.weight(1f))
+            }
+            WeekDots(Stats.week(days, today), todayColor, Modifier.fillMaxWidth())
+            Text(weekGoalLine(goal), style = MaterialTheme.typography.titleSmall, color = if (goal.met) todayColor else p.ink)
+            Text(
+                "A day counts when you file a field report, even a “not today”. One missed day a week is forgiven" +
+                    if (streak.restThisWeek && streak.days >= 2) ", and this week's has been used." else ".",
+                style = MaterialTheme.typography.bodySmall, color = p.faint,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatTile("Discovered", "${state.unlocked.size}", "of ${library.size}", Modifier.weight(1f))
+            StatTile("Seen in the wild", "${life.size}", "concepts", Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatTile("Field notes", "${state.liveEntries.size}", "written", Modifier.weight(1f))
+            StatTile(
+                "Predictions",
+                if (predictions.made == 0) "–" else "${predictions.right * 100 / predictions.made}%",
+                if (predictions.made == 0) "none yet" else "right · ${predictions.surprised} surprises",
+                Modifier.weight(1f),
+            )
+        }
+        MonthReviewCard(state, today, todayColor, nav)
+        CompareCard(state, today)
+        if (state.liveEntries.isNotEmpty()) {
+            Panel {
+                SectionLabel("How it shows up", "🔭")
+                val colors = listOf(Category.MEMORY, Category.SELF, Category.HABITS, Category.GROUPS).map { it.accent(p.dark) }
+                SplitBar(Mode.entries.mapIndexed { i, m -> (modes[m] ?: 0) to colors[i] })
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Mode.entries.forEachIndexed { i, m -> Legend("${m.emoji} ${m.short}", modes[m] ?: 0, colors[i]) }
+                }
+                val used = Stats.outcomes(state)
+                if (used.total > 0) {
+                    Text(
+                        "When you used a concept on purpose: ${used.worked} worked, ${used.mixed} mixed, ${used.backfired} backfired.",
+                        style = MaterialTheme.typography.bodyMedium, color = p.muted,
+                    )
+                }
+            }
+        }
+        if (life.size >= 3) {
+            Panel {
+                SectionLabel("Where you notice psychology", "🧭")
+                RadarChart(Stats.categoryCounts(state, library))
+            }
+            Panel {
+                SectionLabel("Most spotted", "🏆")
+                Stats.topConcepts(state).forEachIndexed { i, (id, n) ->
+                    val c = library[id] ?: return@forEachIndexed
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { nav.openConcept(id) }.padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text("${i + 1}", style = MaterialTheme.typography.titleMedium, color = p.faint)
+                        Emblem(c, Modifier.size(34.dp), plate = true)
+                        Text(c.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        Text("👀 $n", style = MaterialTheme.typography.labelLarge, color = c.category.accent(p.dark))
+                    }
+                }
+            }
+        }
+        Panel {
+            SectionLabel("Last 12 weeks", "🗓")
+            Heatmap(Stats.heatmap(state, today), today, todayColor)
+        }
+
+
+        Text("Settings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 10.dp))
+        // One row per topic, each opening its own sheet, instead of six long cards to scroll past.
+        Panel(padding = 10.dp) {
+            val s = state.settings
+            SheetRow("Notifications", notificationSummary(s.morningOn, s.morningMinute, s.eveningOn, s.eveningMinute, s.spotCheckOn)) {
+                onSheet(SettingsSheet.NOTIFICATIONS)
+            }
+            SheetRow("Weekly goal", if (s.weeklyGoal == 0) "Off" else "${s.weeklyGoal} days a week with a field report") { onSheet(SettingsSheet.GOAL) }
+            SheetRow("Focus areas", if (s.focus.isEmpty()) "Everything" else s.focus.sortedBy { it.ordinal }.joinToString(" · ") { it.short }) {
+                onSheet(SettingsSheet.FOCUS)
+            }
+            SheetRow("Appearance & guide", "${s.theme.label} · ${if (s.showAll) "showing every concept" else "undiscovered concepts sealed"}") {
+                onSheet(SettingsSheet.APPEARANCE)
+            }
+            SheetRow("Google account", cloud.email?.let { "Linked to $it" } ?: "Not linked: keep your journal safe") { onSheet(SettingsSheet.GOOGLE) }
+            SheetRow("Backup file", "Save everything to a file, or merge one back in") { onSheet(SettingsSheet.BACKUP) }
+            SheetRow("About the evidence", "Strength labels, and how the app makes ideas stick") { onSheet(SettingsSheet.ABOUT) }
+        }
+        Text(
+            "Mindfield ${BuildInfo.version(LocalContext.current)}",
+            style = MaterialTheme.typography.labelSmall, color = p.faint, modifier = Modifier.padding(horizontal = 6.dp),
+        )
+        Spacer(Modifier.size(20.dp))
+    }
+    val close = { onSheet(null) }
+    when (sheet) {
+        SettingsSheet.NOTIFICATIONS -> AppSheet("Notifications", close) { NotificationSettings(state) }
+        SettingsSheet.GOAL -> AppSheet("Weekly goal", close) { GoalSettings(state) }
+        SettingsSheet.FOCUS -> AppSheet("Focus areas", close) { FocusSettings(state) }
+        SettingsSheet.APPEARANCE -> AppSheet("Appearance & guide", close) { AppearanceSettings(state) }
+        SettingsSheet.GOOGLE -> AppSheet("Google account", close) { GoogleCard(cloud) }
+        SettingsSheet.BACKUP -> AppSheet("Backup file", close) { BackupCard() }
+        SettingsSheet.ABOUT -> AppSheet("About the evidence", close) { AboutCard() }
+    }
+}
+
+/** "3 of 5 days this week · 2 to go", "Goal met ✓ · 3 weeks running", or a plain count without a goal. */
+fun weekGoalLine(g: WeekGoal): String = when {
+    g.goal <= 0 -> if (g.daysThisWeek == 1) "1 day this week" else "${g.daysThisWeek} days this week"
+    g.met && g.weeksRunning >= 2 -> "Goal met ✓ · ${g.weeksRunning} weeks running"
+    g.met -> "Goal met ✓ · ${g.daysThisWeek} of ${g.goal} days this week"
+    else -> "${g.daysThisWeek} of ${g.goal} days this week · ${g.daysLeft} to go"
+}
+
+private fun notificationSummary(morningOn: Boolean, morning: Int, eveningOn: Boolean, evening: Int, spot: Boolean): String = buildList {
+    add(if (morningOn) "Morning ${Schedule.label(morning)}" else "No morning concept")
+    add(if (eveningOn) "evening ${Schedule.label(evening)}" else "no evening report")
+    if (spot) add("spot checks")
+}.joinToString(" · ")
+
+/** A month in the field, opening on last month in a month's first week (a fresh start), with ‹ ›. */
+@Composable
+private fun MonthReviewCard(state: AppState, today: LocalDate, color: Color, nav: Nav) {
+    val p = palette
+    val library = Store.library
+    val months = remember(state) { Progress.months(state, today) }
+    val first = Progress.defaultMonth(months, today) ?: return
+    var shownText by rememberSaveable { mutableStateOf(first.toString()) }
+    val shown = YearMonth.parse(shownText).takeIf { it in months } ?: first
+    val index = months.indexOf(shown)
+    val m = remember(state, shown) { Progress.month(state, library, shown, today, ZoneId.systemDefault()) } ?: return
+    val name = shown.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) + if (shown.year != today.year) " ${shown.year}" else ""
+    Panel {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                SectionLabel(if (m.inProgress) "This month so far" else "Month in review", "🗓")
+                Text(if (m.inProgress) "$name so far" else "$name in the field", style = MaterialTheme.typography.titleLarge)
+            }
+            // Older months to the left, newer to the right, like a calendar.
+            MonthArrow("‹", index < months.lastIndex) { shownText = months[index + 1].toString() }
+            MonthArrow("›", index > 0) { shownText = months[index - 1].toString() }
+        }
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("${m.reports}", style = MaterialTheme.typography.displaySmall, color = color)
+            Text(
+                "${if (m.reports == 1) "field report" else "field reports"} on ${m.daysLogged} of ${m.daysSoFar} days",
+                style = MaterialTheme.typography.bodyMedium, color = p.muted, modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+        m.previousReports?.let { before ->
+            if (!m.inProgress) {
+                val diff = m.reports - before
+                Text(
+                    when {
+                        diff > 0 -> "$diff more than the month before"
+                        diff < 0 -> "${-diff} fewer than the month before"
+                        else -> "The same as the month before"
+                    },
+                    style = MaterialTheme.typography.bodySmall, color = p.faint,
+                )
+            }
+        }
+        val stats = buildList {
+            add("Discovered" to "${m.discovered}" + if (m.mythsMet > 0) " · ${m.mythsMet} ${if (m.mythsMet == 1) "myth" else "myths"}" else "")
+            add("Seen in the wild" to "${m.sightings}")
+            if (m.predictions > 0) add("Predictions" to "${m.predictionsRight} of ${m.predictions} right")
+            m.topArea?.let { add("Noticed most" to "${Palettes.emoji(it)} ${it.short}") }
+        }
+        stats.chunked(2).forEach { pair ->
+            Row(Modifier.fillMaxWidth()) {
+                pair.forEach { (label, value) ->
+                    Column(Modifier.weight(1f)) {
+                        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = p.muted)
+                        Text(value, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+        m.topConcept?.let { library[it] }?.let { c ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { nav.openConcept(c.id) }.padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Emblem(c, Modifier.size(30.dp), plate = true)
+                Column(Modifier.weight(1f)) {
+                    Text("MOST SPOTTED", style = MaterialTheme.typography.labelSmall, color = p.muted)
+                    Text(c.title, style = MaterialTheme.typography.titleSmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthArrow(text: String, enabled: Boolean, onClick: () -> Unit) {
+    val p = palette
+    Text(
+        text,
+        Modifier.clip(CircleShape).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 12.dp, vertical = 4.dp),
+        style = MaterialTheme.typography.headlineSmall,
+        color = if (enabled) p.brand else p.faint.copy(alpha = 0.4f),
+    )
+}
+
+/** Your intuition against chance, and your consistency against what usually happens, with sources. */
+@Composable
+private fun CompareCard(state: AppState, today: LocalDate) {
+    val p = palette
+    val s = remember(state, today) { Progress.standing(state, Store.library, today) }
+    Panel {
+        SectionLabel("How you compare", "📏")
+        Text(Progress.predictionLine(s), style = MaterialTheme.typography.bodyLarge)
+        if (s.predicted >= 5) {
+            Text(
+                "Is psychology just common sense? People without psychology training, asked whether 27 famous findings would " +
+                    "replicate, were right ${Progress.LAYPEOPLE_REPLICATION_ACCURACY}% of the time where guessing gives 50%.",
+                style = MaterialTheme.typography.bodySmall, color = p.muted,
+            )
+            Text("Hoogeveen, Sarafoglou & Wagenmakers · Advances in Methods and Practices in Psychological Science · 2020", style = MaterialTheme.typography.labelSmall, color = p.faint)
+        }
+        Text(Progress.consistencyLine(s), style = MaterialTheme.typography.bodyLarge)
+        Text("Baumel et al. · Journal of Medical Internet Research · 2019", style = MaterialTheme.typography.labelSmall, color = p.faint)
+    }
+}
+
+/** Days a week with a field report you mean to reach; the streak forgives one missed day a week either way. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GoalSettings(state: AppState) {
+    val p = palette
+    Panel {
+        Text(
+            "Days a week you mean to file a field report, even a “not today”. A weekly goal leaves room for a busy day, " +
+                "where a daily one is all-or-nothing.",
+            style = MaterialTheme.typography.bodySmall, color = p.muted,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(0, 3, 4, 5, 6, 7).forEach { n ->
+                ChoiceChip(if (n == 0) "Off" else "$n days", state.settings.weeklyGoal == n, p.brand) {
+                    Store.settings { it.copy(weeklyGoal = n) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BigStat(label: String, value: String, modifier: Modifier) {
+    Column(modifier) {
+        Text(value, style = MaterialTheme.typography.displaySmall)
+        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = palette.muted)
+    }
+}
+
+@Composable
+private fun StatTile(label: String, value: String, sub: String, modifier: Modifier) {
+    val p = palette
+    Panel(modifier, padding = 16.dp) {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = p.muted)
+        Text(value, style = MaterialTheme.typography.headlineMedium)
+        Text(sub, style = MaterialTheme.typography.bodySmall, color = p.faint)
+    }
+}
+
+@Composable
+private fun SettingRow(title: String, subtitle: String?, checked: Boolean?, onClick: () -> Unit) {
+    val p = palette
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(role = if (checked != null) Role.Switch else Role.Button, onClick = onClick).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = p.muted)
+        }
+        if (checked != null) {
+            Switch(
+                checked = checked,
+                onCheckedChange = { onClick() },
+                colors = SwitchDefaults.colors(checkedTrackColor = p.brand, checkedThumbColor = if (p.dark) p.bg else Color.White),
+            )
+        }
+    }
+}
+
+private fun pickTime(context: Context, minute: Int, onPick: (Int) -> Unit) {
+    TimePickerDialog(context, { _, h, m -> onPick(h * 60 + m) }, minute / 60, minute % 60, false).show()
+}
+
+@Composable
+private fun NotificationSettings(state: AppState) {
+    val p = palette
+    val context = LocalContext.current
+    val s = state.settings
+    var allowed by remember { mutableStateOf(Notifier.allowed(context)) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed = it }
+    Panel {
+        SectionLabel("Notifications", "🔔")
+        if (!allowed) {
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.bad.copy(alpha = 0.10f)).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Notifications are off, so the daily concept can't reach you.", style = MaterialTheme.typography.bodyMedium)
+                SoftButton("Allow notifications", color = p.bad) {
+                    if (Build.VERSION.SDK_INT >= 33) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+        SettingRow("Morning concept", if (s.morningOn) "At ${Schedule.label(s.morningMinute)} · tap to change" else "Off", s.morningOn) {
+            Store.settings { it.copy(morningOn = !it.morningOn) }
+        }
+        if (s.morningOn) SoftButton("Change morning time (${Schedule.label(s.morningMinute)})") {
+            pickTime(context, s.morningMinute) { m -> Store.settings { it.copy(morningMinute = m) } }
+        }
+        SettingRow("Evening field report", if (s.eveningOn) "At ${Schedule.label(s.eveningMinute)}; log in one tap from the notification" else "Off", s.eveningOn) {
+            Store.settings { it.copy(eveningOn = !it.eveningOn) }
+        }
+        if (s.eveningOn) SoftButton("Change evening time (${Schedule.label(s.eveningMinute)})") {
+            pickTime(context, s.eveningMinute) { m -> Store.settings { it.copy(eveningMinute = m) } }
+        }
+        var unrestricted by remember { mutableStateOf(Health.ignoringBatteryOptimizations(context)) }
+        androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+            unrestricted = Health.ignoringBatteryOptimizations(context)
+            allowed = Notifier.allowed(context)
+            onPauseOrDispose { }
+        }
+        SettingRow(
+            "Run in the background",
+            if (unrestricted) "Allowed ✓ Reminders arrive on time." else "Battery optimisation is on. On some phones (Xiaomi, OnePlus, Samsung, Oppo, Vivo…) it stops daily reminders. Tap to allow.",
+            null,
+        ) { if (!unrestricted) Health.requestUnrestricted(context) }
+        SettingRow(
+            "Surprise spot checks",
+            "A nudge at a random time between noon and 6 pm: seen it yet? Skipped once you've logged.",
+            s.spotCheckOn,
+        ) { Store.settings { it.copy(spotCheckOn = !it.spotCheckOn) } }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FocusSettings(state: AppState) {
+    val p = palette
+    val focus = state.settings.focus
+    Panel {
+        SectionLabel("Focus areas", "🎯")
+        Text(
+            "Pick areas to see more of: two days in three come from them, the third keeps some variety. Leave all off to explore everything. Changes apply from tomorrow.",
+            style = MaterialTheme.typography.bodySmall, color = p.muted,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Category.entries.forEach { c ->
+                ChoiceChip("${Palettes.emoji(c)} ${c.short}", c in focus, c.accent(p.dark)) {
+                    Store.settings { it.copy(focus = if (c in it.focus) it.focus - c else it.focus + c) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppearanceSettings(state: AppState) {
+    val p = palette
+    Panel {
+        SectionLabel("Appearance & guide", "🎨")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThemeMode.entries.forEach { t -> ChoiceChip(t.label, state.settings.theme == t, p.brand) { Store.settings { it.copy(theme = t) } } }
+        }
+        SettingRow(
+            "Show undiscovered concepts",
+            "Off keeps the guide a collection you fill day by day. On shows everything (spoilers).",
+            state.settings.showAll,
+        ) { Store.settings { it.copy(showAll = !it.showAll) } }
+    }
+}
+
+/** Linking to Google, exactly like the Meditation Timer: a private backup in your Drive. */
+@Composable
+fun GoogleCard(cloud: CloudState, compact: Boolean = false) {
+    val p = palette
+    val context = LocalContext.current
+    val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        GoogleSync.onConsentResult(context, result.data)
+    }
+    Panel {
+        SectionLabel("Google account", "☁️")
+        if (cloud.email != null) {
+            Text("Linked to ${cloud.email}", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "Your journal, predictions, review schedule and settings are backed up to a private app folder in your Google Drive after every change. Only this app can see it.",
+                style = MaterialTheme.typography.bodySmall, color = p.muted,
+            )
+            if (cloud.lastSyncMs > 0) {
+                val t = java.time.Instant.ofEpochMilli(cloud.lastSyncMs).atZone(java.time.ZoneId.systemDefault())
+                Text("Last backed up ${t.format(DateTimeFormatter.ofPattern("d MMM, h:mm a", Locale.getDefault()))}", style = MaterialTheme.typography.bodySmall, color = p.faint)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SoftButton(if (cloud.busy) "Syncing…" else "Sync now") { if (!cloud.busy) GoogleSync.syncNow(context) }
+                SoftButton("Unlink", color = p.muted) { GoogleSync.disconnect(context) }
+            }
+            if (cloud.problem && !cloud.busy) {
+                PrimaryButton("Sign in again", p.brand) { GoogleSync.connect(context) { consent.launch(it) } }
+            }
+        } else {
+            Text(
+                "Link your Google account to keep your field journal safe and bring it back on a new phone. It's stored in a hidden app folder in your Drive that only this app can read.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            PrimaryButton(if (cloud.busy) "Connecting…" else "Connect Google account", p.brand, enabled = !cloud.busy) {
+                GoogleSync.connect(context) { consent.launch(it) }
+            }
+        }
+        cloud.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = if (cloud.needsSetup) p.bad else p.muted) }
+        if (cloud.needsSetup && !compact) SetupHelp()
+    }
+}
+
+/** The one-time Google Cloud step, with the exact values to paste. */
+@Composable
+private fun SetupHelp() {
+    val p = palette
+    val context = LocalContext.current
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.raised).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("One-time setup (2 minutes)", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "In the same Google Cloud project you used for the Meditation Timer: APIs & Services → Credentials → Create credentials → OAuth client ID → Android. Use these values, then tap Connect again:",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        CopyRow("Package name", GoogleSync.PACKAGE, context)
+        CopyRow("SHA-1", GoogleSync.SHA1, context)
+        Text(
+            "Then, so Google doesn't ask you to sign in again every 7 days: OAuth consent screen → Publish app → In production. No review is needed, because the app only asks for its own hidden Drive folder (a non-sensitive permission).",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text("Drive API and the consent screen are already set up from the Meditation Timer.", style = MaterialTheme.typography.bodySmall, color = p.muted)
+    }
+}
+
+@Composable
+private fun CopyRow(label: String, value: String, context: Context) {
+    val p = palette
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(p.surface).clickable {
+            context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(label, value))
+        }.padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = p.muted)
+            Text(value, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.5.sp))
+        }
+        Text("Copy", style = MaterialTheme.typography.labelLarge, color = p.brand)
+    }
+}
+
+/** A backup file you keep yourself, for when Google isn't an option. */
+@Composable
+private fun BackupCard() {
+    val p = palette
+    val context = LocalContext.current
+    var message by remember { mutableStateOf<String?>(null) }
+    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+        if (uri != null) {
+            message = runCatching {
+                context.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { it.write(Codec.encode(Store.state.value, System.currentTimeMillis())) }
+                "Saved a full backup."
+            }.getOrElse { "Couldn't save: ${it.message}" }
+        }
+    }
+    val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            message = runCatching {
+                val text = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
+                val other = Codec.decode(text)
+                val before = Store.state.value
+                Store.update { Sync.merge(it, other) }
+                val n = Sync.restoredEntries(before, Store.state.value)
+                if (n == 0) "Merged. Nothing new in that file." else "Restored $n field ${if (n == 1) "note" else "notes"}."
+            }.getOrElse { "That file couldn't be read: ${it.message}" }
+        }
+    }
+    Panel {
+        SectionLabel("Backup file", "💾")
+        Text(
+            "Save everything to a file you choose, or merge one back in. Restoring never deletes what's already here. Android's own phone backup also keeps a copy of the app's data in your Google account, if backup is on in your phone's settings.",
+            style = MaterialTheme.typography.bodySmall, color = p.muted,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            SoftButton("Save backup") { export.launch("mindfield-backup-${LocalDate.now()}.json") }
+            SoftButton("Restore") { import.launch(arrayOf("application/json", "text/plain", "*/*")) }
+        }
+        message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = p.muted) }
+    }
+}
+
+@Composable
+private fun AboutCard() {
+    val p = palette
+    var open by remember { mutableStateOf(false) }
+    Panel(onClick = { open = !open }) {
+        SectionLabel("About the evidence", "🧪")
+        Text("Why every concept has a strength label", style = MaterialTheme.typography.titleSmall)
+        Evidence.entries.forEach { e ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                EvidenceBadge(e)
+                Text(e.meaning, style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f))
+            }
+        }
+        if (open) {
+            Text(
+                "Psychology's replication crisis showed that many famous findings were smaller than claimed, or not real. Mindfield labels each concept by how well it has held up in large, repeated studies, and teaches the myths as myths.\n\n" +
+                    "How the app is built to make ideas stick:\n" +
+                    "• Predict first: guessing before you learn improves memory (the pretesting effect).\n" +
+                    "• Missions with if-then plans: deciding when and where makes action far more likely.\n" +
+                    "• Field reports: connecting an idea to your own life is one of the strongest memory aids (the self-reference effect).\n" +
+                    "• Spaced review: questions return after 1, 3, 7, 16, 35 and 90 days.\n" +
+                    "• Interleaving: the nine areas take turns, so you learn to tell similar ideas apart.\n\n" +
+                    "Every concept lists its sources. ${Store.library.size} concepts; about five months of daily discovery, then the app brings back the ones you've spotted least.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        } else {
+            Text("Tap for how the app is designed to make ideas stick.", style = MaterialTheme.typography.bodySmall, color = p.brand)
+        }
+        Text("Mindfield ${BuildInfo.version(LocalContext.current)}", style = MaterialTheme.typography.labelSmall, color = p.faint)
+    }
+}
+
+object BuildInfo {
+    fun version(context: Context): String =
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""
+}

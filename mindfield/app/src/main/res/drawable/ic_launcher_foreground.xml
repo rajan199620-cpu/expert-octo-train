@@ -1,0 +1,31 @@
+<!-- Launcher icon: a field-guide lens over a spark, in warm paper and gold on deep indigo. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Lens rim -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFF5EFE4"
+        android:strokeWidth="5"
+        android:pathData="M50,30a18,18 0,1 1,0 36a18,18 0,1 1,0 -36z" />
+    <!-- Handle -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFF5EFE4"
+        android:strokeLineCap="round"
+        android:strokeWidth="7"
+        android:pathData="M63,61L75,73" />
+    <!-- Spark inside the lens -->
+    <path
+        android:fillColor="#FFF2C46A"
+        android:pathData="M50,38l3,8l8,3l-8,3l-3,8l-3,-8l-8,-3l8,-3z" />
+    <!-- Two small orbiting dots: noticing -->
+    <path
+        android:fillColor="#FFA3ABF7"
+        android:pathData="M33,36a2.6,2.6 0,1 1,0 5.2a2.6,2.6 0,1 1,0 -5.2z" />
+    <path
+        android:fillColor="#FFF29A86"
+        android:pathData="M70,34a2,2 0,1 1,0 4a2,2 0,1 1,0 -4z" />
+</vector>
