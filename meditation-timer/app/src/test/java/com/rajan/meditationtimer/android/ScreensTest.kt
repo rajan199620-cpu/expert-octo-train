@@ -25,6 +25,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -518,8 +520,9 @@ class ScreensTest {
         shot("07-history-overview")
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("calmer after a sit", substring = true))
         shot("08-history-overview-bottom")
-        // A highlight opens Trends.
-        compose.onNodeWithText("calmer after a sit", substring = true).performClick()
+        // A highlight opens Trends. (Its click action directly: below the comparison card, the
+        // tile can sit at the bottom edge where a tap at its centre lands under the tab bar.)
+        compose.onNodeWithText("calmer after a sit", substring = true).performSemanticsAction(SemanticsActions.OnClick)
         compose.onNodeWithText("What a sit changes").assertExists()
         shot("09-history-trends")
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Catching the wandering mind"))
