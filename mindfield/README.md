@@ -103,7 +103,8 @@ research behind it:
 You → Settings → **Google account → Connect**. Your journal, predictions, review schedule and
 settings are backed up to the hidden app-data folder in your Google Drive (`drive.appdata`,
 which can't see the rest of your Drive), and restored automatically on a new phone or after a
-reinstall. Every change uploads a few seconds later.
+reinstall. Every change uploads a few seconds later, after first merging in whatever is
+already in Drive, so two phones on one account never wipe each other's notes.
 
 **One-time step** (2 minutes), because Google identifies apps by package name and signing key:
 in the same Google Cloud project you set up for the Meditation Timer, go to
@@ -124,6 +125,19 @@ that happens). `drive.appdata` is a non-sensitive scope, so publishing needs no 
 Without Google: You → Settings → **Backup file** saves or merges a JSON file you keep yourself.
 Restores and syncs always merge, never delete: two phones that sync at different times end up
 with the same journal (merging is tested to be order-independent).
+
+## Reminders and Google Play
+
+- **On time where Android allows it without asking:** exact alarms on Android 12 and older.
+  On newer phones the reminders are inexact and may arrive a few minutes late.
+- **Why not exact everywhere:** Google Play allows the exact-alarm permission only for
+  alarm-clock and calendar apps.
+- **Battery saving:** if two mornings pass without a notification, a banner opens the
+  phone's battery-optimisation list, where Mindfield can be set to "Don't optimise". Play
+  allows the one-tap exemption prompt only for apps such as navigation and calls, so the app
+  doesn't request it.
+- **Android version:** the app targets Android 16 (API 36), which Play has required for new
+  apps and updates since 31 August 2026.
 
 ## Building and testing
 

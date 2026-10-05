@@ -38,9 +38,10 @@ object Effects {
 
 /**
  * Three daily alarms: the morning concept, the evening field report and (optional) a surprise
- * mid-day spot check. Inexact alarms that may run a few minutes late, which needs no special
- * permission and is kind to the battery. Each one re-arms itself, and boot, app updates and
- * clock or time-zone changes re-arm them all.
+ * mid-day spot check. Exact only where Android grants that by default (Android 12 and older);
+ * elsewhere inexact alarms that may run a few minutes late, which need no special permission and
+ * are kind to the battery. Each one re-arms itself, and boot, app updates and clock or time-zone
+ * changes re-arm them all.
  */
 object Scheduler {
     const val ACTION_MORNING = "com.rajan.mindfield.MORNING"
@@ -65,8 +66,8 @@ object Scheduler {
         alarms.cancel(pending)
         if (!on) return
         val ms = at().toInstant().toEpochMilli()
-        // On time when Android allows it (it does for this app unless the user revokes it);
-        // otherwise a few minutes late is still fine for a nudge.
+        // On time where Android allows it without asking (Android 12 and older); otherwise a few
+        // minutes late is still fine for a nudge.
         val exact = Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms()
         val set = runCatching {
             if (exact) alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pending)

@@ -212,6 +212,8 @@ private fun Root(
     val state by Store.state.collectAsStateWithLifecycle()
     val todayConcept = state.assignments[today]?.conceptId?.let { Store.library[it] }
     val tint = todayConcept?.category?.accent(p.dark) ?: p.brand
+    // Back from Guide, Review, Journal or You goes to Today, the start screen, rather than out of the app.
+    BackHandler(enabled = tab != Tab.TODAY && openConcept == null && logRequest == null) { nav.tab(Tab.TODAY) }
     BackHandler(enabled = openConcept != null && logRequest == null) { onCloseConcept() }
     BackHandler(enabled = logRequest != null) { onCloseLog() }
 

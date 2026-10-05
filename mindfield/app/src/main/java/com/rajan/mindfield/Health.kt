@@ -1,6 +1,5 @@
 package com.rajan.mindfield
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -51,13 +50,12 @@ object Health {
         context.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(context.packageName) == true
 
     /**
-     * Asks Android to let Mindfield run its alarms in the background. Falls back to the battery
-     * settings list, then to the app's own settings page.
+     * Opens the phone's battery-optimisation list, where Mindfield can be set to "Don't optimise".
+     * Falls back to the app's own settings page. (Google Play allows the one-tap exemption prompt
+     * only for apps such as navigation and calls, so the list it is.)
      */
-    @SuppressLint("BatteryLife") // A sideloaded reminder app; nothing else keeps alarms alive on strict phones.
-    fun requestUnrestricted(context: Context) {
+    fun openBatterySettings(context: Context) {
         val tries = listOf(
-            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")),
             Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
         )

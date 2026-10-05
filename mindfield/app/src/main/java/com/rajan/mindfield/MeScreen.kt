@@ -427,9 +427,9 @@ private fun NotificationSettings(state: AppState) {
         }
         SettingRow(
             "Run in the background",
-            if (unrestricted) "Allowed ✓ Reminders arrive on time." else "Battery optimisation is on. On some phones (Xiaomi, OnePlus, Samsung, Oppo, Vivo…) it stops daily reminders. Tap to allow.",
+            if (unrestricted) "Allowed ✓ Battery saving won't stop your reminders." else "Battery optimisation is on. On some phones (Xiaomi, OnePlus, Samsung, Oppo, Vivo…) it stops daily reminders. Tap, find Mindfield and choose \u201cDon't optimise\u201d.",
             null,
-        ) { if (!unrestricted) Health.requestUnrestricted(context) }
+        ) { if (!unrestricted) Health.openBatterySettings(context) }
         SettingRow(
             "Surprise spot checks",
             "A nudge at a random time between noon and 6 pm: seen it yet? Skipped once you've logged.",

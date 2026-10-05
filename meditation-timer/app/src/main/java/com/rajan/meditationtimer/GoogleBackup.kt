@@ -38,7 +38,8 @@ data class CloudState(
  * drive.appdata permission: the app never sees the rest of the Drive.
  *
  * Connecting downloads any earlier backup and merges it in, so a reinstall or a new phone is
- * restored with one tap; after that every change is uploaded a few seconds later.
+ * restored with one tap; after that every change is uploaded a few seconds later, merged with
+ * whatever another phone put there first.
  */
 object GoogleBackup {
     private const val SCOPE = "https://www.googleapis.com/auth/drive.appdata"
@@ -116,7 +117,9 @@ object GoogleBackup {
                     .addOnSuccessListener { result ->
                         val token = result.accessToken
                         if (result.hasResolution() || token == null) needsReconnect()
-                        else worker.execute { runCatching { upload(app, token) }.onSuccess { synced(app, null) }.onFailure { fail(it) } }
+                        // Merge Drive's copy in first: another phone may have uploaded since, and a
+                        // plain upload would wipe its sits from the backup.
+                        else worker.execute { runCatching { pullMergePush(app, token) }.onSuccess { synced(app, null) }.onFailure { fail(it) } }
                     }
                     .addOnFailureListener { fail(it) }
             }, UPLOAD_DELAY_SEC, TimeUnit.SECONDS)
@@ -133,26 +136,34 @@ object GoogleBackup {
         val token = result.accessToken ?: return fail(IllegalStateException("Google didn't grant access"))
         worker.execute {
             runCatching {
-                syncing.set(true)
-                try {
-                    val email = fetchEmail(token)
-                    val log = SessionLog.get(app)
-                    val wasEmpty = log.records.value.isEmpty()
-                    var restored = 0
-                    findFile(token)?.let { id ->
-                        val text = http("GET", "$API/files/$id?alt=media", token)
-                        restored = log.merge(History.fromCsv(text, ZoneId.systemDefault()))
-                        // A fresh install also gets its usual-sit settings back.
-                        if (wasEmpty) History.settingsFrom(text)?.let { Prefs(app).importSettings(it) }
-                    }
-                    upload(app, token)
-                    email to restored
-                } finally {
-                    syncing.set(false)
-                }
+                val email = fetchEmail(token)
+                email to pullMergePush(app, token)
             }.onSuccess { (email, restored) ->
                 synced(app, email, if (restored > 0) "Restored $restored ${if (restored == 1) "sit" else "sits"} from Google Drive" else null)
             }.onFailure { fail(it) }
+        }
+    }
+
+    /**
+     * Downloads Drive's copy, merges it in and uploads the result, so every upload carries every
+     * sit any phone has backed up. Returns how many sits came from Drive.
+     */
+    private fun pullMergePush(app: Context, token: String): Int {
+        syncing.set(true)
+        try {
+            val log = SessionLog.get(app)
+            val wasEmpty = log.records.value.isEmpty()
+            var restored = 0
+            findFile(token)?.let { id ->
+                val text = http("GET", "$API/files/$id?alt=media", token)
+                restored = log.merge(History.fromCsv(text, ZoneId.systemDefault()))
+                // A fresh install also gets its usual-sit settings back.
+                if (wasEmpty) History.settingsFrom(text)?.let { Prefs(app).importSettings(it) }
+            }
+            upload(app, token)
+            return restored
+        } finally {
+            syncing.set(false)
         }
     }
 

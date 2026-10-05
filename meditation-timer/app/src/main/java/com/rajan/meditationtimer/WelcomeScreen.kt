@@ -135,7 +135,13 @@ fun WelcomeScreen(prefs: Prefs, onDone: (beginFirstSit: Boolean) -> Unit) {
                                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                                     PackageManager.PERMISSION_GRANTED
-                                if (needsPermission) askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS) else step = 2
+                                if (needsPermission) {
+                                    // Asked here, so the first sit doesn't ask again.
+                                    prefs.sitNotificationsAsked = true
+                                    askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    step = 2
+                                }
                             }
                         }
                     }

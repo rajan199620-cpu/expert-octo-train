@@ -120,7 +120,13 @@ fun TimerTab(
     val today = LocalDate.now()
     val memory = remember(records, today) { Recap.onThisDay(records, ZoneId.systemDefault(), today) }
     val recapReady = remember(records, today) { Recap.recapReady(records, ZoneId.systemDefault(), today) }
-    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    // The notification question is asked once, before the first sit starts rather than over its
+    // opening breaths; the answer, either way, starts the sit.
+    var startAfterAnswer by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        startAfterAnswer?.invoke()
+        startAfterAnswer = null
+    }
     val restore = rememberRestoreAction()
     val settingsVersion by Prefs.version.collectAsStateWithLifecycle()
 
@@ -139,17 +145,23 @@ fun TimerTab(
                 prefs, streak, hasHistory = records.isNotEmpty(), memory, recapReady, onTestBell, onHistory, onRestore = restore, onPrinciples,
                 onWelcome, autoBegin, onAutoBegin,
             ) { config, volume, mode, dnd, before ->
-                // Only for the lock-screen countdown; the session runs either way.
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                val start = {
+                    SessionRepository.pendingBefore = before
+                    SessionRepository.startCounting(prefs.countDistractions)
+                    MeditationService.start(context, config, volume, mode, dnd)
+                    SitWidget.refresh(context)
+                }
+                // Only for the lock-screen countdown and its Pause and End buttons; the sit runs either way.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !prefs.sitNotificationsAsked &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                     PackageManager.PERMISSION_GRANTED
                 ) {
+                    prefs.sitNotificationsAsked = true
+                    startAfterAnswer = start
                     askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    start()
                 }
-                SessionRepository.pendingBefore = before
-                SessionRepository.startCounting(prefs.countDistractions)
-                MeditationService.start(context, config, volume, mode, dnd)
-                SitWidget.refresh(context)
             } }
             is SessionState.Running -> RunningScreen(state)
             is SessionState.Finished -> FinishedScreen(
@@ -243,7 +255,9 @@ private fun SetupScreen(
         }
 
         // After an update (which currently needs a reinstall), one tap brings the history back.
-        if (!hasHistory && AutoBackup.supported) {
+        // Someone new to the app has nothing to restore, so "Not now" puts it away for good.
+        var restoreHidden by remember { mutableStateOf(prefs.restoreHintHidden) }
+        if (!hasHistory && AutoBackup.supported && !restoreHidden) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Text("Updated or reinstalled the app?", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -251,7 +265,12 @@ private fun SetupScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                TextButton(onClick = onRestore) { Text("Restore history") }
+                Row {
+                    TextButton(onClick = onRestore) { Text("Restore history") }
+                    TextButton(onClick = { restoreHidden = true; prefs.restoreHintHidden = true }) {
+                        Text("Not now", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
 
@@ -448,7 +467,7 @@ private fun PracticeTools(prefs: Prefs) {
                         { _, hour, minute -> saveReminder(reminder.copy(minuteOfDay = hour * 60 + minute)) },
                         reminder.minuteOfDay / 60,
                         reminder.minuteOfDay % 60,
-                        false,
+                        android.text.format.DateFormat.is24HourFormat(context),
                     ).show()
                 }) { Text(reminder.timeLabel) }
             }

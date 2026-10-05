@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.rajan.meditationtimer"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.rajan.meditationtimer"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         // Every CI build gets a higher version so Android installs it as an update over the last one.
         val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionCode = build

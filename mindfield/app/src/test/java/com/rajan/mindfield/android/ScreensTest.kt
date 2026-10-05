@@ -27,6 +27,7 @@ import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.ThemeMode
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -215,6 +216,34 @@ class ScreensTest {
         compose.onNodeWithText("Done").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Connect Google account").assertDoesNotExist()
+    }
+
+    private fun back() {
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `back goes to Today from another tab, and closes a concept page first`() {
+        Seed.weeks(10)
+        launch()
+        tab("Journal")
+        compose.onNodeWithText("Field journal").assertExists()
+        back()
+        compose.onNodeWithText("Field journal").assertDoesNotExist()
+        compose.onNodeWithText("in the field", substring = true).assertExists()
+        // A concept page opened from the Guide closes first; the next Back goes to Today.
+        tab("Guide")
+        val c = Store.library[Store.state.value.assignments.toSortedMap().values.first().conceptId]!!
+        compose.onAllNodesWithText(c.title).onFirst().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("←  Back").assertExists()
+        back()
+        compose.onNodeWithText("←  Back").assertDoesNotExist()
+        compose.onNodeWithText("Field guide").assertExists()
+        back()
+        compose.onNodeWithText("in the field", substring = true).assertExists()
+        scenario!!.onActivity { assertFalse("Back on Today is the only way out", it.isFinishing) }
     }
 
     private fun openSheet(row: String) {

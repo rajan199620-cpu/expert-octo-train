@@ -222,6 +222,8 @@ private fun App(
     var welcome by rememberSaveable {
         mutableStateOf(Welcome.needed(prefs.welcomeDone, prefs.everSaved, SessionLog.get(context).records.value.isNotEmpty()))
     }
+    // Back from Breathe, Mala or History goes to Sit, the start screen, rather than out of the app.
+    BackHandler(enabled = !inSession && !welcome && !reading && !showPrinciples && tab != Tab.SIT) { onTab(Tab.SIT) }
     var beginFirstSit by rememberSaveable { mutableStateOf(false) }
     // A sit started some other way (the launcher shortcut) means the welcome isn't needed.
     LaunchedEffect(inSession) {

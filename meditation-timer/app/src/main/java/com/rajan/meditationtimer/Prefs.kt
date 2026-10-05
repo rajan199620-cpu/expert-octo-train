@@ -5,7 +5,8 @@ import androidx.core.content.edit
 
 /** Remembers the last-used settings so the next sit is one tap away. */
 class Prefs(context: Context) {
-    private val sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private val app = context.applicationContext
+    private val sp = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     val timerConfig: SessionConfig
         get() = SessionConfig(
@@ -67,13 +68,16 @@ class Prefs(context: Context) {
         for (key in listOf(KEY_ALERT, KEY_BREATH_PATTERN)) sp.getString(key, null)?.let { put(key, it) }
     }
 
-    /** Restores settings from a backup; unknown or malformed values are ignored. */
+    /**
+     * Restores settings from a backup; unknown, malformed or out-of-range values are ignored, so
+     * a damaged file can't set a 0-minute sit or a 0-bead mala. A restored reminder is armed.
+     */
     fun importSettings(settings: Map<String, String>) {
         sp.edit {
             for ((key, value) in settings) {
                 when (key) {
                     KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET ->
-                        value.toIntOrNull()?.let { putInt(key, it) }
+                        value.toIntOrNull()?.takeIf { it in IMPORT_RANGES.getValue(key) }?.let { putInt(key, it) }
                     KEY_WEEKLY_GOAL -> value.toIntOrNull()?.takeIf { it in 0..7 }?.let { putInt(key, it) }
                     KEY_SETTLE -> value.toIntOrNull()?.takeIf { it in Settle.CHOICES_SEC }?.let { putInt(key, it) }
                     KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON, KEY_DAILY_READING ->
@@ -82,11 +86,15 @@ class Prefs(context: Context) {
                     KEY_REMINDER_CUE -> runCatching { java.net.URLDecoder.decode(value, "UTF-8") }.getOrNull()?.let { putString(key, it.limitText(60)) }
                     KEY_VOLUME, KEY_AMBIENCE_VOLUME -> value.toFloatOrNull()?.takeIf { !it.isNaN() }?.let { putFloat(key, it.coerceIn(0f, 1f)) }
                     KEY_AMBIENCE -> Ambience.entries.firstOrNull { it.name == value && it != Ambience.CUSTOM }?.let { putString(key, it.name) }
-                    KEY_ALERT, KEY_BREATH_PATTERN -> putString(key, value)
+                    KEY_ALERT -> AlertMode.entries.firstOrNull { it.name == value }?.let { putString(key, it.name) }
+                    KEY_BREATH_PATTERN -> BreathPattern.ALL.firstOrNull { it.name == value }?.let { putString(key, it.name) }
                 }
             }
         }
         version.value++
+        // The reminder only fires once its alarm is set, and the widget shows the usual length.
+        ReminderScheduler.schedule(app)
+        SitWidget.refresh(app)
     }
 
     var breathPattern: String
@@ -132,6 +140,16 @@ class Prefs(context: Context) {
             putInt(KEY_REMINDER_TIME, value.minuteOfDay)
             putString(KEY_REMINDER_CUE, value.cue)
         }
+
+    /** "Not now" on the restore-history card: someone new to the app has nothing to restore. */
+    var restoreHintHidden: Boolean
+        get() = sp.getBoolean(KEY_RESTORE_HINT_HIDDEN, false)
+        set(value) = sp.edit { putBoolean(KEY_RESTORE_HINT_HIDDEN, value) }
+
+    /** Set once the notification question has been asked on the way into a sit, so it's asked once. */
+    var sitNotificationsAsked: Boolean
+        get() = sp.getBoolean(KEY_SIT_NOTIFICATIONS_ASKED, false)
+        set(value) = sp.edit { putBoolean(KEY_SIT_NOTIFICATIONS_ASKED, value) }
 
     /** Set once the first-run welcome is finished or skipped; it never shows by itself again. */
     var welcomeDone: Boolean
@@ -190,7 +208,19 @@ class Prefs(context: Context) {
         /** Bumped when settings are restored, so open screens reload them. */
         val version = kotlinx.coroutines.flow.MutableStateFlow(0)
 
+        /** What a restored number may be: the app's own choices, with room to spare, never 0 minutes. */
+        private val IMPORT_RANGES = mapOf(
+            KEY_DURATION to 1..180,
+            KEY_OPENING to 0..300,
+            KEY_CLOSING to 0..600,
+            KEY_INTERVAL to 0..60,
+            KEY_BREATH_MINUTES to 1..60,
+            KEY_MALA_TARGET to 1..1008,
+        )
+
         private const val KEY_WEEKLY_GOAL = "weekly_goal"
+        private const val KEY_SIT_NOTIFICATIONS_ASKED = "sit_notifications_asked"
+        private const val KEY_RESTORE_HINT_HIDDEN = "restore_hint_hidden"
         private const val KEY_WELCOME_DONE = "welcome_done"
         private const val KEY_SETTLE = "settle_sec"
         private const val KEY_DAILY_READING = "daily_reading"

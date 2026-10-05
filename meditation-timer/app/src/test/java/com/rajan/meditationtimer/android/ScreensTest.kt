@@ -1,6 +1,7 @@
 package com.rajan.meditationtimer
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.app.Application
 import android.graphics.Color
 import android.widget.FrameLayout
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.assertIsNotSelected
@@ -78,6 +80,8 @@ class ScreensTest {
         // Most tests start on the Sit screen; the welcome's and the reading's own tests undo these.
         Prefs(app).welcomeDone = true
         Prefs(app).readingSeenOn = LocalDate.now().toString()
+        // Notifications allowed, as on most phones; the test of the question itself denies them.
+        shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         SessionRepository.reset()
         SessionRepository.startCounting(false)
     }
@@ -160,6 +164,68 @@ class ScreensTest {
         assertTrue(SessionRepository.counting)
         val started = shadowOf(app).nextStartedService
         assertEquals(MeditationService::class.java.name, started.component?.className)
+    }
+
+    private fun back() {
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `back from another tab returns to Sit, and back during a breathing exercise stops it`() {
+        launch()
+        compose.onAllNodesWithText("History").onFirst().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Begin  ·", substring = true).assertDoesNotExist()
+        back()
+        compose.onNodeWithText("Begin  ·", substring = true).assertExists()
+        // Breathe: Back during an exercise stops it and stays on Breathe, like the Stop button.
+        compose.onAllNodesWithText("Breathe").onLast().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Start").performScrollTo().performClick()
+        // The exercise draws every frame, so the clock is moved by hand while it runs.
+        compose.mainClock.autoAdvance = false
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithText("Stop").assertExists()
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithText("Stop").assertDoesNotExist()
+        compose.onNodeWithText("Start").assertExists()
+        compose.mainClock.autoAdvance = true
+        // And from Breathe itself, Back goes to Sit rather than out of the app.
+        back()
+        compose.onNodeWithText("Begin  ·", substring = true).assertExists()
+        scenario!!.onActivity { assertFalse("Back on Sit is the only way out", it.isFinishing) }
+    }
+
+    @Test
+    fun `the notification question comes before the first sit, never over it, and only once`() {
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        Prefs(app).checkIns = false
+        launch()
+        compose.onNodeWithText("Begin  ·", substring = true).performClick()
+        compose.waitForIdle()
+        // Asked first: the sit waits for the answer instead of starting under the dialog.
+        assertNull(shadowOf(app).nextStartedService)
+        var asked: Any? = null
+        scenario!!.onActivity { activity ->
+            val request = shadowOf(activity).lastRequestedPermission
+            asked = request
+            assertEquals(listOf(Manifest.permission.POST_NOTIFICATIONS), request.requestedPermissions.toList())
+            // "Don't allow" still starts the sit: it runs either way, just without the lock-screen timer.
+            @Suppress("DEPRECATION")
+            activity.onRequestPermissionsResult(request.requestCode, request.requestedPermissions, intArrayOf(PackageManager.PERMISSION_DENIED))
+        }
+        compose.waitForIdle()
+        assertEquals(MeditationService::class.java.name, shadowOf(app).nextStartedService?.component?.className)
+        assertTrue(Prefs(app).sitNotificationsAsked)
+        // The next sit starts at once: no asking again.
+        SessionRepository.reset()
+        compose.waitForIdle()
+        compose.onNodeWithText("Begin  ·", substring = true).performClick()
+        compose.waitForIdle()
+        assertEquals(MeditationService::class.java.name, shadowOf(app).nextStartedService?.component?.className)
+        scenario!!.onActivity { assertSame("no second request", asked, shadowOf(it).lastRequestedPermission) }
     }
 
     @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)

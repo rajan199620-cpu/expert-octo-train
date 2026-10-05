@@ -44,7 +44,8 @@ data class CloudState(
  * That needs only the non-sensitive drive.appdata permission; the app never sees the rest of Drive.
  *
  * Connecting downloads any earlier backup and merges it in (so a new phone or a reinstall is
- * restored with one tap), and from then on every change is uploaded a few seconds later.
+ * restored with one tap), and from then on every change is uploaded a few seconds later, merged
+ * with whatever another phone put there first.
  */
 object GoogleSync {
     private const val SCOPE = "https://www.googleapis.com/auth/drive.appdata"
@@ -128,7 +129,9 @@ object GoogleSync {
                             if (result.hasResolution() || token == null) {
                                 needsReconnect(app)
                             } else {
-                                worker.execute { runCatching { upload(token) }.onSuccess { synced(app, null) }.onFailure { fail(it, app) } }
+                                // Merge Drive's copy in first: another phone may have uploaded since,
+                                // and a plain upload would wipe its notes from the backup.
+                                worker.execute { runCatching { pullMergePush(app, token) }.onSuccess { synced(app, null) }.onFailure { fail(it, app) } }
                             }
                         }
                         .addOnFailureListener { fail(it, app) }
@@ -147,26 +150,34 @@ object GoogleSync {
         val token = result.accessToken ?: return fail(IllegalStateException("Google didn't grant access"))
         worker.execute {
             runCatching {
-                syncing.set(true)
-                try {
-                    val email = fetchEmail(token)
-                    val store = Store.init(app)
-                    val before = store.state.value
-                    var restored = 0
-                    findFile(token)?.let { id ->
-                        val remote = Codec.decode(http("GET", "$API/files/$id?alt=media", token))
-                        // Merged inside update, so a note logged during the download isn't lost.
-                        store.update { Sync.merge(it, remote) }
-                        restored = Sync.restoredEntries(before, store.state.value)
-                    }
-                    upload(token)
-                    email to restored
-                } finally {
-                    syncing.set(false)
-                }
+                val email = fetchEmail(token)
+                email to pullMergePush(app, token)
             }.onSuccess { (email, restored) ->
                 synced(app, email, if (restored > 0) "Restored $restored field ${if (restored == 1) "note" else "notes"} from Google Drive" else null)
             }.onFailure { fail(it) }
+        }
+    }
+
+    /**
+     * Downloads Drive's copy, merges it in and uploads the result, so every upload carries
+     * everything any phone has backed up. Returns how many field notes came from Drive.
+     */
+    private fun pullMergePush(app: Context, token: String): Int {
+        syncing.set(true)
+        try {
+            val store = Store.init(app)
+            val before = store.state.value
+            var restored = 0
+            findFile(token)?.let { id ->
+                val remote = Codec.decode(http("GET", "$API/files/$id?alt=media", token))
+                // Merged inside update, so a note logged during the download isn't lost.
+                store.update { Sync.merge(it, remote) }
+                restored = Sync.restoredEntries(before, store.state.value)
+            }
+            upload(token)
+            return restored
+        } finally {
+            syncing.set(false)
         }
     }
 

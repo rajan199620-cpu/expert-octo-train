@@ -2,6 +2,7 @@ package com.rajan.meditationtimer
 
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -181,6 +182,8 @@ private fun AttentionCheckCard(checks: List<BreathCheck>, lastResult: BreathCoun
 
 @Composable
 private fun BreathCheckSession(startedAt: Long, onStop: () -> Unit, onFinished: (BreathCountResult) -> Unit) {
+    // Back stops the check, like the button, instead of closing the app mid-count.
+    BackHandler(onBack = onStop)
     val view = LocalView.current
     val presses = remember { mutableStateListOf<Boolean>() }
     fun press(nine: Boolean) {
@@ -253,6 +256,8 @@ private fun BreathingSession(
     onStop: () -> Unit,
     onFinished: () -> Unit,
 ) {
+    // Back stops the exercise, like the button, instead of closing the app mid-breath.
+    BackHandler(onBack = onStop)
     val view = LocalView.current
     DisposableEffect(view) {
         view.keepScreenOn = true

@@ -204,7 +204,9 @@ key's SHA-1 is registered too. Every build gets a higher version number, so it i
 
 Backs up sits, journal notes and settings to a hidden app folder in your Google Drive
 (`drive.appdata`, a non-sensitive permission: the app can't see anything else in Drive).
-Connecting on a fresh install merges the backup back in. Google needs the app registered once:
+Connecting on a fresh install merges the backup back in. Every upload first merges in whatever
+is already in Drive, so two phones on one account never wipe each other's sits. Google needs
+the app registered once:
 
 1. [console.cloud.google.com](https://console.cloud.google.com) → create a project (any name).
 2. **APIs & Services → Library** → enable **Google Drive API**.
@@ -222,7 +224,11 @@ journal notes, since Downloads is shared storage — to
 uninstalling, so after any reinstall: History → **Restore** → pick that file.
 **Back up** saves a full copy, notes included, anywhere you like (e.g. Drive).
 
-Build locally with the Android SDK installed: `./gradlew assembleRelease`.
+Restoring settings from a file or from Drive also re-arms the daily reminder, and values the
+app doesn't offer (a 0-minute sit, a 0-bead mala) are ignored.
+
+The app targets Android 16 (API 36), which Google Play has required for new apps and updates
+since 31 August 2026. Build locally with the Android SDK installed: `./gradlew assembleRelease`.
 
 ## Design notes
 

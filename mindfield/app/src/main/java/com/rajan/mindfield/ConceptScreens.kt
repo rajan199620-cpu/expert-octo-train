@@ -152,8 +152,8 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
             Banner(
                 "🔕",
                 "Your reminders seem to be blocked",
-                "Two mornings passed without the daily notification. Phones with strict battery savers stop apps' alarms; allow Mindfield to run in the background.",
-                "Allow", { Health.requestUnrestricted(context) },
+                "Two mornings passed without the daily notification. Phones with strict battery savers stop apps' alarms: in the list that opens, find Mindfield and choose \u201cDon't optimise\u201d.",
+                "Open settings", { Health.openBatterySettings(context) },
                 "Not now", { Health.snoozeBanner(context); blocked = false },
             )
         }

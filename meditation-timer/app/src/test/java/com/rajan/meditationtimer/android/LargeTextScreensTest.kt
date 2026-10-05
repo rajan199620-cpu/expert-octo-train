@@ -1,5 +1,6 @@
 package com.rajan.meditationtimer
 
+import android.Manifest
 import android.app.Application
 import android.os.SystemClock
 import androidx.compose.ui.test.hasScrollToNodeAction
@@ -23,6 +24,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
@@ -53,6 +55,7 @@ class LargeTextScreensTest {
         File(app.filesDir, "sessions.csv").delete()
         app.getSharedPreferences("settings", 0).edit().clear().commit()
         Prefs(app).readingSeenOn = LocalDate.now().toString()
+        shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         SessionRepository.reset()
         SessionRepository.startCounting(false)
         RuntimeEnvironment.setFontScale(1.5f)

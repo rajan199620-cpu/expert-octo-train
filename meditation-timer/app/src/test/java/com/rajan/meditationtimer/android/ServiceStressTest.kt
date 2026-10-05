@@ -300,6 +300,28 @@ class ServiceStressTest {
         assertEquals(Reminder(true, 405, "After tea; brush=teeth & 🧘 50% done"), prefs.reminder)
         assertEquals(false, prefs.countDistractions)
         assertEquals(false, prefs.checkIns)
+        // A restored reminder is armed at once, not only after the next reboot or app update.
+        val alarms = shadowOf(app.getSystemService(AlarmManager::class.java))
+        assertNotNull("restored reminder armed", alarms.peekNextScheduledAlarm())
+        // A damaged file can't set a 0-minute sit, a 0-bead mala or settings the app doesn't have.
+        prefs.importSettings(
+            mapOf(
+                "duration_min" to "0", "mala_target" to "0", "alert_mode" to "LOUD", "interval_min" to "-5",
+                "breath_pattern" to "Nope", "opening_bell_sec" to "99999", "breath_minutes" to "0",
+            ),
+        )
+        assertEquals(20 * 60, prefs.timerConfig.durationSec)
+        assertEquals(108, prefs.mala.target)
+        assertEquals(AlertMode.BELL, prefs.alertMode)
+        assertEquals(0, prefs.timerConfig.intervalMin)
+        assertEquals(5, prefs.timerConfig.openingBellSec)
+        assertEquals(BreathPattern.ALL.first().name, prefs.breathPattern)
+        assertEquals(3, prefs.breathMinutes)
+        // Good values in the same file still come through.
+        prefs.importSettings(mapOf("duration_min" to "45", "mala_target" to "54", "alert_mode" to "VIBRATE"))
+        assertEquals(45 * 60, prefs.timerConfig.durationSec)
+        assertEquals(54, prefs.mala.target)
+        assertEquals(AlertMode.VIBRATE, prefs.alertMode)
     }
 
     @Test
