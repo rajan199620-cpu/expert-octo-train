@@ -568,13 +568,39 @@ class ScreensTest {
         compose.mainClock.autoAdvance = false
         compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithText("In · left nostril").assertExists()
+        assertEquals("one tap to breathe in", BreathBuzz.Kind.IN, BreathBuzz.last)
         shot("17-breathe-session")
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_000))
         compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithText("Out · right nostril").assertExists()
+        assertEquals("two taps to breathe out", BreathBuzz.Kind.OUT, BreathBuzz.last)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_500))
         compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithText("In · right nostril").assertExists()
+        assertEquals(BreathBuzz.Kind.IN, BreathBuzz.last)
+    }
+
+    @Test
+    fun `box breathing cues each phase by rhythm - tap, long buzz, two taps, long buzz`() {
+        launch()
+        compose.onAllNodesWithText("Breathe").onLast().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Box").performScrollTo().performClick()
+        val before = BreathBuzz.played.get()
+        compose.onNodeWithText("Start").performScrollTo().performClick()
+        compose.mainClock.autoAdvance = false
+        val seen = mutableListOf<BreathBuzz.Kind?>()
+        // Half-way through each 4-second phase of two full rounds.
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(2_000))
+        compose.mainClock.advanceTimeBy(500)
+        repeat(8) {
+            seen += BreathBuzz.last
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(4_000))
+            compose.mainClock.advanceTimeBy(500)
+        }
+        val (i, h, o) = Triple(BreathBuzz.Kind.IN, BreathBuzz.Kind.HOLD, BreathBuzz.Kind.OUT)
+        assertEquals(listOf(i, h, o, h, i, h, o, h), seen)
+        assertEquals("one cue per phase, none doubled", 8, BreathBuzz.played.get() - before)
     }
 
     @Test

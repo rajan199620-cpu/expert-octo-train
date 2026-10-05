@@ -101,11 +101,14 @@ class MeditationService : Service() {
         for (cue in BellSchedule.cues(config)) {
             if (cue.atMs > elapsed) handler.postDelayed({ ambient.duck(); chime.ring(volume, alertMode) }, cue.atMs - elapsed)
         }
-        // Settle-in breaths: a light buzz at each in- and out-breath until the opening bell.
-        // (A few ms pass between Begin and here, so the very first buzz is allowed a little grace.)
-        for ((at, phase) in Settle.ticks(Settle.lengthMs(config))) {
+        // Settle-in breaths: one tap at each in-breath, two at each out-breath, until the opening bell.
+        // (A few ms pass between Begin and here, so the very first cue is allowed a little grace.)
+        val settleMs = Settle.lengthMs(config)
+        for ((at, phase) in Settle.ticks(settleMs)) {
             if (at + TICK_GRACE_MS >= elapsed) handler.postDelayed({ chime.breathTick(phase) }, (at - elapsed).coerceAtLeast(0))
         }
+        // Resumed part-way through a breath: cue it now, rather than leave you guessing until the next.
+        Settle.rejoin(elapsed, settleMs, TICK_GRACE_MS)?.let { phase -> handler.post { chime.breathTick(phase) } }
         // Posted after the END bell (same delay, FIFO) so that bell is already ringing here.
         handler.postDelayed({ complete(config) }, (config.durationMs - elapsed).coerceAtLeast(0))
     }

@@ -42,8 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -100,8 +99,8 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text("Breathe", Modifier.fillMaxWidth(), style = MaterialTheme.typography.headlineMedium)
         Text(
-            "A few minutes of paced breathing settles the body before a sit. Each change of phase " +
-                "gives a small vibration, so you can follow it with your eyes closed.",
+            "A few minutes of paced breathing settles the body before a sit. You can follow it with " +
+                "your eyes closed: one tap means breathe in, two taps breathe out, a long buzz hold.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -271,9 +270,13 @@ private fun BreathingSession(
     val done = elapsed >= totalMs
     LaunchedEffect(done) { if (done) onFinished() }
 
-    val haptics = LocalHapticFeedback.current
+    // One tap to breathe in, two to breathe out, a long buzz to hold, so each phase can be told
+    // apart with eyes closed (a touch-feedback click was the same for all four, and silent when
+    // touch vibration is switched off).
+    val context = LocalContext.current
+    val buzzer = remember { BreathBuzzer(context) }
     LaunchedEffect(state.phase, state.completedCycles) {
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        if (!done) buzzer.play(BreathBuzz.of(state.phase))
     }
 
     Column(

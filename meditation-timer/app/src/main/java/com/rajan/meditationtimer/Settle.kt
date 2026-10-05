@@ -43,7 +43,7 @@ object Settle {
         }
     }
 
-    /** The start of every in- and out-breath, for a light buzz you can follow with eyes closed. */
+    /** The start of every in- and out-breath, for a cue you can follow with eyes closed (see [BreathBuzz]). */
     fun ticks(lengthMs: Long): List<Pair<Long, Phase>> = buildList {
         var t = 0L
         while (t < lengthMs) {
@@ -51,6 +51,21 @@ object Settle {
             add(t + INHALE_MS to Phase.OUT)
             t += BREATH_MS
         }
+    }
+
+    /** A rejoin cue needs at least this much of the phase left, or it would crowd the next one. */
+    const val REJOIN_MIN_MS = 2_000L
+
+    /**
+     * After a resume part-way through a breath, the phase to cue straight away so you know where
+     * you are, or null when the phase has only just begun (its own cue is still to come, within
+     * [graceMs]) or is nearly over (the next cue is coming soon).
+     */
+    fun rejoin(elapsedMs: Long, lengthMs: Long, graceMs: Long): Phase? {
+        val state = at(elapsedMs, lengthMs) ?: return null
+        val phaseMs = if (state.phase == Phase.IN) INHALE_MS else EXHALE_MS
+        val into = phaseMs - state.msLeftInPhase
+        return state.phase.takeIf { into > graceMs && state.msLeftInPhase >= REJOIN_MIN_MS }
     }
 
     fun label(sec: Int): String = when {

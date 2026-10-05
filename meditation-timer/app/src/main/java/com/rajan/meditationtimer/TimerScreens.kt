@@ -301,7 +301,7 @@ private fun SetupScreen(
         SHEET_BELLS -> AppSheet("Bells & breaths", onDismiss = ::closeSheet) {
             SectionLabel(
                 "Settle-in breaths",
-                "Slow breaths to start, in for 4 and out for 6, with a light buzz at each so your eyes can close. " +
+                "Slow breaths to start, in for 4 and out for 6: one tap means breathe in, two taps breathe out, so your eyes can close. " +
                     "Slow breathing calms the body within minutes; the sit itself then uses your natural breath",
             )
             ChipRow(Settle.CHOICES_SEC, settle, Settle::label) { settle = it }
@@ -696,8 +696,8 @@ private fun RunningScreen(session: SessionState.Running) {
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            "In through the nose for 4, out slowly for 6. A light buzz marks each change, so you " +
-                                "can close your eyes. The bell starts the sit; then let the breath be natural.",
+                            "In through the nose for 4, out slowly for 6. One tap: breathe in. Two taps: breathe out. " +
+                                "Close your eyes. The bell starts the sit; then let the breath be natural.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,

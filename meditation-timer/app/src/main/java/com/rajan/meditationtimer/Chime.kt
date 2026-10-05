@@ -39,21 +39,12 @@ class Chime(context: Context) {
 
     fun release() = bell.release()
 
-    /**
-     * A light buzz at the start of each settle-in breath: one short tap to breathe in, one longer,
-     * softer one to breathe out, so the pace can be followed with eyes closed.
-     */
+    private val breath = BreathBuzzer(context)
+
+    /** A settle-in cue at the start of each breath: one tap to breathe in, two to breathe out. */
     fun breathTick(phase: Settle.Phase) {
         breathTicks.incrementAndGet()
-        if (!vibrator.hasVibrator()) return
-        val (ms, amplitude) = if (phase == Settle.Phase.IN) 45L to 90 else 120L to 45
-        val effect = if (vibrator.hasAmplitudeControl()) {
-            VibrationEffect.createOneShot(ms, amplitude)
-        } else {
-            VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
-        }
-        @Suppress("DEPRECATION")
-        vibrator.vibrate(effect, alarmAttributes)
+        breath.play(BreathBuzz.of(phase))
     }
 
     companion object {

@@ -34,9 +34,9 @@ object Guide {
             listOf(
                 "Choose a length and tap Begin. If check-ins are on, note how you feel, then tap Begin " +
                     "again when you're ready. Nothing starts until you do.",
-                "Settle-in breaths come first (Bells & breaths): slow breathing, in for 4 and out for 6, with a " +
-                    "light buzz at each. Then the opening bell starts the sit and the breath is left natural. Interval " +
-                    "bells bring you back; the closing bell says the end is near.",
+                "Settle-in breaths come first (Bells & breaths): slow breathing, in for 4 and out for 6. One tap " +
+                    "means breathe in, two taps breathe out. Then the opening bell starts the sit and the breath " +
+                    "is left natural. Interval bells bring you back; the closing bell says the end is near.",
                 "Pause holds the time and the bells. End gives you ${SessionClock.END_CONFIRM_MS / 1000} " +
                     "seconds to change your mind. Sits under a minute aren't saved.",
                 "Afterwards, say how you feel and how the sit went, and add a line to your journal if you like. All optional.",
@@ -70,8 +70,9 @@ object Guide {
             "The other two tabs",
             listOf(
                 "Breathe paces your breath: Coherent to calm, Box to steady, 4-7-8 to wind down, Bhramari " +
-                    "(humming) and Nadi Shodhana (alternate nostril). A small vibration marks each change, " +
-                    "so eyes can stay closed. A few minutes before a sit helps you settle.",
+                    "(humming) and Nadi Shodhana (alternate nostril). One tap means breathe in, two taps " +
+                    "breathe out, a long buzz hold, so eyes can stay closed. A few minutes before a sit " +
+                    "helps you settle.",
                 "The attention check, at the bottom of Breathe, measures how steady your attention is by counting breaths in nines.",
                 "Mala counts mantra or breath rounds of 27, 54 or 108 beads. Tap the circle or press a " +
                     "volume key; a bell rings at the end of each round.",

@@ -58,8 +58,16 @@ always serves the newest build (CI republishes it on every push).
 
 **Settle-in breaths and standing up**
 - **Settle-in breaths** (Bells & breaths; on by default, 1 minute; Off/30 s/1/2/5 min): slow
-  breathing, 4 s in and 6 s out, with a light buzz at each change. The opening bell rings as
-  it ends and the sit uses the natural breath.
+  breathing, 4 s in and 6 s out: **one tap to breathe in, two taps to breathe out**. The
+  opening bell rings as it ends and the sit uses the natural breath.
+- **Why taps you count, not soft and strong buzzes:**
+  - People recognise vibrations by rhythm 93% of the time, far better than by strength
+    (Brown, Brewster & Purchase 2005–06). Apple Watch's Breathe app also uses one tap to breathe
+    in and two to breathe out.
+  - Many phones can't vary vibration strength at all.
+  - Each pulse lasts at least 100 ms, because cheaper vibration motors need 50–100 ms to spin
+    up.
+  - Resume part-way through a breath and you get its cue straight away.
 - **Why they're optional:** meditation doesn't require a breathing technique, and no trial
   shows one improves the sit that follows. But slow breathing reliably calms the body within a
   single session (Laborde et al. 2022 meta-analysis; Magnon et al. 2021; Van Diest et al.
@@ -86,7 +94,8 @@ always serves the newest build (CI republishes it on every push).
 - Optional one-tap **reflection** afterwards (Restless … Deep, plus a line of notes).
 
 **Breathe**: paced breathing (Coherent 5.5/5.5, Box 4-4-4-4, 4-7-8) with an expanding circle
-and a small vibration at each phase change, so you can follow it eyes-closed.
+and a vibration at each phase change (one tap in, two taps out, a long buzz to hold), so you can
+follow it eyes-closed.
 
 **Mala**: japa counter (27/54/108) with a ring of beads. Tap the circle or press **either volume
 key** to count; a bell and a strong buzz mark each finished round. The count survives closing the app.
