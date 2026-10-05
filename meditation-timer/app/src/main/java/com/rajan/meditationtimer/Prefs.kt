@@ -141,7 +141,7 @@ class Prefs(context: Context) {
             putString(KEY_REMINDER_CUE, value.cue)
         }
 
-    /** "Not now" on the restore-history card: someone new to the app has nothing to restore. */
+    /** "No thanks" on the restore-history card: someone new to the app has nothing to restore. */
     var restoreHintHidden: Boolean
         get() = sp.getBoolean(KEY_RESTORE_HINT_HIDDEN, false)
         set(value) = sp.edit { putBoolean(KEY_RESTORE_HINT_HIDDEN, value) }

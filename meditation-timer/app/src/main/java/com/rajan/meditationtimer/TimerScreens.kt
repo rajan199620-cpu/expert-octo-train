@@ -255,7 +255,7 @@ private fun SetupScreen(
         }
 
         // After an update (which currently needs a reinstall), one tap brings the history back.
-        // Someone new to the app has nothing to restore, so "Not now" puts it away for good.
+        // Someone new to the app has nothing to restore, so "No thanks" puts it away for good.
         var restoreHidden by remember { mutableStateOf(prefs.restoreHintHidden) }
         if (!hasHistory && AutoBackup.supported && !restoreHidden) {
             GlassCard(Modifier.fillMaxWidth()) {
@@ -268,7 +268,7 @@ private fun SetupScreen(
                 Row {
                     TextButton(onClick = onRestore) { Text("Restore history") }
                     TextButton(onClick = { restoreHidden = true; prefs.restoreHintHidden = true }) {
-                        Text("Not now", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("No thanks", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
