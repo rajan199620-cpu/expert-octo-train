@@ -30,6 +30,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -119,7 +120,8 @@ fun HistoryTab() {
             }
         } else {
             Segments(listOf("Overview", "Trends", "Sessions"), tab) { tab = it }
-            LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Each tab opens at its top: a list scrolled down in Overview mustn't open Trends halfway down.
+            key(tab) { LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 when (tab) {
                     0 -> {
                         item { WeekCard(week, summary, weekGoal, streak) }
@@ -161,7 +163,7 @@ fun HistoryTab() {
                     }
                 }
                 item { Spacer(Modifier.height(4.dp)) }
-            }
+            } }
         }
     }
 
