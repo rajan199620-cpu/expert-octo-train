@@ -476,6 +476,7 @@ private fun AppearanceSettings(state: AppState) {
 }
 
 /** Linking to Google, exactly like the Meditation Timer: a private backup in your Drive. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GoogleCard(cloud: CloudState, compact: Boolean = false) {
     val p = palette
@@ -495,7 +496,7 @@ fun GoogleCard(cloud: CloudState, compact: Boolean = false) {
                 val t = java.time.Instant.ofEpochMilli(cloud.lastSyncMs).atZone(java.time.ZoneId.systemDefault())
                 Text("Last backed up ${t.format(DateTimeFormatter.ofPattern("d MMM, h:mm a", Locale.getDefault()))}", style = MaterialTheme.typography.bodySmall, color = p.faint)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SoftButton(if (cloud.busy) "Syncing…" else "Sync now") { if (!cloud.busy) GoogleSync.syncNow(context) }
                 SoftButton("Unlink", color = p.muted) { GoogleSync.disconnect(context) }
             }
@@ -558,6 +559,7 @@ private fun CopyRow(label: String, value: String, context: Context) {
 }
 
 /** A backup file you keep yourself, for when Google isn't an option. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BackupCard() {
     val p = palette
@@ -589,7 +591,8 @@ private fun BackupCard() {
             "Save everything to a file you choose, or merge one back in. Restoring never deletes what's already here. Android's own phone backup also keeps a copy of the app's data in your Google account, if backup is on in your phone's settings.",
             style = MaterialTheme.typography.bodySmall, color = p.muted,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Buttons move to a new line at large text sizes rather than breaking a word in two.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SoftButton("Save backup") { export.launch("mindfield-backup-${LocalDate.now()}.json") }
             SoftButton("Restore") { import.launch(arrayOf("application/json", "text/plain", "*/*")) }
         }
