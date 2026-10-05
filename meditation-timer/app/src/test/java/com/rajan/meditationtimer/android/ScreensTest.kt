@@ -593,10 +593,12 @@ class ScreensTest {
         // Half-way through each 4-second phase of two full rounds.
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(2_000))
         compose.mainClock.advanceTimeBy(500)
-        repeat(8) {
+        repeat(8) { phase ->
+            if (phase > 0) {
+                shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(4_000))
+                compose.mainClock.advanceTimeBy(500)
+            }
             seen += BreathBuzz.last
-            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(4_000))
-            compose.mainClock.advanceTimeBy(500)
         }
         val (i, h, o) = Triple(BreathBuzz.Kind.IN, BreathBuzz.Kind.HOLD, BreathBuzz.Kind.OUT)
         assertEquals(listOf(i, h, o, h, i, h, o, h), seen)
