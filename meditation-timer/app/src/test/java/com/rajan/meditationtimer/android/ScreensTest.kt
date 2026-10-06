@@ -766,6 +766,16 @@ class ScreensTest {
 
     @Test
     fun `the attention check takes a lost count, by holding volume-down or on screen, without marking the next round wrong`() {
+        // A three-second check: simulating five minutes of a live screen overwhelms Robolectric.
+        checkLengthMs = 3_000
+        try {
+            attentionCheckWithRestarts()
+        } finally {
+            checkLengthMs = 5 * 60_000L
+        }
+    }
+
+    private fun attentionCheckWithRestarts() {
         launch()
         compose.onAllNodesWithText("Breathe").onLast().performClick()
         compose.waitForIdle()
@@ -783,14 +793,10 @@ class ScreensTest {
         repeat(8) { key(down) }
         key(up)
         compose.onNodeWithText("Lost count — back to 1").performClick()
-        // Out of sight for the rest of the five minutes: idling with the screen showing would draw
-        // every one of ~18,000 frames.
-        scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMinutes(5))
-        scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(4))
         compose.mainClock.advanceTimeBy(1_000)
-        compose.onNodeWithText("100% · 2 of 2 rounds exact · 2 restarts").performScrollTo().assertExists()
         assertEquals(BreathCountResult(2, 2), Prefs(app).breathChecks.single().result)
+        compose.onNodeWithText("100% · 2 of 2 rounds exact · 2 restarts").assertExists()
     }
 
     @Test

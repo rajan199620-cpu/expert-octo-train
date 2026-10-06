@@ -148,6 +148,9 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
 }
 
 private const val CHECK_MINUTES = 5
+
+/** How long a check runs. Tests shorten it rather than simulate five minutes of a live screen. */
+internal var checkLengthMs = CHECK_MINUTES * 60_000L
 private val checkDate = DateTimeFormatter.ofPattern("d MMM")
 
 /** Skill, not mood: a repeatable breath-counting check whose accuracy you can track over weeks. */
@@ -237,7 +240,7 @@ private fun BreathCheckSession(startedAt: Long, onStop: () -> Unit, onFinished: 
             kotlinx.coroutines.delay(250)
         }
     }
-    val totalMs = CHECK_MINUTES * 60_000L
+    val totalMs = checkLengthMs
     val remaining = (totalMs - (now - startedAt)).coerceAtLeast(0)
     val done = remaining == 0L
     LaunchedEffect(done) { if (done) onFinished(BreathCount.scoreKeys(presses.toList())) }
