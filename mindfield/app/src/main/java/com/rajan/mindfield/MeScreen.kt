@@ -622,7 +622,7 @@ private fun AboutCard() {
                     "• Field reports: connecting an idea to your own life is one of the strongest memory aids (the self-reference effect).\n" +
                     "• Spaced review: questions return after 1, 3, 7, 16, 35 and 90 days.\n" +
                     "• Interleaving: the nine areas take turns, so you learn to tell similar ideas apart.\n\n" +
-                    "Every concept lists its sources. ${Store.library.size} concepts; about five months of daily discovery, then the app brings back the ones you've spotted least.",
+                    "Every concept lists its sources. ${Store.library.size} concepts; about ${Math.round(Store.library.size / 30.4)} months of daily discovery, then the app brings back the ones you've spotted least.",
                 style = MaterialTheme.typography.bodySmall,
             )
         } else {

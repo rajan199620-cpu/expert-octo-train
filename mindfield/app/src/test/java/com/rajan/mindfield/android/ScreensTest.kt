@@ -341,6 +341,32 @@ class ScreensTest {
     }
 
     @Test
+    fun `unlink forgets the account and offers Connect again, even when Google can't be reached`() {
+        Seed.weeks(5)
+        GoogleSync.setStateForTests(CloudState(email = "rajan@example.com", lastSyncMs = System.currentTimeMillis()))
+        launch()
+        tab("You")
+        openSheet("Google account")
+        compose.onAllNodesWithText("Linked to rajan@example.com").onFirst().assertExists()
+        compose.onNodeWithText("Unlink").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(null, GoogleSync.state.value.email)
+        compose.onAllNodesWithText("Connect Google account").onFirst().performScrollTo().assertExists()
+        compose.onAllNodesWithText("Linked to", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `concepts from the book review carry their evidence labels`() {
+        Store.settings { it.copy(onboarded = true) }
+        val today = Store.today()
+        Store.update { it.copy(assignments = mapOf(today to com.rajan.mindfield.core.Assignment("forced-teaming", 1))) }
+        launch()
+        compose.onAllNodesWithText("Forced teaming and other warning signs").onFirst().assertExists()
+        compose.onAllNodesWithText("Debated").onFirst().assertExists()
+        shot("46-debated-day")
+    }
+
+    @Test
     fun `dark mode`() {
         Seed.weeks(30)
         Store.settings { it.copy(theme = ThemeMode.DARK) }

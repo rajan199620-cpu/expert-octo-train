@@ -88,7 +88,8 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     // Google sign-in and the Drive permission for the private backup (Authorization API).
-    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    // 21.5 has revokeAccess, which Unlink needs so the next Connect can pick another account.
+    implementation("com.google.android.gms:play-services-auth:21.5.0")
 
     testImplementation("junit:junit:4.13.2")
     // The pure-Kotlin tests use org.json outside Robolectric, where android.jar only has stubs.

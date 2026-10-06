@@ -17,7 +17,7 @@ are in [`docs/screenshots`](docs/screenshots).
 | Optional, mid-day | A **surprise spot check** at a random time between noon and 6 pm | BeReal-style unpredictability keeps attention fresh; off by default (max 2 nudges/day otherwise) |
 | Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", returning after 1, 3, 7, 16, 35, 90 days | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
 
-## The library: 151 concepts, honestly labelled
+## The library: 180 concepts, honestly labelled
 
 Nine areas, dealt round-robin so neighbouring days differ (interleaving): memory & perception,
 the self, thinking traps, influence & persuasion, emotions & wellbeing, relationships, choices &
@@ -39,16 +39,37 @@ can't give the answer away. Every figure was checked against the original paper 
 summary; where a number couldn't be confirmed, the text stays qualitative.
 
 Evidence labels come from the replication literature (Many Labs, registered replication reports,
-meta-analyses): **Solid** (51) · **Good** (78) · **Debated** (12) · **Busted** (10). The busted
+meta-analyses): **Solid** (59) · **Good** (92) · **Debated** (16) · **Busted** (13). The busted
 ones are taught as myths with a "plot twist" card: ego depletion, power posing, the Stanford
 Prison Experiment, the hungry-judge effect, learning styles, the Mozart effect, the backfire
-effect, the 7-38-55 rule, the Hawthorne effect, the Zeigarnik memory effect. Several famous
+effect, the 7-38-55 rule, the Hawthorne effect, the Zeigarnik memory effect, behavioural priming
+(the "Florida effect"), spotting liars from body language, and the Romeo and Juliet effect. Several famous
 findings are shown with their modern corrections (the bystander effect vs. CCTV footage, the
 "hot hand" maths error, the marshmallow test with family background controlled, Dunning-Kruger's
 statistical debate).
 
-After about five months every concept has been seen; the app then brings back the ones you've
+After about six months every concept has been seen; the app then brings back the ones you've
 spotted least.
+
+### From five popular books (October 2026)
+
+29 concepts were added after checking the principles in *The Gift of Fear* (de Becker),
+*Thinking, Fast and Slow* (Kahneman), *The small BIG* (Martin, Goldstein & Cialdini),
+*Pre-Suasion* and *Influence* (Cialdini) against the research. Only principles with real
+evidence went in, labelled honestly: the halo effect, the law of small numbers, outcome bias,
+the affect heuristic, when to trust your gut (Kahneman & Klein), consider the opposite, formulas
+beat expert judgement, denominator neglect, the certainty and possibility effects, narrow
+framing, less is better, opportunity cost neglect, the premortem, round numbers as goals,
+what's focal seems causal, most worries never happen, money and happiness (the revised
+plateau), people say yes more than you think, charm that fades, the panic myth, hidden
+profiles, basking in reflected glory, and, as *debated*, de Becker's warning signs ("forced
+teaming"), broken windows, implicit egotism and moral licensing. Three are taught as myths
+(above). Principles that are already in the library, unsupported, or better left to
+professionals (violence-prediction checklists, restraining-order advice) were left out; the
+full verdict for every principle is in the report that accompanied this change.
+
+New concepts sit at the end of each area, so the order for anyone already using the app is
+unchanged up to day 135; people who had seen everything meet the new ones before any repeat.
 
 ## Progress, the way the big learning apps do it (October 2026)
 
@@ -106,6 +127,15 @@ which can't see the rest of your Drive), and restored automatically on a new pho
 reinstall. Every change uploads a few seconds later, after first merging in whatever is
 already in Drive, so two phones on one account never wipe each other's notes.
 
+**Switching accounts:** **Unlink** forgets the account on this phone *and* releases Google's
+permission (the Drive backup stays), so the next **Connect** shows Google's account chooser.
+Without that, Google silently hands back the account it last granted and you could never
+switch. Connecting a different account brings your journal with you, merges in anything already
+saved there, and says so; the old account's backup stays as it was. Anything still syncing when
+you unlink stops without uploading or relinking. Because Mindfield shares its Google Cloud
+project with the Meditation Timer, Google may treat the two as one app, so unlinking one can ask
+the other to sign in again; nothing is lost either way.
+
 **One-time step** (2 minutes), because Google identifies apps by package name and signing key:
 in the same Google Cloud project you set up for the Meditation Timer, go to
 **APIs & Services → Credentials → Create credentials → OAuth client ID → Android** and enter:
@@ -147,10 +177,13 @@ signature stable so updates install over each other and Google sign-in keeps wor
 the certificate, publishes the APK to the link above and commits screenshots.
 
 - `core/` is pure Kotlin (library parsing, daily scheduling, spaced review, stats, merge,
-  backup format) with content checks on all 151 concepts and randomised stress tests: years of
-  irregular use never repeat a concept early; merges are commutative, idempotent and
-  associative over hundreds of random states; backups round-trip awkward text; alarms keep the
-  wall-clock time across daylight-saving changes.
+  backup format, account linking) with content checks on all 180 concepts and randomised
+  stress tests: years of irregular use never repeat a concept early; merges are commutative,
+  idempotent and associative over hundreds of random states; backups round-trip awkward text;
+  alarms keep the wall-clock time across daylight-saving changes; three phones and two Google
+  accounts through 75,000 random steps of writing, deleting, connecting, unlinking and
+  switching never lose a note or upload to an unlinked account; and upgrading the library never
+  changes a day someone has already had.
 - `android/` tests run the real alarms, notifications (one-tap logging, the reply box,
   after-midnight taps), widget, storage through simulated process death and a corrupt file, a
   year of random use, and every screen at normal size and at 150% font on a small phone, with
