@@ -128,7 +128,8 @@ a line for the average of your last five ratings once you have five; tap to insp
 **History layout**: three short tabs instead of one long page. **Overview**: this week against
 your goal, the month in review, and two headline numbers that open Trends. **Trends**: what a sit
 changes, the mood chart, wandering caught, and the calendar. **Sessions**: the log (latest 30 days,
-older on request). **Backup** (top right) opens Google backup, file backup/restore and the version.
+older on request); tap a sit to delete it (a mis-tap, a sit that wasn't one), after a "Delete this
+sit?". **Backup** (top right) opens Google backup, file backup/restore and the version.
 
 **Looking back**:
 - **On this day**: the Sit screen shows a journal note you wrote on this date a year, six months,
@@ -208,7 +209,9 @@ key's SHA-1 is registered too. Every build gets a higher version number, so it i
 Backs up sits, journal notes and settings to a hidden app folder in your Google Drive
 (`drive.appdata`, a non-sensitive permission: the app can't see anything else in Drive).
 Connecting on a fresh install merges the backup back in. Every upload first merges in whatever
-is already in Drive, so two phones on one account never wipe each other's sits. Google needs
+is already in Drive, so two phones on one account never wipe each other's sits. A deleted sit
+leaves a marker (a `#deleted,` line in backups, `x,` in the app's own log) so no backup, from any
+phone, brings it back; older versions of the app read that line as a non-row and skip it. Google needs
 the app registered once:
 
 1. [console.cloud.google.com](https://console.cloud.google.com) → create a project (any name).

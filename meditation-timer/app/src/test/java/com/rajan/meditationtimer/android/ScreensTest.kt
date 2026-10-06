@@ -803,6 +803,29 @@ class ScreensTest {
     }
 
     @Test
+    fun `a sit can be deleted from the log after saying so`() {
+        val zone = ZoneId.systemDefault()
+        val keep = LocalDate.now(zone).minusDays(1).atTime(6, 10).atZone(zone).toInstant().toEpochMilli()
+        val mistake = LocalDate.now(zone).minusDays(1).atTime(21, 40).atZone(zone).toInstant().toEpochMilli()
+        SessionLog.get(app).merge(listOf(SessionRecord(keep, 1200, 1200), SessionRecord(mistake, 1200, 60)))
+        launch()
+        compose.onAllNodesWithText("History").onLast().performClick()
+        compose.onNodeWithText("Sessions").performClick()
+        compose.onNodeWithText("9:40", substring = true).performClick()
+        compose.onNodeWithText("Delete this sit?", substring = true).assertExists()
+        // Keep: nothing happens.
+        compose.onNodeWithText("Keep").performClick()
+        compose.onNodeWithText("Delete this sit?", substring = true).assertDoesNotExist()
+        assertEquals(2, SessionLog.get(app).records.value.size)
+        compose.onNodeWithText("9:40", substring = true).performClick()
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("9:40", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("6:10", substring = true).assertExists()
+        assertEquals(listOf(keep), SessionLog.get(app).records.value.map { it.startedAtMs })
+    }
+
+    @Test
     fun `history with five years of sits still opens and scrolls to the end`() {
         seed(days = 5 * 365, perDay = 2)
         val started = System.nanoTime()

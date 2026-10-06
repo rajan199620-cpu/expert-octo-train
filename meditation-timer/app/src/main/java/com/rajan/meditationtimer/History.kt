@@ -236,8 +236,29 @@ object History {
             ?.split(';')?.mapNotNull { kv -> kv.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }
             ?.toMap()?.takeIf { it.isNotEmpty() }
 
-    /** Spreadsheet-friendly export, oldest first; optional settings line first. */
-    fun toCsv(records: List<SessionRecord>, zone: ZoneId, settings: Map<String, String>? = null): String {
+    private const val DELETED_PREFIX = "#deleted,"
+
+    /**
+     * Sits deleted on purpose, as start minutes (epoch minutes), so a backup made on another
+     * phone can't bring them back. A spreadsheet, or an older version of the app, reads the line
+     * as a row without a date and skips it.
+     */
+    fun deletedLine(deleted: Set<Long>): String? =
+        deleted.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(";", prefix = DELETED_PREFIX)
+
+    fun deletedFrom(text: String): Set<Long> =
+        text.lineSequence().firstOrNull { it.startsWith(DELETED_PREFIX) }
+            ?.removePrefix(DELETED_PREFIX)?.trim()
+            ?.split(';')?.mapNotNull { it.trim().toLongOrNull() }?.toSet()
+            ?: emptySet()
+
+    /** Spreadsheet-friendly export, oldest first; optional settings and deleted-sits lines first. */
+    fun toCsv(
+        records: List<SessionRecord>,
+        zone: ZoneId,
+        settings: Map<String, String>? = null,
+        deleted: Set<Long> = emptySet(),
+    ): String {
         val time = DateTimeFormatter.ofPattern("HH:mm")
         val rows = records.sortedBy { it.startedAtMs }.map { r ->
             val start = Instant.ofEpochMilli(r.startedAtMs).atZone(zone)
@@ -253,7 +274,11 @@ object History {
                 if (r.noticed >= 0) r.noticed.toString() else "",
             ).joinToString(",")
         }
-        val header = listOfNotNull(settings?.let(::settingsLine), "date,start,planned_min,actual_min,rating,note,before,after,noticed")
+        val header = listOfNotNull(
+            settings?.let(::settingsLine),
+            deletedLine(deleted),
+            "date,start,planned_min,actual_min,rating,note,before,after,noticed",
+        )
         return (header + rows).joinToString("\n", postfix = "\n")
     }
 

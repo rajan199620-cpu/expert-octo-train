@@ -82,7 +82,7 @@ fun HistoryTab() {
         if (uri == null) return@rememberLauncherForActivityResult
         val ok = runCatching {
             context.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use {
-                it.write(History.toCsv(records, zone, Prefs(context).exportSettings()))
+                it.write(History.toCsv(records, zone, Prefs(context).exportSettings(), SessionLog.get(context).deleted))
             }
         }.isSuccess
         Toast.makeText(context, if (ok) "Saved ${records.size} sessions" else "Couldn't save the backup", Toast.LENGTH_SHORT).show()
@@ -151,7 +151,9 @@ fun HistoryTab() {
                                         color = MaterialTheme.colorScheme.primary,
                                     )
                                 }
-                                for (session in day.sessions) SessionLine(session, zone)
+                                for (session in day.sessions) {
+                                    SessionLine(session, zone) { SessionLog.get(context).delete(session.startedAtMs) }
+                                }
                             }
                             val hidden = summary.days.size - daysShown
                             if (hidden > 0) {
@@ -424,8 +426,10 @@ private fun DataCard(hasRecords: Boolean, onBackup: () -> Unit, onRestore: () ->
     }
 }
 
+/** One sit in the log. Tapping it offers to delete it (a mis-tap, a sit that wasn't one). */
 @Composable
-private fun SessionLine(session: SessionRecord, zone: ZoneId) {
+private fun SessionLine(session: SessionRecord, zone: ZoneId, onDelete: () -> Unit) {
+    var asking by remember(session.startedAtMs) { mutableStateOf(false) }
     val time = Instant.ofEpochMilli(session.startedAtMs).atZone(zone).toLocalTime().format(timeFormat)
     val parts = buildList {
         add(time)
@@ -439,6 +443,7 @@ private fun SessionLine(session: SessionRecord, zone: ZoneId) {
     }
     Text(
         parts.joinToString("  ·  "),
+        Modifier.fillMaxWidth().clickable(onClickLabel = "Delete this sit") { asking = !asking }.padding(vertical = 2.dp),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -449,6 +454,18 @@ private fun SessionLine(session: SessionRecord, zone: ZoneId) {
             style = MaterialTheme.typography.bodyMedium,
             fontStyle = FontStyle.Italic,
         )
+    }
+    if (asking) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Delete this sit? It goes from your history and your backups.",
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onClick = { asking = false; onDelete() }) { Text("Delete") }
+            TextButton(onClick = { asking = false }) { Text("Keep") }
+        }
     }
 }
 
@@ -513,7 +530,7 @@ fun rememberRestoreAction(): () -> Unit {
             } else {
                 AutoBackup.adopt(context, uri)
                 settings?.let { Prefs(context).importSettings(it) }
-                "Restored ${log.merge(found)} of ${found.size} sessions" + if (settings != null) " and your settings" else ""
+                "Restored ${log.merge(found, History.deletedFrom(text))} of ${found.size} sessions" + if (settings != null) " and your settings" else ""
             }
         }.getOrElse { "Couldn't read that file" }
         Toast.makeText(context, message, Toast.LENGTH_LONG).show()

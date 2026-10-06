@@ -122,6 +122,41 @@ class ServiceStressTest {
     }
 
     @Test
+    fun `a deleted sit stays deleted - after a restart, a restore, and another phone's backup`() {
+        val log = SessionLog.get(app)
+        val base = ZonedDateTime.of(2026, 9, 1, 7, 0, 0, 0, ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val sits = (0 until 5).map { SessionRecord(base + it * 86_400_000L, 1200, 1200) }
+        sits.forEach(log::add)
+        val oldBackup = History.toCsv(sits, ZoneId.systemDefault())
+        log.delete(sits[2].startedAtMs)
+        assertEquals(4, records.size)
+        assertTrue(sits[2] !in records)
+
+        // Survives the app restarting (read back from the file).
+        SessionLog.resetForTests()
+        assertEquals(4, records.size)
+        assertEquals(setOf(sits[2].startedAtMs / 60_000), SessionLog.get(app).deleted)
+
+        // Restoring a backup made before the delete doesn't bring it back.
+        assertEquals(0, SessionLog.get(app).merge(History.fromCsv(oldBackup, ZoneId.systemDefault()), History.deletedFrom(oldBackup)))
+        assertEquals(4, records.size)
+
+        // What this phone uploads carries the deletion, so the other phone drops the sit too.
+        val upload = History.toCsv(records, ZoneId.systemDefault(), deleted = SessionLog.get(app).deleted)
+        assertTrue(sits[2] !in History.fromCsv(upload, ZoneId.systemDefault()))
+        assertEquals(SessionLog.get(app).deleted, History.deletedFrom(upload))
+
+        // A sit deleted on the other phone goes here too, and new sits from there still arrive.
+        val newThere = SessionRecord(base + 10 * 86_400_000L, 600, 600)
+        val theirs = History.toCsv(sits + newThere, ZoneId.systemDefault(), deleted = setOf(sits[0].startedAtMs / 60_000))
+        assertEquals(1, SessionLog.get(app).merge(History.fromCsv(theirs, ZoneId.systemDefault()), History.deletedFrom(theirs)))
+        assertEquals(listOf(sits[1], sits[3], sits[4], newThere).map { it.startedAtMs }, records.map { it.startedAtMs })
+        SessionLog.resetForTests()
+        assertEquals(4, records.size)
+        assertEquals(2, SessionLog.get(app).deleted.size)
+    }
+
+    @Test
     fun `settle-in breaths tap once in and twice out, hold while paused, rejoin on resume, and never change the sit`() {
         MeditationService.start(app, SessionConfig(10 * 60, 5, 10, true, 0, settleSec = 60), 0.5f, AlertMode.VIBRATE, false)
         Chime.breathTicks.set(0)

@@ -162,7 +162,7 @@ object GoogleBackup {
             var restored = 0
             findFile(token)?.let { id ->
                 val text = http("GET", "$API/files/$id?alt=media", token)
-                restored = log.merge(History.fromCsv(text, ZoneId.systemDefault()))
+                restored = log.merge(History.fromCsv(text, ZoneId.systemDefault()), History.deletedFrom(text))
                 // A fresh install also gets its usual-sit settings back.
                 if (wasEmpty) History.settingsFrom(text)?.let { Prefs(app).importSettings(it) }
             }
@@ -207,7 +207,7 @@ object GoogleBackup {
     private fun upload(app: Context, token: String) {
         val log = SessionLog.get(app)
         // The app folder is private to this app and account, so notes are included.
-        val csv = History.toCsv(log.records.value, ZoneId.systemDefault(), Prefs(app).exportSettings())
+        val csv = History.toCsv(log.records.value, ZoneId.systemDefault(), Prefs(app).exportSettings(), log.deleted)
         val id = findFile(token)
         if (id != null) {
             http("PATCH", "$UPLOAD/files/$id?uploadType=media", token, csv.toByteArray(), "text/csv")

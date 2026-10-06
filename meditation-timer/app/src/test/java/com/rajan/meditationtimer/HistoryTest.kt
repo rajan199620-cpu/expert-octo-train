@@ -147,6 +147,22 @@ class HistoryTest {
     }
 
     @Test
+    fun deletedSitsTravelWithTheBackupAndOlderReadersSkipTheLine() {
+        val records = listOf(at(today, minutes = 20), at(today.minusDays(1), minutes = 10))
+        val gone = setOf(records[0].startedAtMs / 60_000 - 5, 29_000_000L)
+        val csv = History.toCsv(records, zone, mapOf("duration" to "1200"), gone)
+        assertEquals(gone, History.deletedFrom(csv))
+        // The marker isn't a sit: restoring reads back exactly the sits, as an older version would.
+        assertEquals(records.sortedBy { it.startedAtMs }, History.fromCsv(csv, zone))
+        assertEquals(mapOf("duration" to "1200"), History.settingsFrom(csv))
+        // Nothing deleted: no marker line at all, so the file is what it always was.
+        assertEquals(emptySet<Long>(), History.deletedFrom(History.toCsv(records, zone)))
+        assertFalse("#deleted" in History.toCsv(records, zone))
+        // The log's own marker line ("x,<minute>") is not a record to any version of the decoder.
+        assertNull(SessionRecord.decode("x,29000000"))
+    }
+
+    @Test
     fun checkInsAndCountsSurviveTheLogFormatAndOldLinesStillRead() {
         val r = SessionRecord(1_000, 600, 540, rating = 3, note = "a, b", before = 2, after = 5, noticed = 9)
         assertEquals(r, SessionRecord.decode(r.encode()))
