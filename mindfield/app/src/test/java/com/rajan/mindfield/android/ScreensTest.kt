@@ -367,6 +367,17 @@ class ScreensTest {
     }
 
     @Test
+    fun `myths from the second book review show as busted, with the longest new title intact`() {
+        Store.settings { it.copy(onboarded = true) }
+        val today = Store.today()
+        Store.update { it.copy(assignments = mapOf(today to com.rajan.mindfield.core.Assignment("left-right-brain-myth", 1))) }
+        launch()
+        compose.onAllNodesWithText("Left-brained and right-brained people").onFirst().assertExists()
+        compose.onAllNodesWithText("Busted").onFirst().assertExists()
+        shot("47-busted-day")
+    }
+
+    @Test
     fun `dark mode`() {
         Seed.weeks(30)
         Store.settings { it.copy(theme = ThemeMode.DARK) }
