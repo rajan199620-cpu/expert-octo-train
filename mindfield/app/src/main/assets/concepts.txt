@@ -1159,18 +1159,18 @@ evidence: good
 hook: Telling people to "be unbiased" does almost nothing. Asking "what if the opposite were true?" does far more.
 what: Many biases come from considering only the possibility already in mind: the first number, the favoured explanation, the expected outcome. Deliberately asking how the opposite could be true brings evidence for other possibilities to mind, loosening the grip of the first one. It is one of the few debiasing strategies with consistent experimental support, and it beats good intentions.
 study: In 1984 Charles Lord, Mark Lepper and Elizabeth Preston gave supporters and opponents of the death penalty mixed evidence on whether it deters crime. Each side usually rates the evidence for its own view as stronger. Instructions to be "as objective and unbiased as possible" didn't reduce this. Asking people how they would have rated the same study had it found the opposite result did. In 2000 Thomas Mussweiler, Fritz Strack and Tim Pfeiffer found that listing reasons why an anchor might be wrong also reduced anchoring.
-case: Considering alternatives can backfire, and the reason is instructive. In 2002 Lawrence Sanna, Norbert Schwarz and Shevaun Stocker gave people an account of a 19th-century war between the British and the Gurkhas, told some who had won, and asked how predictable the outcome had been. Hindsight bias appeared as usual. People asked to list a couple of ways the war could have gone differently showed less of it. But people asked to list ten ways found it hard, and the difficulty itself convinced them the outcome had been inevitable: their hindsight bias got worse. The nuance: the strategy works when alternatives come easily. Ask for two or three reasons for the opposite, not ten, or the struggle becomes evidence for your first view.
-proof: Supported across research on biased reading of evidence, anchoring, overconfidence and hindsight, with the known limit that hard-to-generate alternatives can backfire.
+case: Doctors face the same trap. In 2010 Sílvia Mamede and colleagues had internal-medicine residents review some cases of particular diseases, then diagnose new written cases. Second-year residents misread look-alike cases as the disease they had just seen: their accuracy on those cases was 1.55 out of 4, against 2.19 on the other cases. Then the residents went back over the cases deliberately, listing for each possible diagnosis the findings that supported it, the findings that argued against it and the findings they'd expect but couldn't see. Their accuracy on the look-alike cases rose to 2.03. The nuance: good intentions aren't the active ingredient. Telling yourself to be careful changes little; a concrete routine that makes you argue for the alternatives does.
+proof: Supported across research on biased reading of evidence, anchoring, overconfidence and medical diagnosis. Most tests are short experiments, so how much it helps in everyday life is less certain.
 spot: Notice moments of instant certainty: a story that explains everything, a first estimate you're comfortable with, a person you've already labelled.
-use: Pick one belief you held firmly today and write down two concrete reasons it might be wrong. Stop at two or three.
+use: Pick one belief you held firmly today and write down two concrete reasons it might be wrong.
 guard: When a decision matters, ask "If the opposite turned out to be true, what would be the most likely reason?" before you commit, and have each person in a group do it separately.
 predict: Supporters and opponents of the death penalty rated mixed evidence. What reduced their bias toward their own side?
 - Being told to be as objective and unbiased as possible
 * Being asked how they'd rate the same study if it had found the opposite
 - Being told that experts would check their reasoning
 scenario: Before signing the lease, Farah makes herself write down two ways the cheap flat could turn out to be a bad deal. One of them, the long commute in monsoon traffic, changes her mind.
-source: Lord, C. G., Lepper, M. R., & Preston, E. (1984). Considering the opposite: A corrective strategy for social judgment. Journal of Personality and Social Psychology; Mussweiler, T., Strack, F., & Pfeiffer, T. (2000). Overcoming the inevitable anchoring effect. Personality and Social Psychology Bulletin; Sanna, L. J., Schwarz, N., & Stocker, S. L. (2002). When debiasing backfires. Journal of Experimental Psychology: Learning, Memory, and Cognition.
-related: confirmation-bias, anchoring, hindsight-bias, premortem
+source: Lord, C. G., Lepper, M. R., & Preston, E. (1984). Considering the opposite: A corrective strategy for social judgment. Journal of Personality and Social Psychology; Mussweiler, T., Strack, F., & Pfeiffer, T. (2000). Overcoming the inevitable anchoring effect. Personality and Social Psychology Bulletin; Mamede, S., et al. (2010). Effect of availability bias and reflective reasoning on diagnostic accuracy among internal medicine residents. JAMA.
+related: confirmation-bias, anchoring, hindsight-bias, premortem, availability-heuristic
 
 # =====================================================================================
 # INFLUENCE & PERSUASION
@@ -1359,12 +1359,12 @@ related: social-proof, pluralistic-ignorance
 ## but-you-are-free
 title: "But you are free"
 category: influence
-evidence: good
-hook: Add "but of course, you're free to say no" to a request and people say yes more often.
-what: Explicitly reminding people they can refuse reduces the feeling of pressure, so they feel less need to resist. It respects autonomy, and people reward that with more cooperation. It works in person more than at a distance.
+evidence: debated
+hook: Adding "you're free to say no" to a request was said to make people far more likely to say yes. The evidence turned out to be much shakier.
+what: The idea: explicitly reminding people they can refuse lowers the sense of pressure, so they feel less need to resist and reward the respect with cooperation. Early studies reported big effects, especially face to face. But most of the research comes from small studies, much of it from one research group, and the most careful studies show little or no effect.
 study: In 2000 Nicolas Guéguen and Alexandre Pascual had a researcher ask strangers for money for a bus fare. Adding "but you are free to accept or refuse" raised the share who gave from 10% to 47.5%. A 2013 meta-analysis by Christopher Carpenter of 42 studies found the technique reliably increases agreement, especially when people decide on the spot.
-case: Nicolas Guéguen and Alexandre Pascual have tested the technique in many settings since their 2000 bus-fare study: donations to charities, agreeing to fill in surveys, giving a cigarette to a stranger. In each, adding a reminder that the person was free to say no raised compliance, typically by around half again or more. Christopher Carpenter's 2013 meta-analysis of 42 studies found the effect was consistent but strongest for requests made face to face and decided on the spot; when people had time to think, the advantage shrank. The nuance: the technique works by reducing reactance, the urge to resist pressure, so it only helps if the rest of the request isn't pushy. It also has an ethical upside: it's one of the few persuasion techniques that works by respecting autonomy rather than undermining it.
-proof: Supported by a meta-analysis; effects shrink when the decision is made later.
+case: Christopher Carpenter's 2013 meta-analysis pooled 42 studies, many of them by Guéguen and Pascual, and found that a reminder of freedom reliably raised compliance, most of all for face-to-face requests decided on the spot. Ten years later a re-examination, co-written by Alexandre Pascual himself, pooled 74 results and again found a sizeable average. But most of the studies were small, there were strong signs that unsuccessful ones had gone unpublished, and some had been publicly questioned for possible data problems; several of Guéguen's papers have since been retracted. The seven studies judged at low risk of bias showed no clear effect. The nuance: telling people they're free to refuse is respectful and costs nothing, so it's still worth saying, but don't count on it to raise your yes rate.
+proof: Debated: a 2013 meta-analysis found a reliable effect, but a 2023 re-examination found strong signs of selective publishing, and the few studies at low risk of bias showed no clear effect.
 spot: Notice persuasive messages that emphasise your choice ("no pressure, decide for yourself") and whether you feel more inclined as a result.
 use: When asking someone for something today, add an honest "and it's completely fine to say no".
 guard: Being told you're free doesn't make a request good. Decide based on the request, not the respectful framing.
@@ -1372,8 +1372,8 @@ predict: Asking strangers for bus money, how did adding "but you are free to acc
 - From 10% to 12%
 - From 10% to 25%
 * From 10% to about 47%
-scenario: Asking colleagues to join the charity run, Simran ends each message with "totally your call though, no pressure", and twice as many sign up as last year.
-source: Guéguen, N., & Pascual, A. (2000). Evocation of freedom and compliance. Current Research in Social Psychology; Carpenter, C. J. (2013). Communication Studies.
+scenario: Asking colleagues to join the charity run, Simran ends each message with "totally your call though, no pressure", and is convinced that's why twice as many sign up as last year.
+source: Guéguen, N., & Pascual, A. (2000). Evocation of freedom and compliance. Current Research in Social Psychology; Carpenter, C. J. (2013). A meta-analysis of the effectiveness of the "but you are free" compliance-gaining technique. Communication Studies; Fillon, A. A., Souchet, L., Pascual, A., & Girandola, F. (2023). The effectiveness of the "but-you-are-free" technique: Meta-analysis and re-examination of the technique. Meta-Psychology.
 related: reactance
 
 ## thats-not-all

@@ -39,7 +39,7 @@ can't give the answer away. Every figure was checked against the original paper 
 summary; where a number couldn't be confirmed, the text stays qualitative.
 
 Evidence labels come from the replication literature (Many Labs, registered replication reports,
-meta-analyses): **Solid** (59) · **Good** (92) · **Debated** (16) · **Busted** (13). The busted
+meta-analyses): **Solid** (59) · **Good** (91) · **Debated** (17) · **Busted** (13). The busted
 ones are taught as myths with a "plot twist" card: ego depletion, power posing, the Stanford
 Prison Experiment, the hungry-judge effect, learning styles, the Mozart effect, the backfire
 effect, the 7-38-55 rule, the Hawthorne effect, the Zeigarnik memory effect, behavioural priming
@@ -64,9 +64,12 @@ what's focal seems causal, most worries never happen, money and happiness (the r
 plateau), people say yes more than you think, charm that fades, the panic myth, hidden
 profiles, basking in reflected glory, and, as *debated*, de Becker's warning signs ("forced
 teaming"), broken windows, implicit egotism and moral licensing. Three are taught as myths
-(above). Principles that are already in the library, unsupported, or better left to
-professionals (violence-prediction checklists, restraining-order advice) were left out; the
-full verdict for every principle is in the report that accompanied this change.
+(above). Checking the books' sources also moved one existing concept: "But you are free" is now
+*debated*, because a 2023 re-examination found its best-controlled studies show no clear effect and
+much of the early work came from a researcher with several retracted papers. Principles that
+are already in the library, unsupported, or better left to professionals (violence-prediction
+checklists, restraining-order advice) were left out; the full verdict for every principle is in
+the report that accompanied this change.
 
 New concepts sit at the end of each area, so the order for anyone already using the app is
 unchanged up to day 135; people who had seen everything meet the new ones before any repeat.
