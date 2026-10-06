@@ -70,6 +70,8 @@ tasks.withType<Test>().configureEach {
     // Roborazzi: write screenshots of the real screens for review instead of comparing.
     systemProperty("roborazzi.test.record", "true")
     maxHeapSize = "2g"
+    // A test that never finishes fails the build in minutes instead of holding CI for hours.
+    timeout.set(java.time.Duration.ofMinutes(20))
     // Print why a test failed in the CI log, not only in the HTML report.
     testLogging {
         events("failed")

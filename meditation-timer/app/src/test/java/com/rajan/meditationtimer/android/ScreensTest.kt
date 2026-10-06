@@ -783,7 +783,11 @@ class ScreensTest {
         repeat(8) { key(down) }
         key(up)
         compose.onNodeWithText("Lost count — back to 1").performClick()
+        // Out of sight for the rest of the five minutes: idling with the screen showing would draw
+        // every one of ~18,000 frames.
+        scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMinutes(5))
+        scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
         compose.mainClock.advanceTimeBy(1_000)
         compose.onNodeWithText("100% · 2 of 2 rounds exact · 2 restarts").performScrollTo().assertExists()
         assertEquals(BreathCountResult(2, 2), Prefs(app).breathChecks.single().result)
