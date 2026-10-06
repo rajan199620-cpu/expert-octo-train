@@ -61,10 +61,23 @@ jobs:
         with:
           name: meditation-timer-apk
           path: meditation-timer/app/build/outputs/apk/release/*.apk
+      # Two pushes in quick succession run side by side, and the older one can finish last.
+      # Only the run for the newest code publishes and commits screenshots, so the download
+      # link never goes back to an older build. Screenshot-only commits ([skip ci]) don't count.
+      - name: Is this still the newest code on the branch?
+        id: newest
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          newer=$(gh api "repos/${{ github.repository }}/compare/${GITHUB_SHA}...${{ github.ref_name }}" \
+            --jq '[.commits[] | select(.commit.message | contains("[skip ci]") | not)] | length' || echo 0)
+          echo "Code commits pushed after this one: $newer"
+          if [ "$newer" = "0" ]; then echo "newest=true" >> "$GITHUB_OUTPUT"; else echo "newest=false" >> "$GITHUB_OUTPUT"; fi
       # Artifact links expire in minutes; a release asset has a stable URL that always serves
       # the newest build: https://github.com/<repo>/releases/download/apk/meditation-timer.apk
       - name: Publish to the permanent download link
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.newest.outputs.newest == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -77,7 +90,7 @@ jobs:
           fi
           gh release upload apk "$RUNNER_TEMP/meditation-timer.apk" --clobber
       - name: Commit screenshots
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.newest.outputs.newest == 'true'
         run: |
           mkdir -p docs/screenshots
           cp app/build/outputs/roborazzi/*.png docs/screenshots/ 2>/dev/null || exit 0
@@ -86,6 +99,11 @@ jobs:
           git add docs/screenshots
           if ! git diff --cached --quiet; then
             git commit -m "Update meditation timer screenshots [skip ci]"
-            git pull --rebase origin "${{ github.ref_name }}"
-            git push origin HEAD:"${{ github.ref_name }}"
+            # Screenshots are a record, not the build: another run's set landing first is fine.
+            if ! git pull --rebase origin "${{ github.ref_name }}"; then
+              git rebase --abort
+              echo "Another run committed screenshots first; keeping those."
+              exit 0
+            fi
+            git push origin HEAD:"${{ github.ref_name }}" || echo "The branch moved on; its own run will commit screenshots."
           fi
