@@ -75,7 +75,6 @@ fun HistoryTab() {
     val noticing = remember(records) { History.noticing(records, zone, today) }
     LaunchedEffect(Unit) { GoogleBackup.load(context) }
     val cloud by GoogleBackup.state.collectAsStateWithLifecycle()
-    var confirming by remember { mutableStateOf(false) }
 
     // Back up = save a CSV file you keep (Drive, Downloads...); Restore = read one back.
     // Together they carry your history to a new phone or across a reinstall.
@@ -343,6 +342,7 @@ private fun GoogleCard() {
     val context = LocalContext.current
     LaunchedEffect(Unit) { GoogleBackup.load(context) }
     val cloud by GoogleBackup.state.collectAsStateWithLifecycle()
+    var confirming by remember { mutableStateOf(false) }
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         GoogleBackup.onConsentResult(context, result.data)
     }
