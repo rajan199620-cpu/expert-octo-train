@@ -73,6 +73,8 @@ class Nav(
     val openConcept: (String) -> Unit,
     val log: (LogRequest) -> Unit,
     val tab: (Tab) -> Unit,
+    /** Opens a settings sheet on the You tab (see [SettingsSheet]). */
+    val settings: (String) -> Unit = {},
 )
 
 class MainActivity : ComponentActivity() {
@@ -80,6 +82,8 @@ class MainActivity : ComponentActivity() {
     private var logRequest by mutableStateOf<LogRequest?>(null)
     private var concept by mutableStateOf<String?>(null)
     private var today by mutableStateOf(LocalDate.now())
+    /** The settings sheet open on the You tab, if any. */
+    private var settingsSheet by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,10 +119,13 @@ class MainActivity : ComponentActivity() {
                         today = today,
                         openConcept = concept,
                         logRequest = logRequest,
+                        settingsSheet = settingsSheet,
+                        onSettingsSheet = { settingsSheet = it },
                         nav = Nav(
                             openConcept = { concept = it },
                             log = { logRequest = it },
-                            tab = { tab = it; concept = null },
+                            tab = { tab = it; concept = null; settingsSheet = null },
+                            settings = { tab = Tab.ME; concept = null; settingsSheet = it },
                         ),
                         onCloseConcept = { concept = null },
                         onCloseLog = { logRequest = null },
@@ -172,7 +179,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             ACTION_JOURNAL -> { tab = Tab.JOURNAL; concept = null }
-            ACTION_ACCOUNT -> { tab = Tab.ME; concept = null }
+            ACTION_ACCOUNT -> { tab = Tab.ME; concept = null; settingsSheet = SettingsSheet.GOOGLE }
             ACTION_SHORTCUT_REVIEW -> { tab = Tab.REVIEW; concept = null }
         }
     }
@@ -195,6 +202,8 @@ private fun Root(
     today: LocalDate,
     openConcept: String?,
     logRequest: LogRequest?,
+    settingsSheet: String?,
+    onSettingsSheet: (String?) -> Unit,
     nav: Nav,
     onCloseConcept: () -> Unit,
     onCloseLog: () -> Unit,
@@ -203,6 +212,8 @@ private fun Root(
     val state by Store.state.collectAsStateWithLifecycle()
     val todayConcept = state.assignments[today]?.conceptId?.let { Store.library[it] }
     val tint = todayConcept?.category?.accent(p.dark) ?: p.brand
+    // Back from Guide, Review, Journal or You goes to Today, the start screen, rather than out of the app.
+    BackHandler(enabled = tab != Tab.TODAY && openConcept == null && logRequest == null) { nav.tab(Tab.TODAY) }
     BackHandler(enabled = openConcept != null && logRequest == null) { onCloseConcept() }
     BackHandler(enabled = logRequest != null) { onCloseLog() }
 
@@ -221,7 +232,7 @@ private fun Root(
                         Tab.GUIDE -> GuideScreen(state, nav)
                         Tab.REVIEW -> ReviewScreen(state, today, nav)
                         Tab.JOURNAL -> JournalScreen(state, today, nav)
-                        Tab.ME -> MeScreen(state, today, nav)
+                        Tab.ME -> MeScreen(state, today, nav, settingsSheet, onSettingsSheet)
                         else -> Unit
                     }
                 }

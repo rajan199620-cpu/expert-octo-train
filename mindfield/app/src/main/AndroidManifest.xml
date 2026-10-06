@@ -6,11 +6,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Re-arms the daily notifications after a restart. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Notifications on the minute you chose (Android 12: granted by default; 13+: USE_EXACT_ALARM). -->
+    <!-- On the minute where Android grants it by default (Android 12). Newer phones use inexact
+         alarms: Google Play allows USE_EXACT_ALARM only for alarm-clock and calendar apps, and the
+         battery-exemption prompt only for apps like navigation and calls, so neither is declared. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <!-- Lets the app ask to be exempt from battery optimisation, which some phones need for daily reminders. -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:allowBackup="true"

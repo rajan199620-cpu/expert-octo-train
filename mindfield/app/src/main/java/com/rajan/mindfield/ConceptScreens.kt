@@ -79,6 +79,14 @@ import com.rajan.mindfield.core.Texts
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.positionInParent
+import kotlinx.coroutines.launch
+import com.rajan.mindfield.core.Progress
+import com.rajan.mindfield.core.Step
+import com.rajan.mindfield.core.PathStep
 
 // --- Today -------------------------------------------------------------------------------------
 
@@ -116,8 +124,16 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
             last = v
         }
     }
+    // Where each step of today's path sits on the page, so tapping a step can scroll to it.
+    val anchors = remember { mutableStateMapOf<Step, Int>() }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
     Box(Modifier.fillMaxSize()) {
-    ConceptPage(concept, state, today, isToday = true, nav = nav, scroll = scroll, onReportShown = { reportShown = it }) {
+    ConceptPage(
+        concept, state, today, isToday = true, nav = nav, scroll = scroll,
+        onReportShown = { reportShown = it },
+        onAnchor = { step, y -> anchors[step] = y },
+    ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.getDefault())), style = MaterialTheme.typography.labelLarge, color = p.muted)
@@ -125,12 +141,19 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
             }
             if (streak > 0) Pill("🔥 $streak", concept.category.accent(p.dark))
         }
+        TodayPath(Progress.todayPath(state, Store.library, today, concept.id), concept.category.accent(p.dark)) { step ->
+            if (step == Step.REVIEW) {
+                nav.tab(Tab.REVIEW)
+            } else {
+                anchors[step]?.let { y -> scope.launch { scroll.animateScrollTo((y - with(density) { 12.dp.roundToPx() }).coerceAtLeast(0)) } }
+            }
+        }
         if (blocked) {
             Banner(
                 "🔕",
                 "Your reminders seem to be blocked",
-                "Two mornings passed without the daily notification. Phones with strict battery savers stop apps' alarms; allow Mindfield to run in the background.",
-                "Allow", { Health.requestUnrestricted(context) },
+                "Two mornings passed without the daily notification. Phones with strict battery savers stop apps' alarms: in the list that opens, find Mindfield and choose \u201cDon't optimise\u201d.",
+                "Open settings", { Health.openBatterySettings(context) },
                 "Not now", { Health.snoozeBanner(context); blocked = false },
             )
         }
@@ -139,7 +162,7 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
                 "☁️",
                 "Google backup is paused",
                 cloud.message ?: "Your journal hasn't been backed up for a few days.",
-                "Fix", { nav.tab(Tab.ME) },
+                "Fix", { nav.settings(SettingsSheet.GOOGLE) },
                 null, null,
             )
         }
@@ -172,6 +195,40 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
         style = MaterialTheme.typography.titleSmall,
     )
     }
+    }
+}
+
+/**
+ * Today's path: the day's steps, ticked off as they're done; tap one to jump to it. Seeing what's
+ * done and what's left helps people finish (the goal-gradient effect, Kivetz et al. 2006).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun TodayPath(steps: List<PathStep>, accent: Color, onStep: (Step) -> Unit) {
+    val p = palette
+    val done = steps.count { it.done }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            if (done == steps.size) "Today's path · all done ✓" else "Today's path · $done of ${steps.size} done",
+            style = MaterialTheme.typography.labelLarge, color = if (done == steps.size) accent else p.muted,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            steps.forEachIndexed { i, s ->
+                val shape = RoundedCornerShape(50)
+                Text(
+                    (if (s.done) "✓ " else "${i + 1}  ") + s.step.label,
+                    Modifier
+                        .clip(shape)
+                        .background(if (s.done) accent else p.surface)
+                        .border(1.dp, if (s.done) accent else p.line, shape)
+                        .clickable(role = Role.Button) { onStep(s.step) }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    color = if (s.done) Color.White else p.ink,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 
@@ -218,6 +275,7 @@ fun ConceptPage(
     nav: Nav,
     scroll: ScrollState = rememberScrollState(),
     onReportShown: (Boolean) -> Unit = {},
+    onAnchor: (Step, Int) -> Unit = { _, _ -> },
     header: @Composable () -> Unit,
 ) {
     val p = palette
@@ -229,14 +287,23 @@ fun ConceptPage(
     ) {
         header()
         HeroCard(concept)
-        PredictCard(concept, guess?.choice)
+        Box(Modifier.onGloballyPositioned { onAnchor(Step.PREDICT, it.positionInParent().y.toInt()) }) {
+            PredictCard(concept, guess?.choice)
+        }
         Section("What's going on", "💡") { Body(concept.what) }
         StudySection(concept, unlocked = guess != null)
         if (guess != null) RealWorldSection(concept)
         Section("Spot it in the wild", "🔍") { Body(concept.spot) }
-        MissionSection(concept, state, today, isToday)
+        Box(Modifier.onGloballyPositioned { onAnchor(Step.PLAN, it.positionInParent().y.toInt()) }) {
+            MissionSection(concept, state, today, isToday)
+        }
         Section("Watch out", "⚠️") { Body(concept.guard) }
-        Box(Modifier.onGloballyPositioned { onReportShown(it.boundsInWindow().height > 0f) }) {
+        Box(
+            Modifier.onGloballyPositioned {
+                onReportShown(it.boundsInWindow().height > 0f)
+                onAnchor(Step.REPORT, it.positionInParent().y.toInt())
+            },
+        ) {
             FieldReport(concept, state, today, isToday, nav)
         }
         SeeAlso(concept, state, nav)

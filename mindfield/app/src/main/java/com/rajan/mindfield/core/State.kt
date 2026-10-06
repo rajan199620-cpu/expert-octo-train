@@ -73,6 +73,8 @@ data class Settings(
     /** Show undiscovered concepts in the Field Guide instead of locking them. */
     val showAll: Boolean = false,
     val onboarded: Boolean = false,
+    /** Days a week (Monday–Sunday) you mean to file a field report; 0 = no goal. */
+    val weeklyGoal: Int = 5,
 )
 
 data class AppState(

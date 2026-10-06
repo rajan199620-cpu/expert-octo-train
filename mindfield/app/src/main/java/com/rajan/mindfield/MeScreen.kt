@@ -35,6 +35,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import java.time.format.TextStyle
+import java.time.ZoneId
+import java.time.YearMonth
+import com.rajan.mindfield.core.WeekGoal
+import com.rajan.mindfield.core.Progress
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,13 +66,14 @@ import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MeScreen(state: AppState, today: LocalDate, nav: Nav) {
+fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onSheet: (String?) -> Unit) {
     val p = palette
     val library = Store.library
     val cloud by GoogleSync.state.collectAsStateWithLifecycle()
     val days = Stats.checkInDays(state)
-    val streak = Stats.streak(days, today)
+    val streak = Progress.streak(days, today)
     val longest = Stats.longestStreak(days)
+    val goal = Progress.weekGoal(days, today, state.settings.weeklyGoal)
     val predictions = Stats.predictions(state, library)
     val modes = Stats.modeCounts(state)
     val life = Stats.lifeList(state)
@@ -88,11 +95,16 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav) {
         Panel {
             Row {
                 BigStat("Day", "${Stats.dayNumber(state, today)}", Modifier.weight(1f))
-                BigStat("Streak", "$streak", Modifier.weight(1f))
+                BigStat("Streak", "${streak.days}", Modifier.weight(1f))
                 BigStat("Best", "$longest", Modifier.weight(1f))
             }
             WeekDots(Stats.week(days, today), todayColor, Modifier.fillMaxWidth())
-            Text("A day counts when you file a field report, even a “not today”.", style = MaterialTheme.typography.bodySmall, color = p.faint)
+            Text(weekGoalLine(goal), style = MaterialTheme.typography.titleSmall, color = if (goal.met) todayColor else p.ink)
+            Text(
+                "A day counts when you file a field report, even a “not today”. One missed day a week is forgiven" +
+                    if (streak.restThisWeek && streak.days >= 2) ", and this week's has been used." else ".",
+                style = MaterialTheme.typography.bodySmall, color = p.faint,
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatTile("Discovered", "${state.unlocked.size}", "of ${library.size}", Modifier.weight(1f))
@@ -107,6 +119,8 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav) {
                 Modifier.weight(1f),
             )
         }
+        MonthReviewCard(state, today, todayColor, nav)
+        CompareCard(state, today)
         if (state.liveEntries.isNotEmpty()) {
             Panel {
                 SectionLabel("How it shows up", "🔭")
@@ -151,14 +165,182 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav) {
             Heatmap(Stats.heatmap(state, today), today, todayColor)
         }
 
+
         Text("Settings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 10.dp))
-        NotificationSettings(state)
-        FocusSettings(state)
-        AppearanceSettings(state)
-        GoogleCard(cloud)
-        BackupCard()
-        AboutCard()
+        // One row per topic, each opening its own sheet, instead of six long cards to scroll past.
+        Panel(padding = 10.dp) {
+            val s = state.settings
+            SheetRow("Notifications", notificationSummary(s.morningOn, s.morningMinute, s.eveningOn, s.eveningMinute, s.spotCheckOn)) {
+                onSheet(SettingsSheet.NOTIFICATIONS)
+            }
+            SheetRow("Weekly goal", if (s.weeklyGoal == 0) "Off" else "${s.weeklyGoal} days a week with a field report") { onSheet(SettingsSheet.GOAL) }
+            SheetRow("Focus areas", if (s.focus.isEmpty()) "Everything" else s.focus.sortedBy { it.ordinal }.joinToString(" · ") { it.short }) {
+                onSheet(SettingsSheet.FOCUS)
+            }
+            SheetRow("Appearance & guide", "${s.theme.label} · ${if (s.showAll) "showing every concept" else "undiscovered concepts sealed"}") {
+                onSheet(SettingsSheet.APPEARANCE)
+            }
+            SheetRow("Google account", cloud.email?.let { "Linked to $it" } ?: "Not linked: keep your journal safe") { onSheet(SettingsSheet.GOOGLE) }
+            SheetRow("Backup file", "Save everything to a file, or merge one back in") { onSheet(SettingsSheet.BACKUP) }
+            SheetRow("About the evidence", "Strength labels, and how the app makes ideas stick") { onSheet(SettingsSheet.ABOUT) }
+        }
+        Text(
+            "Mindfield ${BuildInfo.version(LocalContext.current)}",
+            style = MaterialTheme.typography.labelSmall, color = p.faint, modifier = Modifier.padding(horizontal = 6.dp),
+        )
         Spacer(Modifier.size(20.dp))
+    }
+    val close = { onSheet(null) }
+    when (sheet) {
+        SettingsSheet.NOTIFICATIONS -> AppSheet("Notifications", close) { NotificationSettings(state) }
+        SettingsSheet.GOAL -> AppSheet("Weekly goal", close) { GoalSettings(state) }
+        SettingsSheet.FOCUS -> AppSheet("Focus areas", close) { FocusSettings(state) }
+        SettingsSheet.APPEARANCE -> AppSheet("Appearance & guide", close) { AppearanceSettings(state) }
+        SettingsSheet.GOOGLE -> AppSheet("Google account", close) { GoogleCard(cloud) }
+        SettingsSheet.BACKUP -> AppSheet("Backup file", close) { BackupCard() }
+        SettingsSheet.ABOUT -> AppSheet("About the evidence", close) { AboutCard() }
+    }
+}
+
+/** "3 of 5 days this week · 2 to go", "Goal met ✓ · 3 weeks running", or a plain count without a goal. */
+fun weekGoalLine(g: WeekGoal): String = when {
+    g.goal <= 0 -> if (g.daysThisWeek == 1) "1 day this week" else "${g.daysThisWeek} days this week"
+    g.met && g.weeksRunning >= 2 -> "Goal met ✓ · ${g.weeksRunning} weeks running"
+    g.met -> "Goal met ✓ · ${g.daysThisWeek} of ${g.goal} days this week"
+    else -> "${g.daysThisWeek} of ${g.goal} days this week · ${g.daysLeft} to go"
+}
+
+private fun notificationSummary(morningOn: Boolean, morning: Int, eveningOn: Boolean, evening: Int, spot: Boolean): String = buildList {
+    add(if (morningOn) "Morning ${Schedule.label(morning)}" else "No morning concept")
+    add(if (eveningOn) "evening ${Schedule.label(evening)}" else "no evening report")
+    if (spot) add("spot checks")
+}.joinToString(" · ")
+
+/** A month in the field, opening on last month in a month's first week (a fresh start), with ‹ ›. */
+@Composable
+private fun MonthReviewCard(state: AppState, today: LocalDate, color: Color, nav: Nav) {
+    val p = palette
+    val library = Store.library
+    val months = remember(state) { Progress.months(state, today) }
+    val first = Progress.defaultMonth(months, today) ?: return
+    var shownText by rememberSaveable { mutableStateOf(first.toString()) }
+    val shown = YearMonth.parse(shownText).takeIf { it in months } ?: first
+    val index = months.indexOf(shown)
+    val m = remember(state, shown) { Progress.month(state, library, shown, today, ZoneId.systemDefault()) } ?: return
+    val name = shown.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) + if (shown.year != today.year) " ${shown.year}" else ""
+    Panel {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                SectionLabel(if (m.inProgress) "This month so far" else "Month in review", "🗓")
+                Text(if (m.inProgress) "$name so far" else "$name in the field", style = MaterialTheme.typography.titleLarge)
+            }
+            // Older months to the left, newer to the right, like a calendar.
+            MonthArrow("‹", index < months.lastIndex) { shownText = months[index + 1].toString() }
+            MonthArrow("›", index > 0) { shownText = months[index - 1].toString() }
+        }
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("${m.reports}", style = MaterialTheme.typography.displaySmall, color = color)
+            Text(
+                "${if (m.reports == 1) "field report" else "field reports"} on ${m.daysLogged} of ${m.daysSoFar} days",
+                style = MaterialTheme.typography.bodyMedium, color = p.muted, modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+        m.previousReports?.let { before ->
+            if (!m.inProgress) {
+                val diff = m.reports - before
+                Text(
+                    when {
+                        diff > 0 -> "$diff more than the month before"
+                        diff < 0 -> "${-diff} fewer than the month before"
+                        else -> "The same as the month before"
+                    },
+                    style = MaterialTheme.typography.bodySmall, color = p.faint,
+                )
+            }
+        }
+        val stats = buildList {
+            add("Discovered" to "${m.discovered}" + if (m.mythsMet > 0) " · ${m.mythsMet} ${if (m.mythsMet == 1) "myth" else "myths"}" else "")
+            add("Seen in the wild" to "${m.sightings}")
+            if (m.predictions > 0) add("Predictions" to "${m.predictionsRight} of ${m.predictions} right")
+            m.topArea?.let { add("Noticed most" to "${Palettes.emoji(it)} ${it.short}") }
+        }
+        stats.chunked(2).forEach { pair ->
+            Row(Modifier.fillMaxWidth()) {
+                pair.forEach { (label, value) ->
+                    Column(Modifier.weight(1f)) {
+                        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = p.muted)
+                        Text(value, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+        m.topConcept?.let { library[it] }?.let { c ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { nav.openConcept(c.id) }.padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Emblem(c, Modifier.size(30.dp), plate = true)
+                Column(Modifier.weight(1f)) {
+                    Text("MOST SPOTTED", style = MaterialTheme.typography.labelSmall, color = p.muted)
+                    Text(c.title, style = MaterialTheme.typography.titleSmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthArrow(text: String, enabled: Boolean, onClick: () -> Unit) {
+    val p = palette
+    Text(
+        text,
+        Modifier.clip(CircleShape).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 12.dp, vertical = 4.dp),
+        style = MaterialTheme.typography.headlineSmall,
+        color = if (enabled) p.brand else p.faint.copy(alpha = 0.4f),
+    )
+}
+
+/** Your intuition against chance, and your consistency against what usually happens, with sources. */
+@Composable
+private fun CompareCard(state: AppState, today: LocalDate) {
+    val p = palette
+    val s = remember(state, today) { Progress.standing(state, Store.library, today) }
+    Panel {
+        SectionLabel("How you compare", "📏")
+        Text(Progress.predictionLine(s), style = MaterialTheme.typography.bodyLarge)
+        if (s.predicted >= 5) {
+            Text(
+                "Is psychology just common sense? People without psychology training, asked whether 27 famous findings would " +
+                    "replicate, were right ${Progress.LAYPEOPLE_REPLICATION_ACCURACY}% of the time where guessing gives 50%.",
+                style = MaterialTheme.typography.bodySmall, color = p.muted,
+            )
+            Text("Hoogeveen, Sarafoglou & Wagenmakers · Advances in Methods and Practices in Psychological Science · 2020", style = MaterialTheme.typography.labelSmall, color = p.faint)
+        }
+        Text(Progress.consistencyLine(s), style = MaterialTheme.typography.bodyLarge)
+        Text("Baumel et al. · Journal of Medical Internet Research · 2019", style = MaterialTheme.typography.labelSmall, color = p.faint)
+    }
+}
+
+/** Days a week with a field report you mean to reach; the streak forgives one missed day a week either way. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GoalSettings(state: AppState) {
+    val p = palette
+    Panel {
+        Text(
+            "Days a week you mean to file a field report, even a “not today”. A weekly goal leaves room for a busy day, " +
+                "where a daily one is all-or-nothing.",
+            style = MaterialTheme.typography.bodySmall, color = p.muted,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(0, 3, 4, 5, 6, 7).forEach { n ->
+                ChoiceChip(if (n == 0) "Off" else "$n days", state.settings.weeklyGoal == n, p.brand) {
+                    Store.settings { it.copy(weeklyGoal = n) }
+                }
+            }
+        }
     }
 }
 
@@ -245,9 +427,9 @@ private fun NotificationSettings(state: AppState) {
         }
         SettingRow(
             "Run in the background",
-            if (unrestricted) "Allowed ✓ Reminders arrive on time." else "Battery optimisation is on. On some phones (Xiaomi, OnePlus, Samsung, Oppo, Vivo…) it stops daily reminders. Tap to allow.",
+            if (unrestricted) "Allowed ✓ Battery saving won't stop your reminders." else "Battery optimisation is on. On some phones (Xiaomi, OnePlus, Samsung, Oppo, Vivo…) it stops daily reminders. Tap, find Mindfield and choose \u201cDon't optimise\u201d.",
             null,
-        ) { if (!unrestricted) Health.requestUnrestricted(context) }
+        ) { if (!unrestricted) Health.openBatterySettings(context) }
         SettingRow(
             "Surprise spot checks",
             "A nudge at a random time between noon and 6 pm: seen it yet? Skipped once you've logged.",
@@ -294,6 +476,7 @@ private fun AppearanceSettings(state: AppState) {
 }
 
 /** Linking to Google, exactly like the Meditation Timer: a private backup in your Drive. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GoogleCard(cloud: CloudState, compact: Boolean = false) {
     val p = palette
@@ -313,7 +496,7 @@ fun GoogleCard(cloud: CloudState, compact: Boolean = false) {
                 val t = java.time.Instant.ofEpochMilli(cloud.lastSyncMs).atZone(java.time.ZoneId.systemDefault())
                 Text("Last backed up ${t.format(DateTimeFormatter.ofPattern("d MMM, h:mm a", Locale.getDefault()))}", style = MaterialTheme.typography.bodySmall, color = p.faint)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SoftButton(if (cloud.busy) "Syncing…" else "Sync now") { if (!cloud.busy) GoogleSync.syncNow(context) }
                 SoftButton("Unlink", color = p.muted) { GoogleSync.disconnect(context) }
             }
@@ -376,6 +559,7 @@ private fun CopyRow(label: String, value: String, context: Context) {
 }
 
 /** A backup file you keep yourself, for when Google isn't an option. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BackupCard() {
     val p = palette
@@ -407,7 +591,8 @@ private fun BackupCard() {
             "Save everything to a file you choose, or merge one back in. Restoring never deletes what's already here. Android's own phone backup also keeps a copy of the app's data in your Google account, if backup is on in your phone's settings.",
             style = MaterialTheme.typography.bodySmall, color = p.muted,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Buttons move to a new line at large text sizes rather than breaking a word in two.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SoftButton("Save backup") { export.launch("mindfield-backup-${LocalDate.now()}.json") }
             SoftButton("Restore") { import.launch(arrayOf("application/json", "text/plain", "*/*")) }
         }

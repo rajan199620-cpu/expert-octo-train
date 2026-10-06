@@ -10,31 +10,11 @@ object Stats {
     /** Days with at least one field report (a "Not today" counts: checking in is the habit). */
     fun checkInDays(state: AppState): Set<LocalDate> = state.liveEntries.mapTo(HashSet()) { it.day }
 
-    /** Consecutive days with a report, ending today, or yesterday if today has none yet. */
-    fun streak(days: Set<LocalDate>, today: LocalDate): Int {
-        var day = if (today in days) today else today.minusDays(1)
-        var n = 0
-        while (day in days) {
-            n++
-            day = day.minusDays(1)
-        }
-        return n
-    }
+    /** Days with a report in a forgiving streak ending today (or yesterday): see [Progress.streak]. */
+    fun streak(days: Set<LocalDate>, today: LocalDate): Int = Progress.streak(days, today).days
 
-    fun longestStreak(days: Set<LocalDate>): Int {
-        var best = 0
-        for (d in days) {
-            if (d.minusDays(1) in days) continue
-            var n = 0
-            var x = d
-            while (x in days) {
-                n++
-                x = x.plusDays(1)
-            }
-            best = maxOf(best, n)
-        }
-        return best
-    }
+    /** The longest forgiving streak ever. */
+    fun longestStreak(days: Set<LocalDate>): Int = Progress.longestStreak(days)
 
     /** This week, Monday first: true = reported, false = missed, null = still to come. */
     fun week(days: Set<LocalDate>, today: LocalDate): List<Pair<LocalDate, Boolean?>> {

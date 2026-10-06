@@ -50,6 +50,38 @@ statistical debate).
 After about five months every concept has been seen; the app then brings back the ones you've
 spotted least.
 
+## Progress, the way the big learning apps do it (October 2026)
+
+Taken from Duolingo, Headway, Elevate, Strava and the Meditation Timer, keeping only what has
+research behind it:
+
+- **Today's path** at the top of Today: Predict · Plan · Report (and Review when cards are due).
+  Each step is ticked off as it's done, and tapping one scrolls to it, so the long page has a
+  map. Showing progress already made helps people finish (the goal-gradient effect: Kivetz,
+  Urminsky & Zheng, *JMR* 2006).
+- **A forgiving streak**, like Duolingo's streak freeze: one missed day a week doesn't break
+  it.
+  - A highlighted broken streak makes people less likely to carry on (Silverman & Barasch,
+    *JCR* 2023).
+  - One missed day doesn't harm a forming habit (Lally et al. 2010).
+  - Checked against a brute-force definition on 1,500 random calendars.
+- **A weekly goal** (default 5 days with a field report; Off or 3–7 in Settings): room for a
+  busy day. It's shown under the week's dots.
+- **Month in review** on You: reports, days, discoveries (and myths), sightings, predictions
+  right, the area you noticed most and the most-spotted concept. Browse months with ‹ ›.
+  - In the first week of a month it opens on last month, since month starts are "fresh
+    starts" when people recommit (Dai, Milkman & Riis 2014).
+- **How you compare** on You:
+  - **Your predictions against blind guessing.** For context, laypeople judging whether 27
+    famous findings would replicate were right 59% of the time against 50% for guessing
+    (Hoogeveen et al. 2020).
+  - **Keeping going against the usual drop-off.** A median 3.3% of people who install a
+    mental-health app still use it 30 days later (Baumel et al. 2019).
+- **Settings in sheets**: You ends with one short list (notifications, weekly goal, focus areas,
+  appearance, Google account, backup file, about the evidence). Each opens its own sheet
+  instead of six long cards at the foot of the page. The sign-in notification and the "backup
+  paused" banner open the Google sheet directly.
+
 ## Screens
 
 - **Today**: the specimen plate (each concept has its own generative emblem in its area's
@@ -71,7 +103,8 @@ spotted least.
 You → Settings → **Google account → Connect**. Your journal, predictions, review schedule and
 settings are backed up to the hidden app-data folder in your Google Drive (`drive.appdata`,
 which can't see the rest of your Drive), and restored automatically on a new phone or after a
-reinstall. Every change uploads a few seconds later.
+reinstall. Every change uploads a few seconds later, after first merging in whatever is
+already in Drive, so two phones on one account never wipe each other's notes.
 
 **One-time step** (2 minutes), because Google identifies apps by package name and signing key:
 in the same Google Cloud project you set up for the Meditation Timer, go to
@@ -92,6 +125,19 @@ that happens). `drive.appdata` is a non-sensitive scope, so publishing needs no 
 Without Google: You → Settings → **Backup file** saves or merges a JSON file you keep yourself.
 Restores and syncs always merge, never delete: two phones that sync at different times end up
 with the same journal (merging is tested to be order-independent).
+
+## Reminders and Google Play
+
+- **On time where Android allows it without asking:** exact alarms on Android 12 and older.
+  On newer phones the reminders are inexact and may arrive a few minutes late.
+- **Why not exact everywhere:** Google Play allows the exact-alarm permission only for
+  alarm-clock and calendar apps.
+- **Battery saving:** if two mornings pass without a notification, a banner opens the
+  phone's battery-optimisation list, where Mindfield can be set to "Don't optimise". Play
+  allows the one-tap exemption prompt only for apps such as navigation and calls, so the app
+  doesn't request it.
+- **Android version:** the app targets Android 16 (API 36), which Play has required for new
+  apps and updates since 31 August 2026.
 
 ## Building and testing
 

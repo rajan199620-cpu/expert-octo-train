@@ -72,7 +72,8 @@ object Codec {
                     .put("focus", JSONArray(s.focus.map { it.key }.sorted()))
                     .put("theme", s.theme.key)
                     .put("showAll", s.showAll)
-                    .put("onboarded", s.onboarded),
+                    .put("onboarded", s.onboarded)
+                    .put("weeklyGoal", s.weeklyGoal),
             )
         root.put(
             "assignments",
@@ -148,6 +149,7 @@ object Codec {
             theme = ThemeMode.of(s.optString("theme")),
             showAll = s.optBoolean("showAll", defaults.showAll),
             onboarded = s.optBoolean("onboarded", defaults.onboarded),
+            weeklyGoal = s.optInt("weeklyGoal", defaults.weeklyGoal).coerceIn(0, 7),
         )
         val assignments = HashMap<LocalDate, Assignment>()
         root.optJSONArray("assignments").objects().forEach { o ->

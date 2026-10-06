@@ -16,6 +16,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import com.rajan.mindfield.core.Mode
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -95,6 +96,7 @@ class LargeTextScreensTest {
         shot("05-today")
     }
 
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
     @Test
     fun `every screen opens and its controls are reachable`() {
         Seed.weeks(30)
@@ -128,7 +130,14 @@ class LargeTextScreensTest {
         shot("24-you")
         scrollTo("Settings")
         shot("25-settings")
-        scrollTo("Backup file".uppercase())
-        shot("26-backup")
+        scrollTo("Backup file")
+        compose.onAllNodesWithText("Backup file").onFirst().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Save backup").performScrollTo().assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/large-26-backup.png")
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.waitForIdle()
+        scrollTo("How you compare".uppercase())
+        shot("27-you-compare")
     }
 }

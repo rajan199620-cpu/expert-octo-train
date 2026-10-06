@@ -175,12 +175,16 @@ class QuizTest {
 
 class StatsTest {
     @Test
-    fun `streak survives until a whole day is missed`() {
+    fun `streak forgives one missed day a week, not two`() {
+        // Friday 2 October back to Monday 28 September, Tuesday missed: one rest, four days.
         val days = setOf(day0, day0.minusDays(1), day0.minusDays(2), day0.minusDays(4))
-        assertEquals(3, Stats.streak(days, day0))
-        assertEquals(3, Stats.streak(days, day0.plusDays(1)))
-        assertEquals(0, Stats.streak(days, day0.plusDays(2)))
-        assertEquals(3, Stats.longestStreak(days))
+        assertEquals(4, Stats.streak(days, day0))
+        assertEquals(4, Stats.streak(days, day0.plusDays(1))) // Saturday: today isn't a miss yet
+        // Sunday: Saturday is that week's rest, so Tuesday's gap now ends the run.
+        assertEquals(3, Stats.streak(days, day0.plusDays(2)))
+        // Monday after two missed days in a row: broken.
+        assertEquals(0, Stats.streak(days, day0.plusDays(3)))
+        assertEquals(4, Stats.longestStreak(days))
         assertEquals(0, Stats.longestStreak(emptySet()))
     }
 

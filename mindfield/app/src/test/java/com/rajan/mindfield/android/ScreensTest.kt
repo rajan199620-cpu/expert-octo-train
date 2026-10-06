@@ -21,11 +21,13 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import com.rajan.mindfield.core.Curriculum
 import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.ThemeMode
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -165,6 +167,7 @@ class ScreensTest {
         shot("15-today-logged")
     }
 
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
     @Test
     fun `guide, a concept page, journal, review and you`() {
         Seed.weeks(40)
@@ -206,10 +209,118 @@ class ScreensTest {
         shot("28-you-insights")
         scrollTo("Settings")
         shot("29-settings")
-        scrollTo("Google account".uppercase())
-        shot("30-settings-google")
+        // Each settings topic opens in its own sheet, over the You screen.
+        openSheet("Google account")
+        compose.onNodeWithText("Connect Google account").assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/30-settings-google.png")
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Connect Google account").assertDoesNotExist()
     }
 
+    private fun back() {
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `back goes to Today from another tab, and closes a concept page first`() {
+        Seed.weeks(10)
+        launch()
+        tab("Journal")
+        compose.onNodeWithText("Field journal").assertExists()
+        back()
+        compose.onNodeWithText("Field journal").assertDoesNotExist()
+        compose.onNodeWithText("in the field", substring = true).assertExists()
+        // A concept page opened from the Guide closes first; the next Back goes to Today.
+        tab("Guide")
+        val c = Store.library[Store.state.value.assignments.toSortedMap().values.first().conceptId]!!
+        compose.onAllNodesWithText(c.title).onFirst().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("←  Back").assertExists()
+        back()
+        compose.onNodeWithText("←  Back").assertDoesNotExist()
+        compose.onNodeWithText("Field guide").assertExists()
+        back()
+        compose.onNodeWithText("in the field", substring = true).assertExists()
+        scenario!!.onActivity { assertFalse("Back on Today is the only way out", it.isFinishing) }
+    }
+
+    private fun openSheet(row: String) {
+        scrollTo(row)
+        compose.onAllNodesWithText(row).onFirst().performClick()
+        compose.waitForIdle()
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun `you - forgiving streak, weekly goal, month in review, how you compare`() {
+        Seed.weeks(40)
+        // A goal of 7 can't be met before the week is out (today isn't logged yet), whatever day the test runs.
+        Store.settings { it.copy(weeklyGoal = 7) }
+        launch()
+        tab("You")
+        compose.onNodeWithText("of 7 days this week", substring = true).assertExists()
+        compose.onNodeWithText("One missed day a week is forgiven", substring = true).assertExists()
+        scrollTo("How you compare".uppercase())
+        compose.onNodeWithText("of study results", substring = true).assertExists()
+        compose.onNodeWithText("Baumel et al.", substring = true).assertExists()
+        shot("33-you-compare")
+        scrollTo("field reports on", substring = true)
+        shot("34-you-month")
+        // Browse back a month and forward again.
+        val title = compose.onAllNodesWithText(" in the field", substring = true).fetchSemanticsNodes().size +
+            compose.onAllNodesWithText(" so far", substring = true).fetchSemanticsNodes().size
+        assertTrue("a month title is shown", title > 0)
+        compose.onNodeWithText("‹").performClick()
+        compose.waitForIdle()
+        compose.onAllNodesWithText("›").onFirst().performClick() // the month arrow comes before the settings rows' chevrons
+        compose.waitForIdle()
+        // Weekly goal: change it in its sheet; the row and the week line follow.
+        openSheet("Weekly goal")
+        compose.onNodeWithText("3 days").performClick()
+        compose.waitForIdle()
+        assertEquals(3, Store.state.value.settings.weeklyGoal)
+        captureScreenRoboImage("build/outputs/roborazzi/35-settings-goal.png")
+        compose.onNodeWithText("Done").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("3 days a week with a field report").assertExists()
+        compose.onNodeWithText("of 7 days this week", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `today's path ticks off as you go and jumps to each step`() {
+        Seed.weeks(35)
+        launch()
+        val c = Store.todayConcept()
+        compose.onNodeWithText("Today's path", substring = true).assertExists()
+        compose.onNodeWithText("1  Predict").assertExists()
+        compose.onNodeWithText(c.predict.options[c.predict.answer]).performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("✓ Predict").performScrollTo().assertExists()
+        // Tapping a step scrolls the page to it.
+        compose.onNodeWithText("3  Report").performScrollTo().performClick()
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.waitForIdle()
+        compose.onNodeWithText("How did it show up in your day?").assertIsDisplayed()
+        shot("16-today-path-report")
+        Store.log(c.id, Mode.SPOTTED, "On the bus")
+        compose.waitForIdle()
+        compose.onAllNodesWithText("✓ Report").onFirst().assertExists()
+    }
+
+    @Test
+    fun `a sign-in notification opens the Google account sheet`() {
+        Seed.weeks(5)
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
+        scenario = ActivityScenario.launch(
+            android.content.Intent(app, MainActivity::class.java).setAction(MainActivity.ACTION_ACCOUNT),
+        )
+        compose.waitForIdle()
+        compose.onNodeWithText("Connect Google account").assertExists()
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
     @Test
     fun `google setup help shows the exact values to register`() {
         Seed.weeks(5)
@@ -218,14 +329,15 @@ class ScreensTest {
         )
         launch()
         tab("You")
-        scrollTo("One-time setup (2 minutes)")
+        openSheet("Google account")
+        compose.onNodeWithText("One-time setup (2 minutes)").performScrollTo()
         compose.onNodeWithText(GoogleSync.SHA1).assertExists()
         compose.onNodeWithText(GoogleSync.PACKAGE).assertExists()
-        shot("31-google-setup-help")
+        captureScreenRoboImage("build/outputs/roborazzi/31-google-setup-help.png")
         GoogleSync.setStateForTests(CloudState(email = "rajan@example.com", lastSyncMs = System.currentTimeMillis()))
         compose.waitForIdle()
-        scrollTo("Linked to rajan@example.com")
-        shot("32-google-linked")
+        compose.onNodeWithText("Unlink").performScrollTo().assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/32-google-linked.png")
     }
 
     @Test
