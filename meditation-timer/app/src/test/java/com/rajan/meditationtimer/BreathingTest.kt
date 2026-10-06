@@ -59,6 +59,18 @@ class BreathingTest {
     }
 
     @Test
+    fun lostCountStartsTheRoundAgainAndIsNotAMiscount() {
+        val (b, n, r) = Triple(BreathCount.Key.BREATH, BreathCount.Key.NINE, BreathCount.Key.RESET)
+        // Off count after 5, said so, then a clean 1–9: that round is exact, the slip is a reset.
+        val keys = List(8) { b } + n + List(5) { b } + r + List(8) { b } + n + r + r
+        assertEquals(BreathCountResult(2, 2, 3), BreathCount.scoreKeys(keys))
+        // Without saying so, the same restart reads as a 13-breath round: a miscount.
+        assertEquals(BreathCountResult(1, 2), BreathCount.scoreKeys(keys.filter { it != r }))
+        // Only resets: no round finished, so no accuracy, and nothing to save.
+        assertEquals(null, BreathCount.scoreKeys(listOf(b, r, r)).accuracyPercent)
+    }
+
+    @Test
     fun breathCountWithNoFinishedCycleHasNoAccuracy() {
         assertEquals(null, BreathCount.score(List(5) { false }).accuracyPercent)
         assertEquals(BreathCountResult(0, 1), BreathCount.score(listOf(true)))

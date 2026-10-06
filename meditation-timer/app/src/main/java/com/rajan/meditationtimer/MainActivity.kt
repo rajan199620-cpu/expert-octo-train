@@ -53,6 +53,12 @@ import java.time.LocalDate
 object VolumeKeys {
     /** Called with true for volume-up, false for volume-down. */
     var handler: ((up: Boolean) -> Unit)? = null
+
+    /** Called once when volume-down is held for about a second (after [handler] had its press). */
+    var onHoldDown: (() -> Unit)? = null
+
+    /** Key repeats come about every 50 ms after a ~0.5 s wait, so this many is roughly a second's hold. */
+    const val HOLD_REPEATS = 10
 }
 
 enum class Tab(val label: String) { SIT("Sit"), BREATHE("Breathe"), MALA("Mala"), HISTORY("History") }
@@ -152,6 +158,7 @@ class MainActivity : ComponentActivity() {
         VolumeKeys.handler?.let { handler ->
             if (volumeKey) {
                 if (event.repeatCount == 0) handler(keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+                else if (event.repeatCount == VolumeKeys.HOLD_REPEATS && keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) VolumeKeys.onHoldDown?.invoke()
                 return true
             }
         }

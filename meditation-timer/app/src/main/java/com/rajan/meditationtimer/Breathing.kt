@@ -127,27 +127,43 @@ data class MalaCount(val beads: Int = 0, val rounds: Int = 0, val target: Int = 
  * other key on breath 9, then start again. A cycle is correct when exactly eight "count" presses
  * come before the "nine" press. Accuracy = correct cycles / all cycles. Shorter than the research
  * version, so it is for comparing your own results over time, not with the study's numbers.
+ *
+ * As in the study, losing count and saying so (a third key, then back to 1) is a reset: a
+ * self-caught slip, kept apart from the miscounts you never noticed and left out of the accuracy.
+ * Without it, starting again at 1 carried the earlier presses into the next round and scored it wrong.
  */
 object BreathCount {
+    /** One press: a breath from 1 to 8, the ninth, or "lost count, starting again at 1". */
+    enum class Key { BREATH, NINE, RESET }
+
     /** [presses]: false = breaths 1–8 key, true = breath-9 key. A trailing unfinished cycle is ignored. */
-    fun score(presses: List<Boolean>): BreathCountResult {
+    fun score(presses: List<Boolean>): BreathCountResult = scoreKeys(presses.map { if (it) Key.NINE else Key.BREATH })
+
+    fun scoreKeys(presses: List<Key>): BreathCountResult {
         var run = 0
         var correct = 0
         var total = 0
-        for (nine in presses) {
-            if (nine) {
-                total++
-                if (run == 8) correct++
-                run = 0
-            } else {
-                run++
+        var resets = 0
+        for (key in presses) {
+            when (key) {
+                Key.NINE -> {
+                    total++
+                    if (run == 8) correct++
+                    run = 0
+                }
+                Key.BREATH -> run++
+                Key.RESET -> {
+                    resets++
+                    run = 0
+                }
             }
         }
-        return BreathCountResult(correct, total)
+        return BreathCountResult(correct, total, resets)
     }
 }
 
-data class BreathCountResult(val correct: Int, val total: Int) {
+/** [resets]: times you caught yourself off count and started again; shown, not stored. */
+data class BreathCountResult(val correct: Int, val total: Int, val resets: Int = 0) {
     /** 0..100, or null if no cycle was completed. */
     val accuracyPercent: Int? get() = if (total == 0) null else Math.round(100.0 * correct / total).toInt()
 }

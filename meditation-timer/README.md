@@ -120,8 +120,11 @@ publisher/abstract pages; unsupported instructions were left out, and one claim 
 replicate (8-week grey-matter change) was replaced with the larger null result.
 
 **Attention check** (Breathe tab): count breaths 1–9 for five minutes, volume-down on 1–8 and
-volume-up on 9 (or the on-screen keys). The score is the share of rounds counted exactly — a
-measure of skill rather than mood, adapted from a breath-counting task validated as a measure of
+volume-up on 9 (or the on-screen keys). Lost count? Hold volume-down for a second (or tap *Lost
+count*) and start again at 1. As in the study, that is a *reset*, a slip you caught yourself, kept
+apart from the miscounts you didn't notice and left out of the score (before, the earlier presses
+carried into the next round and marked it wrong). The score is the share of rounds counted exactly —
+a measure of skill rather than mood, adapted from a breath-counting task validated as a measure of
 mindfulness (Levinson et al., 2014). Results are kept to compare over weeks, and travel in every
 backup (file, Downloads copy and Google), so a reinstall or a new phone keeps them; a restore adds
 to the scores already on the phone, never replacing them. A rotation mid-check keeps your presses.

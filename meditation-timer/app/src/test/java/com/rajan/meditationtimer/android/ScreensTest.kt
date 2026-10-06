@@ -765,6 +765,31 @@ class ScreensTest {
     }
 
     @Test
+    fun `the attention check takes a lost count, by holding volume-down or on screen, without marking the next round wrong`() {
+        launch()
+        compose.onAllNodesWithText("Breathe").onLast().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Start a 5-minute check").performScrollTo().performClick()
+        // The check's clock ticks forever, so time is stepped by hand from here.
+        compose.mainClock.autoAdvance = false
+        compose.mainClock.advanceTimeBy(500)
+        val (down, up) = KeyEvent.KEYCODE_VOLUME_DOWN to KeyEvent.KEYCODE_VOLUME_UP
+        fun key(code: Int, repeat: Int = 0) = scenario!!.onActivity { it.onKeyDown(code, KeyEvent(0, 0, KeyEvent.ACTION_DOWN, code, repeat)) }
+        repeat(8) { key(down) }
+        key(up)
+        // Lost count on breath 4: volume-down held (its first press, then the repeats), then a clean round.
+        repeat(4) { key(down) }
+        for (r in 1..VolumeKeys.HOLD_REPEATS + 5) key(down, r)
+        repeat(8) { key(down) }
+        key(up)
+        compose.onNodeWithText("Lost count — back to 1").performClick()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMinutes(5))
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.onNodeWithText("100% · 2 of 2 rounds exact · 2 restarts").performScrollTo().assertExists()
+        assertEquals(BreathCountResult(2, 2), Prefs(app).breathChecks.single().result)
+    }
+
+    @Test
     fun `an exercise that ends with the phone locked gets its bell from the service, and the screen leaves it ringing`() {
         launch()
         compose.onAllNodesWithText("Breathe").onLast().performClick()

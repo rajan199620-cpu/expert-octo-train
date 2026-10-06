@@ -3,6 +3,7 @@ package com.rajan.meditationtimer
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Build
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
@@ -156,8 +157,9 @@ private fun AttentionCheckCard(checks: List<BreathCheck>, lastResult: BreathCoun
         CardTitle("Attention check")
         Text(
             "Count your breaths from 1 to 9, again and again, for $CHECK_MINUTES minutes. Press volume-down on " +
-                "breaths 1–8 and volume-up on breath 9. Lost count? Just start again at 1. Your score is how " +
-                "many rounds of nine you counted exactly — a measure of how steady your attention is.",
+                "breaths 1–8 and volume-up on breath 9. Lost count? Hold volume-down for a second (or tap " +
+                "Lost count), then start again at 1: catching it yourself isn't held against you. Your score is " +
+                "how many rounds of nine you counted exactly — a measure of how steady your attention is.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
@@ -169,7 +171,12 @@ private fun AttentionCheckCard(checks: List<BreathCheck>, lastResult: BreathCoun
         )
         lastResult?.let {
             val pct = it.accuracyPercent
-            Pill(if (pct == null) "No full round of nine counted — try again" else "$pct% · ${it.correct} of ${it.total} rounds exact")
+            val restarts = when (it.resets) {
+                0 -> ""
+                1 -> " · 1 restart"
+                else -> " · ${it.resets} restarts"
+            }
+            Pill(if (pct == null) "No full round of nine counted — try again" else "$pct% · ${it.correct} of ${it.total} rounds exact$restarts")
         }
         if (checks.isNotEmpty()) {
             val zone = ZoneId.systemDefault()
@@ -198,18 +205,29 @@ private fun BreathCheckSession(startedAt: Long, onStop: () -> Unit, onFinished: 
     BackHandler(onBack = onStop)
     val view = LocalView.current
     // Kept through a rotation: the clock carries on, so the presses must too.
-    val presses = rememberSaveable(saver = listSaver<SnapshotStateList<Boolean>, Boolean>({ it.toList() }, { it.toMutableStateList() })) { mutableStateListOf<Boolean>() }
+    val presses = rememberSaveable(
+        saver = listSaver<SnapshotStateList<BreathCount.Key>, Int>({ keys -> keys.map { it.ordinal } }, { saved -> saved.map { BreathCount.Key.entries[it] }.toMutableStateList() }),
+    ) { mutableStateListOf<BreathCount.Key>() }
     fun press(nine: Boolean) {
-        presses += nine
+        presses += if (nine) BreathCount.Key.NINE else BreathCount.Key.BREATH
         view.performHapticFeedback(if (nine) HapticFeedbackConstants.LONG_PRESS else HapticFeedbackConstants.VIRTUAL_KEY)
+    }
+    // Lost count: back to 1, felt as a distinct double buzz so it registers with eyes closed.
+    fun restart() {
+        presses += BreathCount.Key.RESET
+        view.performHapticFeedback(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS,
+        )
     }
     // Volume keys only reach the app while the screen is on.
     DisposableEffect(view) {
         view.keepScreenOn = true
         VolumeKeys.handler = { up -> press(nine = up) }
+        VolumeKeys.onHoldDown = { restart() }
         onDispose {
             view.keepScreenOn = false
             VolumeKeys.handler = null
+            VolumeKeys.onHoldDown = null
         }
     }
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
@@ -222,7 +240,7 @@ private fun BreathCheckSession(startedAt: Long, onStop: () -> Unit, onFinished: 
     val totalMs = CHECK_MINUTES * 60_000L
     val remaining = (totalMs - (now - startedAt)).coerceAtLeast(0)
     val done = remaining == 0L
-    LaunchedEffect(done) { if (done) onFinished(BreathCount.score(presses.toList())) }
+    LaunchedEffect(done) { if (done) onFinished(BreathCount.scoreKeys(presses.toList())) }
 
     Column(
         Modifier.fillMaxSize(),
@@ -231,7 +249,7 @@ private fun BreathCheckSession(startedAt: Long, onStop: () -> Unit, onFinished: 
     ) {
         Text("Count breaths 1 to 9", style = MaterialTheme.typography.headlineMedium)
         Text(
-            "Volume-down on 1–8 · volume-up on 9 · eyes closed.\nNo count is shown — that’s the point.",
+            "Volume-down on 1–8 · volume-up on 9 · eyes closed.\nLost count? Hold volume-down, then back to 1.\nNo count is shown — that’s the point.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -242,6 +260,7 @@ private fun BreathCheckSession(startedAt: Long, onStop: () -> Unit, onFinished: 
             CheckKey("1 – 8", Modifier.weight(1f)) { press(nine = false) }
             CheckKey("9", Modifier.weight(1f)) { press(nine = true) }
         }
+        TextButton(onClick = { restart() }) { Text("Lost count — back to 1") }
         TextButton(onClick = onStop) { Text("Stop without saving", color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
