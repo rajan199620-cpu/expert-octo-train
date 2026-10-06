@@ -1,3 +1,5 @@
+import java.time.Duration
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -71,7 +73,7 @@ tasks.withType<Test>().configureEach {
     systemProperty("roborazzi.test.record", "true")
     maxHeapSize = "2g"
     // A test that never finishes fails the build in minutes instead of holding CI for hours.
-    timeout.set(java.time.Duration.ofMinutes(20))
+    timeout.set(Duration.ofMinutes(20))
     // Print why a test failed in the CI log, not only in the HTML report.
     testLogging {
         events("failed")
