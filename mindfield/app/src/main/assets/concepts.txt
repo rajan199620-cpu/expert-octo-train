@@ -702,7 +702,7 @@ predict: When researchers corrected the moral licensing studies for publication 
 - It stayed about the same
 * It shrank to somewhere between nothing and small
 scenario: After running five kilometres in the morning, Varun orders a large dessert at lunch and another at dinner, telling himself the run cancelled them out.
-source: Monin, B., & Miller, D. T. (2001). Moral credentials and the expression of prejudice. Journal of Personality and Social Psychology; Kuper, N., & Bott, A. (2019). Has the evidence for moral licensing been inflated by publication bias? Meta-Psychology; Tiefenbeck, V., et al. (2013). For better or for worse? Empirical evidence of moral licensing in a behavioral energy conservation campaign. Energy Policy.
+source: Monin, B., & Miller, D. T. (2001). Moral credentials and the expression of prejudice. Journal of Personality and Social Psychology; Blanken, I., van de Ven, N., & Zeelenberg, M. (2015). A meta-analysis of moral licensing. Personality and Social Psychology Bulletin; Kuper, N., & Bott, A. (2019). Has the evidence for moral licensing been inflated by publication bias? Meta-Psychology; Tiefenbeck, V., et al. (2013). For better or for worse? Empirical evidence of moral licensing in a behavioral energy conservation campaign. Energy Policy.
 related: cognitive-dissonance, self-serving-bias
 
 # =====================================================================================
@@ -1535,7 +1535,7 @@ predict: Requesters asked strangers to write "pickle" in a library book and pred
 - About 30%, as predicted
 * More than 64%
 scenario: Tanvi needs someone to cover her Saturday shift but doesn't ask, sure everyone will refuse. When her manager finally asks around for her, the first colleague says yes straight away.
-source: Flynn, F. J., & Lake, V. K. B. (2008). If you need help, just ask: Underestimating compliance with direct requests for help. Journal of Personality and Social Psychology; Bohns, V. K., Roghanizad, M. M., & Xu, A. Z. (2014). Underestimating our influence over others' unethical behavior and decisions. Personality and Social Psychology Bulletin.
+source: Flynn, F. J., & Lake, V. K. B. (2008). If you need help, just ask: Underestimating compliance with direct requests for help. Journal of Personality and Social Psychology; Bohns, V. K., Roghanizad, M. M., & Xu, A. Z. (2014). Underestimating our influence over others' unethical behavior and decisions. Personality and Social Psychology Bulletin; Bohns, V. K. (2016). (Mis)understanding our influence over others: A review of the underestimation-of-compliance effect. Current Directions in Psychological Science.
 related: reaching-out, compliments, foot-in-the-door
 
 ## forced-teaming
@@ -1944,7 +1944,7 @@ predict: In the 2023 adversarial collaboration, for whom did emotional well-bein
 * Only for the unhappiest 20% of people
 - For no one; it rises in every group at every income
 scenario: Kunal turned down a promotion because he'd read that happiness stops rising above a certain salary. His cousin, behind on her rent, says that rule clearly wasn't written about people like her.
-source: Kahneman, D., & Deaton, A. (2010). High income improves evaluation of life but not emotional well-being. PNAS; Killingsworth, M. A., Kahneman, D., & Mellers, B. (2023). Income and emotional well-being: A conflict resolved. PNAS; Haushofer, J., & Shapiro, J. (2016). The short-term impact of unconditional cash transfers to the poor. Quarterly Journal of Economics.
+source: Kahneman, D., & Deaton, A. (2010). High income improves evaluation of life but not emotional well-being. PNAS; Killingsworth, M. A. (2021). Experienced well-being rises with income, even above $75,000 per year. PNAS; Killingsworth, M. A., Kahneman, D., & Mellers, B. (2023). Income and emotional well-being: A conflict resolved. PNAS; Haushofer, J., & Shapiro, J. (2016). The short-term impact of unconditional cash transfers to the poor. Quarterly Journal of Economics.
 related: hedonic-adaptation, focusing-illusion, prosocial-spending
 
 # =====================================================================================
@@ -2298,19 +2298,19 @@ related: weak-ties
 title: The halo effect
 category: connection
 evidence: solid
-hook: People judged politicians' competence from a one-second glimpse of their faces. Those snap judgements picked the winner in about 7 of 10 Senate races.
+hook: Strangers picked which of two candidates looked more competent, from faces alone. The competent-looking one won about 7 in 10 Senate races.
 what: One prominent good trait, such as looks, confidence or a polished presentation, casts a glow over everything else we judge about a person or product, including traits we have no information about. It works in reverse too: one bad trait drags down the rest. Because the impression feels like a set of separate judgements, we don't notice it's one feeling repeated.
 study: Edward Thorndike named the effect in 1920 after finding that officers' ratings of their soldiers' looks, intelligence, leadership and character were far too closely related to be independent judgements. In 1977 Richard Nisbett and Timothy Wilson showed students a video of a lecturer behaving either warmly or coldly. Students who saw the warm version found the lecturer's appearance, mannerisms and accent appealing; those who saw the cold version found the same features irritating. Both groups denied that the lecturer's manner had affected those ratings.
-case: In 2005 Alexander Todorov and colleagues showed people pairs of photos of rival candidates in real US congressional elections for about a second and asked who looked more competent. The more competent-looking face belonged to the winner in about 69% of the 2004 Senate races, although the raters knew nothing about the candidates. Later studies found the same with glimpses of a tenth of a second, and with Swiss children choosing a "captain" for a boat trip from the faces of real French candidates. The effect on votes is largest among voters who know little about the candidates. The nuance: a competent-looking face says almost nothing about competence in office; the studies show that voters partly vote on the glow.
+case: In 2005 Alexander Todorov and colleagues showed people pairs of photos of rival candidates in real US congressional elections and asked who looked more competent. The more competent-looking face belonged to the winner in about 69% of the 2004 Senate races, although the raters knew nothing about the candidates, and a one-second look was enough to form the same judgement. Later studies found the same with glimpses of a tenth of a second, and with Swiss children choosing a "captain" for a boat trip from the faces of real French candidates. The effect on votes is largest among voters who know little about the candidates. The nuance: a competent-looking face says almost nothing about competence in office; the studies show that voters partly vote on the glow.
 proof: Among the oldest and most replicated findings in social psychology, including meta-analyses showing that attractive people are judged and treated more favourably across many areas of life.
 spot: Notice when one thing you like about someone, such as a confident voice, a famous employer, good looks or a sleek website, makes you assume they're good at things you haven't seen.
 use: Pick one person or product you admire. List one specific thing you've actually seen them do well, and one thing you're only assuming.
 guard: When evaluating people (hiring, reviewing, choosing a doctor), judge each quality separately against evidence, and decide what matters before you meet them.
-predict: The more competent-looking face, judged from a one-second glimpse, belonged to the winner in what share of the 2004 US Senate races?
+predict: The candidate whose face strangers rated as more competent won what share of the 2004 US Senate races?
 - About 50%, no better than chance
 * About 69%
 - About 95%
-scenario: The new hire speaks fluently in meetings and dresses sharply, so Meenal assumes her spreadsheets must be accurate too. She doesn't check them, and the first one contains a costly error.
+scenario: Kavya, the new hire, speaks fluently in meetings and dresses sharply, so her manager Meenal assumes Kavya's spreadsheets must be accurate too. Meenal doesn't check them, and the first one contains a costly error.
 source: Thorndike, E. L. (1920). A constant error in psychological ratings. Journal of Applied Psychology; Nisbett, R. E., & Wilson, T. D. (1977). The halo effect: Evidence for unconscious alteration of judgments. Journal of Personality and Social Psychology; Todorov, A., et al. (2005). Inferences of competence from faces predict election outcomes. Science.
 related: affect-heuristic, similarity, mere-exposure
 
@@ -2772,7 +2772,7 @@ evidence: good
 hook: Check your investments daily and you'll often see losses. Check yearly and you'll mostly see gains. The frame decides how brave you are.
 what: Because losses hurt more than equal gains please, judging each risk on its own, or checking outcomes very often, makes sensible risks feel unbearable. One at a time, small bets with good odds feel scary; seen as a bundle, they're clearly worth taking. Kahneman's advice is to "think like a trader": look at the whole portfolio of decisions rather than each one.
 study: In 1997 Uri Gneezy and Jan Potters had people repeatedly decide how much to bet on a favourable gamble. Those who got feedback after every round bet less than those who got feedback, and chose, only every three rounds. In 1999 Shlomo Benartzi and Richard Thaler showed university staff the returns of a stock fund and a bond fund. Shown one-year returns, they put about 40% into stocks; shown the same data as 30-year outcomes, about 80%.
-case: Professionals show it too. In 2005 Michael Haigh and John List ran the Gneezy and Potters game with traders from the Chicago Board of Trade and with students. The traders showed the pattern even more strongly: with frequent feedback, they bet much less. In 2016 Matthew Larson, John List and Robert Metcalfe found the same in a field experiment with professional traders. Some replications have failed, though: when people face varied gambles rather than the same one repeatedly, or see the full range of possible outcomes, the effect shrinks. The nuance: the cure isn't to stop looking but to look through the right frame. Decide a strategy for many decisions at once, and check results on a schedule that matches how long you'll hold them.
+case: Professionals show it too. In 2005 Michael Haigh and John List ran the Gneezy and Potters game with traders from the Chicago Board of Trade and with students. The traders showed the pattern even more strongly: with frequent feedback, they bet much less. In 2016 Francis Larson, John List and Robert Metcalfe found the same in a field experiment with professional traders: those who saw prices less often invested about a third more in risky assets. Some replications have failed, though: when people face varied gambles rather than the same one repeatedly, or see the full range of possible outcomes, the effect shrinks. The nuance: the cure isn't to stop looking but to look through the right frame. Decide a strategy for many decisions at once, and check results on a schedule that matches how long you'll hold them.
 proof: Good: replicated in the lab and the field, including with professional traders, but sensitive to how the task is set up; some replications with varied gambles find little effect.
 spot: Notice when you judge one bet, one day of investing or one job interview in isolation and feel the loss sharply, instead of seeing it as one of many.
 use: Choose one thing you check too often, such as a portfolio, a fitness tracker or sales numbers, and set a slower checking schedule for the next week.
@@ -2782,16 +2782,16 @@ predict: University staff saw the same stock and bond returns as one-year or as 
 * About 40% after one-year figures, about 80% after 30-year ones
 - More after one-year figures, which looked exciting
 scenario: Meghna checks her mutual fund app every morning, panics at each red day and finally sells everything in a dip. Her colleague, who looks once a year, has never sold and is well ahead.
-source: Benartzi, S., & Thaler, R. H. (1995). Myopic loss aversion and the equity premium puzzle. Quarterly Journal of Economics; Gneezy, U., & Potters, J. (1997). An experiment on risk taking and evaluation periods. Quarterly Journal of Economics; Haigh, M. S., & List, J. A. (2005). Do professional traders exhibit myopic loss aversion? Journal of Finance.
+source: Benartzi, S., & Thaler, R. H. (1995). Myopic loss aversion and the equity premium puzzle. Quarterly Journal of Economics; Benartzi, S., & Thaler, R. H. (1999). Risk aversion or myopia? Choices in repeated gambles and retirement investments. Management Science; Gneezy, U., & Potters, J. (1997). An experiment on risk taking and evaluation periods. Quarterly Journal of Economics; Haigh, M. S., & List, J. A. (2005). Do professional traders exhibit myopic loss aversion? Journal of Finance; Larson, F., List, J. A., & Metcalfe, R. D. (2016). Can myopic loss aversion explain the equity premium puzzle? NBER Working Paper.
 related: loss-aversion, mental-accounting, certainty-effect
 
 ## less-is-better
 title: Less is better
 category: decisions
 evidence: good
-hook: A set of 24 perfect dishes was valued at $32. The same 24 plus extra cups and saucers, a few broken, was valued at $23.
+hook: A set of 24 perfect dishes was valued at $33. The same 24 plus extra cups and saucers, some of them broken, was valued at $23.
 what: When we judge one option on its own, we often go by its average quality rather than its total value, because totals are hard to judge without a comparison. So adding something good but less impressive can lower the overall impression: a cheap free gift with a luxury item, a mediocre extra reason in a strong argument. Put options side by side and the effect usually reverses, because then the bigger quantity is easy to see.
-study: In 1998 Christopher Hsee asked people what they'd pay for a dinnerware set. One set had 24 pieces, all intact; the other had 40 pieces, including the same 24 plus cups and saucers, several of them broken. Judged separately, the smaller set was valued at about $32 and the larger at about $23. Judged side by side, people valued the larger set more. A close replication published in 2023 mostly confirmed the results.
+study: In 1998 Christopher Hsee asked people what they'd pay for a dinnerware set. One set had 24 pieces, all intact; the other had 40 pieces, including the same 24 plus cups and saucers, several of them broken. Judged separately, the smaller set was valued at about $33 and the larger at about $23. Judged side by side, people valued the larger set slightly more, $32 against $30. A close replication published in 2023 mostly confirmed the results.
 case: In 2002 economist John List tested the effect in a real market, a sports-card show. List auctioned bundles of baseball cards: 10 cards in mint condition, or the same 10 plus 3 more in poor condition, which were worth more in total. Ordinary collectors bidding on one bundle alone bid more for the 10 cards than for the 13; when both bundles were offered together, they bid more for the 13. Experienced professional dealers didn't reliably show the reversal. The nuance: averaging is a shortcut for judging what's hard to evaluate. Experts who know what things are worth are less fooled, and any of us can avoid it by comparing options side by side.
 proof: Good: the less-is-better pattern has replicated, including in a close replication, and appears in real markets, though it shrinks with expertise and side-by-side comparison.
 spot: Notice bundles padded with filler (free gifts, bonus items, a fourth weak reason) and whether they make the main thing seem cheaper.
@@ -2802,7 +2802,7 @@ predict: Judged separately, which dinnerware set did people value more?
 - The larger set of 40 pieces with a few broken
 - Both about the same
 scenario: Ankit's proposal had three strong reasons, and he added two weak ones to look thorough. The client remembers only the weak ones and calls the whole plan flimsy.
-source: Hsee, C. K. (1998). Less is better: When low-value options are valued more highly than high-value options. Journal of Behavioral Decision Making; List, J. A. (2002). Preference reversals of a different kind: The "more is less" phenomenon. American Economic Review; Weaver, K., Garcia, S. M., & Schwarz, N. (2012). The presenter's paradox. Journal of Consumer Research.
+source: Hsee, C. K. (1998). Less is better: When low-value options are valued more highly than high-value options. Journal of Behavioral Decision Making; List, J. A. (2002). Preference reversals of a different kind: The "more is less" phenomenon. American Economic Review; Weaver, K., Garcia, S. M., & Schwarz, N. (2012). The presenter's paradox. Journal of Consumer Research; Vonasch, A. J., et al. (2023). "Less is better" in separate evaluations versus "more is better" in joint evaluations: Mostly successful close replication and extension of Hsee (1998). Collabra: Psychology.
 related: decoy-effect, contrast-principle, framing-effect
 
 ## opportunity-cost-neglect
@@ -3211,7 +3211,7 @@ predict: People imagined that a future event had already happened, rather than t
 * They came up with about 30% more reasons for it
 - They came up with fewer reasons, feeling it was settled
 scenario: Before launching the new menu, Sneha asks her staff to imagine it's three months later and the menu has flopped, and to write down why. Two cooks independently write that the tandoor can't keep up at lunch.
-source: Klein, G. (2007). Performing a project premortem. Harvard Business Review; Mitchell, D. J., Russo, J. E., & Pennington, N. (1989). Back to the future: Temporal perspective in the explanation of events. Journal of Behavioral Decision Making; Gallop, D., Willy, C., & Bischoff, J. (2016). How to catch a black swan. Journal of Enterprise Transformation.
+source: Klein, G. (2007). Performing a project premortem. Harvard Business Review; Mitchell, D. J., Russo, J. E., & Pennington, N. (1989). Back to the future: Temporal perspective in the explanation of events. Journal of Behavioral Decision Making; Veinott, B., Klein, G. A., & Wiggins, S. (2010). Evaluating the effectiveness of the PreMortem technique on plan confidence. Proceedings of ISCRAM; Gallop, D., Willy, C., & Bischoff, J. (2016). How to catch a black swan. Journal of Enterprise Transformation.
 related: planning-fallacy, overconfidence, mental-contrasting
 
 ## round-number-goals
@@ -3660,7 +3660,7 @@ predict: In the Dutch field experiment, how many cyclists dropped the flyer on t
 - About half
 * About 69%
 scenario: The office kitchen stays spotless for months. The week someone leaves a pile of dirty mugs in the sink, the counters fill with crumbs and the fridge with forgotten lunches.
-source: Keizer, K., Lindenberg, S., & Steg, L. (2008). The spreading of disorder. Science; Braga, A. A., Welsh, B. C., & Schnell, C. (2015). Can policing disorder reduce crime? A systematic review and meta-analysis. Journal of Research in Crime and Delinquency; Bergquist, M., et al. (2023). Are broken windows spreading? Journal of Environmental Psychology.
+source: Keizer, K., Lindenberg, S., & Steg, L. (2008). The spreading of disorder. Science; Braga, A. A., Welsh, B. C., & Schnell, C. (2015). Can policing disorder reduce crime? A systematic review and meta-analysis. Journal of Research in Crime and Delinquency; O'Brien, D. T., Farrell, C., & Welsh, B. C. (2019). Broken (windows) theory: A meta-analysis of the evidence for the pathways from neighborhood disorder to resident health outcomes and behaviors. Social Science & Medicine; Bergquist, M., et al. (2023). Are broken windows spreading? Journal of Environmental Psychology.
 related: social-proof, norm-boomerang, asch-conformity
 
 ## reflected-glory
