@@ -11,6 +11,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.draw.clip
 import java.time.Instant
 import java.time.ZoneId
@@ -63,6 +66,7 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
     var checkStartedAt by rememberSaveable { mutableLongStateOf(0L) }
     var checks by remember { mutableStateOf(prefs.breathChecks) }
     var lastResult by remember { mutableStateOf<BreathCountResult?>(null) }
+    val context = LocalContext.current
 
     if (checkStartedAt != 0L) {
         BreathCheckSession(
@@ -75,6 +79,8 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
                 if (result.total > 0) {
                     prefs.addBreathCheck(BreathCheck(System.currentTimeMillis(), result))
                     checks = prefs.breathChecks
+                    // The scores ride in the backup's settings line, so a new one is backed up now.
+                    SessionLog.get(context).backUp()
                 }
             },
         )
@@ -88,7 +94,9 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
             startedAt = startedAt,
             onStop = { startedAt = 0L },
             onFinished = {
-                onDone()
+                // The service rings the closing bell on time, even with the phone locked; the screen
+                // only rings it if the service never got to pace this exercise.
+                if (!BreathService.ringsEnd(startedAt)) onDone()
                 startedAt = 0L
                 justFinished = true
             },
@@ -189,7 +197,8 @@ private fun BreathCheckSession(startedAt: Long, onStop: () -> Unit, onFinished: 
     // Back stops the check, like the button, instead of closing the app mid-count.
     BackHandler(onBack = onStop)
     val view = LocalView.current
-    val presses = remember { mutableStateListOf<Boolean>() }
+    // Kept through a rotation: the clock carries on, so the presses must too.
+    val presses = rememberSaveable(saver = listSaver<SnapshotStateList<Boolean>, Boolean>({ it.toList() }, { it.toMutableStateList() })) { mutableStateListOf<Boolean>() }
     fun press(nine: Boolean) {
         presses += nine
         view.performHapticFeedback(if (nine) HapticFeedbackConstants.LONG_PRESS else HapticFeedbackConstants.VIRTUAL_KEY)
@@ -281,7 +290,8 @@ private fun BreathingSession(
 
     // One tap to breathe in, two to breathe out, a long buzz to hold, so each phase can be told
     // apart with eyes closed. The taps come from a service so they carry on with the phone locked;
-    // it stops when this screen goes (Stop, Back, the end), but not when it is only rebuilt.
+    // it stops when this screen goes (Stop, Back), but not when it is only rebuilt, nor at the end,
+    // where it rings the closing bell and stops itself.
     val context = LocalContext.current
     LaunchedEffect(startedAt) {
         BreathService.start(context, pattern, minutes, startedAt)
@@ -290,7 +300,10 @@ private fun BreathingSession(
         onStop()
     }
     DisposableEffect(startedAt) {
-        onDispose { if (context.findActivity()?.isChangingConfigurations != true) BreathService.stop(context) }
+        onDispose {
+            val over = SystemClock.elapsedRealtime() - startedAt >= totalMs
+            if (!over && context.findActivity()?.isChangingConfigurations != true) BreathService.stop(context)
+        }
     }
 
     Column(

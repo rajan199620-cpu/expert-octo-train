@@ -75,6 +75,12 @@ class SessionLog private constructor(private val context: Context, private val f
         return added.size
     }
 
+    /** Writes both backups again, for history that lives outside this log (attention-check scores). */
+    fun backUp() {
+        AutoBackup.write(context, _records.value, deleted)
+        GoogleBackup.backupSoon(context)
+    }
+
     private fun key(record: SessionRecord) = record.startedAtMs / 60_000
 
     private fun rewrite(records: List<SessionRecord>) {

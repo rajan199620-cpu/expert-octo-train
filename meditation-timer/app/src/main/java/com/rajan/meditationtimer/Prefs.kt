@@ -1,6 +1,7 @@
 package com.rajan.meditationtimer
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 
 /** Remembers the last-used settings so the next sit is one tap away. */
@@ -66,6 +67,9 @@ class Prefs(context: Context) {
         // A recording lives on one phone, so a backup carries the built-in sounds only.
         ambience.takeIf { it != Ambience.CUSTOM && sp.contains(KEY_AMBIENCE) }?.let { put(KEY_AMBIENCE, it.name) }
         for (key in listOf(KEY_ALERT, KEY_BREATH_PATTERN)) sp.getString(key, null)?.let { put(key, it) }
+        // Attention-check scores are history, not settings, but they live here: without this line a
+        // reinstall or a new phone would lose the weeks of scores the check exists to compare.
+        sp.getString(KEY_BREATH_CHECKS, null)?.takeIf { it.isNotBlank() }?.let { put(KEY_BREATH_CHECKS, java.net.URLEncoder.encode(it, "UTF-8")) }
     }
 
     /**
@@ -88,6 +92,8 @@ class Prefs(context: Context) {
                     KEY_AMBIENCE -> Ambience.entries.firstOrNull { it.name == value && it != Ambience.CUSTOM }?.let { putString(key, it.name) }
                     KEY_ALERT -> AlertMode.entries.firstOrNull { it.name == value }?.let { putString(key, it.name) }
                     KEY_BREATH_PATTERN -> BreathPattern.ALL.firstOrNull { it.name == value }?.let { putString(key, it.name) }
+                    // Added to the scores already here (the same check twice counts once), never replacing them.
+                    KEY_BREATH_CHECKS -> putMergedChecks(value)
                 }
             }
         }
@@ -110,8 +116,27 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_BREATH_CHECKS, "")!!.lines().mapNotNull(BreathCheck::decode)
 
     fun addBreathCheck(check: BreathCheck) {
-        sp.edit { putString(KEY_BREATH_CHECKS, (breathChecks + check).joinToString("\n") { it.encode() }) }
+        sp.edit { putString(KEY_BREATH_CHECKS, encodeChecks(breathChecks + check)) }
     }
+
+    /**
+     * Adds the attention-check scores in a backup's settings line to those here, without touching
+     * any setting: the Drive sync does this every time, so two phones keep each other's scores.
+     */
+    fun mergeBreathChecks(settings: Map<String, String>) {
+        val value = settings[KEY_BREATH_CHECKS] ?: return
+        sp.edit { putMergedChecks(value) }
+    }
+
+    private fun SharedPreferences.Editor.putMergedChecks(encoded: String) {
+        val text = runCatching { java.net.URLDecoder.decode(encoded, "UTF-8") }.getOrNull() ?: return
+        val restored = text.lines().mapNotNull(BreathCheck::decode)
+            .filter { it.atMs > 0 && it.result.total in 1..MAX_CHECK_ROUNDS && it.result.correct in 0..it.result.total }
+        if (restored.isEmpty()) return
+        putString(KEY_BREATH_CHECKS, encodeChecks((breathChecks + restored).distinctBy { it.atMs }.sortedBy { it.atMs }))
+    }
+
+    private fun encodeChecks(checks: List<BreathCheck>) = checks.joinToString("\n") { it.encode() }
 
     /**
      * Tap or press a volume key during a sit each time you notice the mind has wandered. Off
@@ -251,6 +276,8 @@ class Prefs(context: Context) {
         private const val KEY_MALA_ROUNDS = "mala_rounds"
         private const val KEY_MALA_TARGET = "mala_target"
         private const val KEY_BREATH_CHECKS = "breath_checks"
+        /** Far more rounds of nine than five minutes of breathing allows: anything above is a damaged file. */
+        private const val MAX_CHECK_ROUNDS = 1_000
         private const val KEY_COUNT = "count_distractions"
         private const val KEY_CHECK_INS = "check_ins"
         private const val KEY_REMINDER_ON = "reminder_on"

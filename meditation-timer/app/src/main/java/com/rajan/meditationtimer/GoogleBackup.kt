@@ -164,7 +164,8 @@ object GoogleBackup {
                 val text = http("GET", "$API/files/$id?alt=media", token)
                 restored = log.merge(History.fromCsv(text, ZoneId.systemDefault()), History.deletedFrom(text))
                 // A fresh install also gets its usual-sit settings back.
-                if (wasEmpty) History.settingsFrom(text)?.let { Prefs(app).importSettings(it) }
+                // Attention-check scores are history: always gathered in, so an upload never drops another phone's.
+                History.settingsFrom(text)?.let { if (wasEmpty) Prefs(app).importSettings(it) else Prefs(app).mergeBreathChecks(it) }
             }
             upload(app, token)
             return restored

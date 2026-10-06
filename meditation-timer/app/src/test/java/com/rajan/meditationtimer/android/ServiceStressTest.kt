@@ -102,6 +102,10 @@ class ServiceStressTest {
         assertEquals(16, BreathBuzz.played.get() - played)
         assertTrue("stops itself at the end", shadowOf(s.get()).isStoppedBySelf)
         assertFalse("and lets the CPU sleep", ShadowPowerManager.getLatestWakeLock().isHeld)
+        // The closing bell rang from here, on time: the screen, unlocked later, mustn't ring it again.
+        assertEquals(first, BreathService.ended.value)
+        assertTrue(BreathService.ringsEnd(first))
+        assertFalse(BreathService.busy)
         idle(60)
         assertEquals(16, BreathBuzz.played.get() - played)
 
@@ -119,6 +123,63 @@ class ServiceStressTest {
         idle(120)
         assertEquals(before, BreathBuzz.played.get())
         assertTrue(shadowOf(t.get()).isStoppedBySelf)
+    }
+
+    @Test
+    fun `the daily reminder and a breathing exercise never replace or clear each other`() {
+        val box = BreathPattern.ALL.first { it.name == "Box" }
+        val notifications = shadowOf(app.getSystemService(NotificationManager::class.java))
+        Prefs(app).reminder = Reminder(true, 7 * 60, "after morning tea")
+        ReminderScheduler.fire(app)
+        assertEquals(1, notifications.allNotifications.size)
+
+        // Both showing at once: the exercise's notification has an id of its own.
+        val started = SystemClock.elapsedRealtime()
+        BreathService.start(app, box, 3, started)
+        val s = Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        idle(5)
+        assertTrue(BreathService.busy)
+        assertEquals(setOf("reminders", "breathe"), notifications.allNotifications.map { it.channelId }.toSet())
+        // Clearing the nudge (as a sit does) leaves the exercise's notification, and its Stop, alone.
+        ReminderScheduler.dismiss(app)
+        assertEquals("breathe", notifications.allNotifications.single().channelId)
+        // No new nudge buzzing through the exercise.
+        ReminderScheduler.fire(app)
+        assertEquals("breathe", notifications.allNotifications.single().channelId)
+
+        // Once it is over (3 minutes of box is 12 breaths, 192 s) and its bell rung out, the nudge comes as usual.
+        idle(220)
+        assertTrue(shadowOf(s.get()).isStoppedBySelf)
+        assertFalse(BreathService.busy)
+        assertEquals(started, BreathService.ended.value)
+        ReminderScheduler.fire(app)
+        assertEquals("reminders", notifications.allNotifications.single().channelId)
+    }
+
+    @Test
+    fun `attention-check scores travel with the backup, and two phones keep each other's`() {
+        val prefs = Prefs(app)
+        prefs.addBreathCheck(BreathCheck(1_000, BreathCountResult(4, 5)))
+        prefs.addBreathCheck(BreathCheck(2_000, BreathCountResult(6, 6)))
+        val settings = History.settingsFrom(History.toCsv(emptyList(), ZoneId.of("UTC"), prefs.exportSettings()))!!
+
+        // A new phone with one check of its own, then the backup restored twice: all three, once each, in order.
+        app.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().clear().commit()
+        prefs.addBreathCheck(BreathCheck(1_500, BreathCountResult(1, 2)))
+        prefs.importSettings(settings)
+        prefs.importSettings(settings)
+        assertEquals(listOf(1_000L, 1_500L, 2_000L), prefs.breathChecks.map { it.atMs })
+        assertEquals(BreathCountResult(6, 6), prefs.breathChecks.last().result)
+
+        // Drive's merge on a phone already in use gathers scores only, never the settings.
+        prefs.importSettings(mapOf("duration_min" to "45"))
+        prefs.mergeBreathChecks(mapOf("duration_min" to "5", "breath_checks" to "3000%2C2%2C3"))
+        assertEquals(45 * 60, prefs.timerConfig.durationSec)
+        assertEquals(4, prefs.breathChecks.size)
+        // Damaged scores (more right than counted, no rounds, a negative time, junk) are left out.
+        prefs.mergeBreathChecks(mapOf("breath_checks" to "4000%2C5%2C3%0A5000%2C0%2C0%0A-1%2C1%2C1%0Ajunk%0A%25%25"))
+        prefs.mergeBreathChecks(mapOf("breath_checks" to "%zz"))
+        assertEquals(4, prefs.breathChecks.size)
     }
 
     @Test

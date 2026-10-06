@@ -97,7 +97,9 @@ always serves the newest build (CI republishes it on every push).
 **Breathe**: paced breathing (Coherent 5.5/5.5, Box 4-4-4-4, 4-7-8) with an expanding circle
 and a vibration at each phase change (one tap in, two taps out, a long buzz to hold), so you can
 follow it eyes-closed. The taps come from a small foreground service, so they carry on with the
-phone locked; its notification has a *Stop* button.
+phone locked; its notification has a *Stop* button. The closing bell rings from the service too,
+on time, even with the phone locked (it used to wait for the screen and ring late, on unlock), and
+the daily reminder holds off until the exercise is over.
 
 **Mala**: japa counter (27/54/108) with a ring of beads. Tap the circle or press **either volume
 key** to count; a bell and a strong buzz mark each finished round. The count survives closing the app.
@@ -120,7 +122,9 @@ replicate (8-week grey-matter change) was replaced with the larger null result.
 **Attention check** (Breathe tab): count breaths 1–9 for five minutes, volume-down on 1–8 and
 volume-up on 9 (or the on-screen keys). The score is the share of rounds counted exactly — a
 measure of skill rather than mood, adapted from a breath-counting task validated as a measure of
-mindfulness (Levinson et al., 2014). Results are kept to compare over weeks.
+mindfulness (Levinson et al., 2014). Results are kept to compare over weeks, and travel in every
+backup (file, Downloads copy and Google), so a reinstall or a new phone keeps them; a restore adds
+to the scores already on the phone, never replacing them. A rotation mid-check keeps your presses.
 
 **Mood chart** (History): one dot per rated sit over the last 12 weeks, Restless → Deep, plus
 a line for the average of your last five ratings once you have five; tap to inspect a sit.
@@ -209,7 +213,8 @@ key's SHA-1 is registered too. Every build gets a higher version number, so it i
 Backs up sits, journal notes and settings to a hidden app folder in your Google Drive
 (`drive.appdata`, a non-sensitive permission: the app can't see anything else in Drive).
 Connecting on a fresh install merges the backup back in. Every upload first merges in whatever
-is already in Drive, so two phones on one account never wipe each other's sits. A deleted sit
+is already in Drive, so two phones on one account never wipe each other's sits (or attention-check
+scores). A deleted sit
 leaves a marker (a `#deleted,` line in backups, `x,` in the app's own log) so no backup, from any
 phone, brings it back; older versions of the app read that line as a non-row and skip it. Google needs
 the app registered once:

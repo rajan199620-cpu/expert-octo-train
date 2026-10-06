@@ -22,11 +22,13 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Paces a Breathe-tab exercise: one tap in, two taps out, a long buzz to hold. It runs as a
  * foreground service with a partial wake lock, like a sit, so the taps carry on with the phone
- * locked and your eyes closed; a screen-bound timer froze the moment the screen went off.
+ * locked and your eyes closed; a screen-bound timer froze the moment the screen went off. The
+ * closing bell rings from here too, on time, rather than from the screen whenever it is next unlocked.
  */
 class BreathService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var buzzer: BreathBuzzer
+    private lateinit var chime: Chime
     private var wakeLock: PowerManager.WakeLock? = null
     /** SystemClock.elapsedRealtime() when the exercise being paced began; 0 when none. */
     private var startedAt = 0L
@@ -34,6 +36,7 @@ class BreathService : Service() {
     override fun onCreate() {
         super.onCreate()
         buzzer = BreathBuzzer(this)
+        chime = Chime(this)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -69,6 +72,8 @@ class BreathService : Service() {
         // The screen asks again when it is rebuilt (say, on rotation): carry on, don't restart.
         if (at == startedAt) return
         handler.removeCallbacksAndMessages(null)
+        // The last exercise's closing bell may still be ringing out; its teardown must not end this one.
+        chime.bell.onAllFinished = null
         startedAt = at
         pacing = at
         if (elapsed >= totalMs) return shutdown()
@@ -77,7 +82,22 @@ class BreathService : Service() {
         for ((cueAt, kind) in BreathBuzz.cues(pattern, totalMs)) {
             if (cueAt + START_GRACE_MS >= elapsed) handler.postDelayed({ buzzer.play(kind) }, (cueAt - elapsed).coerceAtLeast(0))
         }
-        handler.postDelayed({ shutdown() }, totalMs - elapsed)
+        handler.postDelayed({ finish() }, totalMs - elapsed)
+    }
+
+    /** The exercise ran its course: the closing bell, then away once it has rung out. */
+    private fun finish() {
+        val at = startedAt
+        handler.removeCallbacksAndMessages(null)
+        chime.ring(Prefs(this).volume, AlertMode.BELL)
+        _ended.value = at
+        startedAt = 0L
+        pacing = 0L
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        if (!chime.isPlaying) return shutdown()
+        chime.bell.onAllFinished = { shutdown() }
+        // In case the player never reports the end, the service still goes (the bell is 9 s).
+        handler.postDelayed({ shutdown() }, BELL_RING_OUT_MS)
     }
 
     private fun shutdown() {
@@ -92,6 +112,7 @@ class BreathService : Service() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         if (pacing == startedAt) pacing = 0L
+        chime.release()
         releaseWakeLock()
         super.onDestroy()
     }
@@ -151,17 +172,33 @@ class BreathService : Service() {
         private const val EXTRA_MINUTES = "minutes"
         private const val EXTRA_STARTED_AT = "started_at"
         private const val CHANNEL_ID = "breathe"
-        private const val NOTIFICATION_ID = 2
+        /** Not 2: that is the daily reminder's, which would replace this one or be cleared by it. */
+        private const val NOTIFICATION_ID = 3
         private const val WAKE_LOCK_SLACK_MS = 60_000L
         private const val START_GRACE_MS = 1_000L
+        private const val BELL_RING_OUT_MS = 15_000L
 
         private val _cancelled = MutableStateFlow(0L)
 
         /** The start time of an exercise ended from its notification, so the screen can close it too. */
         val cancelled: StateFlow<Long> = _cancelled
 
+        private val _ended = MutableStateFlow(0L)
+
+        /** The start time of the last exercise that ran its course here, closing bell and all. */
+        val ended: StateFlow<Long> = _ended
+
         /** The start time of the exercise being paced right now; 0 when none. */
         @Volatile private var pacing = 0L
+
+        /** An exercise is under way, so the daily reminder holds off rather than buzz through it. */
+        val busy: Boolean get() = pacing != 0L
+
+        /**
+         * Whether the closing bell of the exercise started at [startedAt] is this service's to ring
+         * (or already rung): false only when the service never got to pace it.
+         */
+        fun ringsEnd(startedAt: Long): Boolean = pacing == startedAt || _ended.value == startedAt
 
         fun start(context: Context, pattern: BreathPattern, minutes: Int, startedAt: Long) {
             // Already pacing it: the screen was only rebuilt (rotation, dark mode at night).

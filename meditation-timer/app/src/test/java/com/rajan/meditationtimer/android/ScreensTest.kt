@@ -765,6 +765,32 @@ class ScreensTest {
     }
 
     @Test
+    fun `an exercise that ends with the phone locked gets its bell from the service, and the screen leaves it ringing`() {
+        launch()
+        compose.onAllNodesWithText("Breathe").onLast().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Box").performScrollTo().performClick()
+        compose.onNodeWithText("1 min").performScrollTo().performClick()
+        while (shadowOf(app).nextStartedService != null) Unit
+        compose.onNodeWithText("Start").performScrollTo().performClick()
+        compose.mainClock.autoAdvance = false
+        compose.mainClock.advanceTimeBy(500)
+        val intent = shadowOf(app).nextStartedService!!
+        val startedAt = intent.getLongExtra("started_at", 0)
+        Robolectric.buildService(BreathService::class.java, intent).create().startCommand(0, 1)
+        // Locked through the end: 1 minute of box is 4 whole breaths, 64 s.
+        scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(70))
+        assertEquals("the service rang the closing bell on time", startedAt, BreathService.ended.value)
+        // Unlocked later: the exercise closes without a second, late bell, and nothing is stopped
+        // under the bell still ringing out.
+        scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithText("Nicely done", substring = true).assertExists()
+        assertNull(shadowOf(app).nextStoppedService)
+    }
+
+    @Test
     fun `a note from a week ago comes back on the sit screen and can be put away until tomorrow`() {
         val weekAgo = LocalDate.now(zone).minusWeeks(1).atTime(7, 0).atZone(zone).toInstant().toEpochMilli()
         SessionLog.get(app).merge(listOf(SessionRecord(weekAgo, 1200, 1200, rating = 4, note = "Breath felt wide today")))

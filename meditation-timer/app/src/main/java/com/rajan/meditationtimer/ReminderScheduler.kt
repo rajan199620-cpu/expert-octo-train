@@ -44,7 +44,8 @@ object ReminderScheduler {
         val zone = java.time.ZoneId.systemDefault()
         val sitDays = SessionLog.get(context).records.value.map { it.day(zone) }.toSet()
         if (!Reminder.shouldNotify(sitDays, ZonedDateTime.now(zone))) return
-        if (SessionRepository.state.value !is SessionState.Idle) return
+        // Not over a sit or a breathing exercise under way.
+        if (SessionRepository.state.value !is SessionState.Idle || BreathService.busy) return
 
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
