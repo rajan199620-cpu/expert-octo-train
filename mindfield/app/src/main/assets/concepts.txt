@@ -340,6 +340,109 @@ scenario: Watching a clip of a shouting match filmed over one man's shoulder, Ka
 source: Taylor, S. E., & Fiske, S. T. (1975). Point of view and perceptions of causality. Journal of Personality and Social Psychology; Lassiter, G. D., et al. (2007). Evaluating videotaped confessions: Expertise provides no defense against the camera-perspective effect. Psychological Science.
 related: fundamental-attribution-error, inattentional-blindness
 
+## multitasking-myth
+title: The multitasking myth
+aka: Task switching
+category: memory
+evidence: solid
+hook: Drivers chatting on a phone, hands-free or not, missed twice as many red lights in a simulator. Radio and audiobooks didn't hurt.
+what: For anything that needs attention, the brain doesn't really do two things at once. It switches back and forth, and every switch costs time and invites mistakes, more so when the tasks are complex or unfamiliar. Multitasking feels efficient, but in one study the people who multitasked most were among the worst at it.
+study: In 2001 Joshua Rubinstein, David Meyer and Jeffrey Evans had people alternate between tasks, such as sorting shapes by different rules or solving different kinds of sums. Every switch cost time, and the cost grew as the rules got more complex. Switching into an unfamiliar task cost more than switching into a familiar one.
+case: Also in 2001, David Strayer and William Johnston gave people a simulated driving task, steering with a joystick and braking when a light turned red. While holding a phone conversation, hand-held or hands-free, they missed twice as many red lights and reacted more slowly to the ones they caught. Listening to the radio or an audiobook caused no such problem, so the trouble wasn't the hands or the ears but the conversation's demand on attention. In 2013 David Sanbonmatsu and colleagues found that the people who multitasked most had weaker working memory and an inflated view of their own multitasking skill. The nuance: well-practised, automatic tasks, like walking while talking, combine easily. The cost bites when both tasks need thought.
+proof: Solid: switching costs are among the most replicated findings in the psychology of attention, and driving studies confirm the danger of phone conversations behind the wheel.
+spot: Notice when you're half-listening to a call while reading email, or checking your phone mid-conversation, and how much of each you actually take in.
+use: Pick your most important task today and give it 25 minutes with every other tab, chat and notification closed. Notice how much further you get.
+guard: Don't trust the feeling that you're keeping up with two things at once; that feeling is exactly what heavy multitaskers get wrong. Hands-free doesn't make a phone call safe while driving.
+predict: In a driving simulator, what happened when people talked on a hands-free phone?
+- Nothing: hands-free phones are safe
+- They drove more carefully to make up for it
+* They missed about twice as many red lights
+scenario: Kabir answers emails during a video meeting, sure he's following both. When his manager asks for his view, he has to ask her to repeat the question, and one of his emails goes to the wrong client.
+source: Rubinstein, J. S., Meyer, D. E., & Evans, J. E. (2001). Executive control of cognitive processes in task switching. Journal of Experimental Psychology: Human Perception and Performance; Strayer, D. L., & Johnston, W. A. (2001). Driven to distraction: Dual-task studies of simulated driving and conversing on a cellular telephone. Psychological Science; Sanbonmatsu, D. M., Strayer, D. L., Medeiros-Ward, N., & Watson, J. M. (2013). Who multi-tasks and why? PLoS ONE.
+related: inattentional-blindness, cocktail-party-effect, mind-wandering, open-plan-offices
+
+## left-right-brain-myth
+title: Left-brained and right-brained people
+category: memory
+evidence: busted
+hook: 91% of UK teachers in one survey thought left- or right-brain dominance helps explain how pupils differ. Scans of 1,011 brains found no such types.
+what: Some functions do lean to one side of the brain: in most people language is handled mainly on the left, and face recognition leans right. But the two halves work together all the time, and people aren't "left-brained" and logical or "right-brained" and creative. Personality, talent and the way you learn aren't explained by a dominant half.
+study: In 2013 Jared Nielsen and colleagues analysed resting brain scans of 1,011 people aged 7 to 29. They found plenty of local networks that leaned left or right, such as those for language and attention, but no sign that some people had a more left-dominant or right-dominant brain overall.
+case: In 2012 Sanne Dekker and colleagues asked teachers in the UK and the Netherlands about popular claims on the brain. 91% of the UK teachers and 86% of the Dutch agreed that differences in hemispheric dominance help explain differences between learners, and most also believed that short coordination exercises improve how the two halves work together. Knowing more about the brain didn't protect them: teachers with more general brain knowledge believed more of the myths, not fewer. The nuance: the myth grew out of real split-brain research, in which people whose hemispheres had been surgically separated to treat epilepsy showed striking differences between the two sides. In an intact brain, the halves share information constantly.
+proof: Busted: brain imaging finds functions that lean to one side, but no left-brained or right-brained people.
+spot: Notice quizzes, courses and job tests that sort people into logical left-brain and creative right-brain types.
+use: Pick one skill you've written off as being on the wrong side of your brain, such as maths or drawing, and practise it for ten minutes today.
+guard: Be wary of products that promise to balance, unlock or train one side of your brain. Brain words make a claim sound scientific without making it true.
+predict: Brain scans of 1,011 people were checked for left-brained and right-brained individuals. What did they find?
+- Most people were clearly one type or the other
+- Creative people tended to have right-dominant brains
+* Some networks leaned to one side, but there were no overall types
+scenario: A careers quiz tells Simran she's an intuitive thinker ruled by the creative half of her brain, so she drops the statistics course she was enjoying.
+source: Nielsen, J. A., Zielinski, B. A., Ferguson, M. A., Lainhart, J. E., & Anderson, J. S. (2013). An evaluation of the left-brain vs. right-brain hypothesis with resting state functional connectivity magnetic resonance imaging. PLoS ONE; Dekker, S., Lee, N. C., Howard-Jones, P., & Jolles, J. (2012). Neuromyths in education: Prevalence and predictors of misconceptions among teachers. Frontiers in Psychology.
+related: learning-styles, mozart-effect, barnum-effect
+
+## face-blindness
+title: Face blindness
+aka: Prosopagnosia
+category: memory
+evidence: good
+hook: In a German study, about 1 in 40 students had lifelong trouble recognising faces, even those of family and friends.
+what: Recognising faces is a specialised skill, and people differ enormously at it. At one end are people with face blindness, who may not know a colleague out of context and rely on voice, hair, walk or clothes instead. At the other end are "super-recognisers" who rarely forget a face. And matching a stranger to a photo, as in an ID check, is hard for nearly everyone.
+study: In 2006 Ingo Kennerknecht and colleagues screened 689 students in Münster, Germany, with a questionnaire and follow-up interviews. 17 of them, about 2.5%, had lifelong face blindness without any brain injury. Among those whose families could be examined, close relatives had it too.
+case: In 2014 David White and colleagues tested 49 passport officers in Sydney. When they compared people standing in front of them with photos, the officers accepted a photo of someone else 14% of the time. On a standard face-matching test they were no better than untrained students, and years on the job made no difference, though a few individuals were far more accurate than the rest. Police forces now recruit such super-recognisers for work like reviewing CCTV. The nuance: face blindness ranges from mild to severe, and how common it seems depends on the cut-off: a 2023 study of 3,116 adults found rates between about 0.1% and 5.4% under different published criteria. It says nothing about intelligence, or about how much someone cares about you.
+proof: Good: face blindness and the wide spread of face-recognition ability are well documented, though prevalence estimates depend on the criteria used.
+spot: Notice when someone fails to greet you out of context, at the shops instead of the office, before deciding they're being rude.
+use: The next time you meet someone you've met only once before, say your name and where you met. It costs nothing and spares them a guess.
+guard: Don't treat a photo-ID check, yours or a guard's, as foolproof. Matching an unfamiliar face to a photo is much harder than it feels.
+predict: Trained passport officers matched faces to photos. How did they compare with untrained students?
+- Much better, thanks to training and experience
+* No better, and years on the job didn't help
+- Worse, because they were overconfident
+scenario: Rahul walks straight past his manager in the supermarket and only recognises her when she speaks. At work he quietly memorises colleagues' glasses, hairstyles and voices to tell them apart.
+source: Kennerknecht, I., et al. (2006). First report of prevalence of non-syndromic hereditary prosopagnosia (HPA). American Journal of Medical Genetics Part A; White, D., Kemp, R. I., Jenkins, R., Matheson, M., & Burton, A. M. (2014). Passport officers' errors in face matching. PLoS ONE; DeGutis, J., et al. (2023). What is the prevalence of developmental prosopagnosia? An empirical assessment of different diagnostic cutoffs. Cortex.
+related: change-blindness, inattentional-blindness, mere-exposure
+
+## weak-nose-myth
+title: The weak human nose myth
+category: memory
+evidence: busted
+hook: Blindfolded, ears covered, 21 of 32 people sniffed their way along a 10-metre chocolate trail across a field, much as a dog would.
+what: We're often told that humans have a feeble sense of smell compared with dogs and other mammals. The idea comes from 19th-century anatomy and theory, not from testing noses. Measured directly, human smell is good: we match dogs on some odours, can tell apart a huge range of smells and get better with practice. Dogs still win on many odours, but the gap is far smaller than the myth says.
+study: In 2007 Jess Porter and colleagues blindfolded 32 students and gave them earmuffs, thick gloves and kneepads so that only smell could guide them. Crawling on hands and knees, two-thirds followed a 10-metre line of chocolate scent laid across a grass field. With their noses plugged, none could. Four volunteers who practised three times a day for three days got much faster, and tests with one nostril blocked suggested that people compare the smell arriving at each nostril.
+case: In 2017 John McGann reviewed the evidence in Science. The belief, McGann found, began with the anatomist Paul Broca, who classed humans as "non-smellers" in the 1870s because our olfactory bulbs are small relative to our large brains, and because Broca believed free will had taken over from smell, not because anyone had tested people. Freud later tied a weak nose to civilisation. Yet the human olfactory bulb holds about as many neurons as those of other mammals, and in direct tests people are about as sensitive as dogs to amyl acetate, a chemical that smells of bananas. The nuance: a famous claim that we can tell apart a trillion smells rests on disputed maths, and smell varies between people and fades with age. But your nose is a capable instrument you can train.
+proof: Busted: direct tests show human smell is far better than its reputation; the myth came from anatomy and theory, not measurement.
+spot: Notice when you dismiss a smell you've picked up, such as gas, smoke or food going off, because you assume your nose can't be trusted.
+use: Before your next meal or drink today, sniff it slowly and try to name three distinct smells in it.
+guard: Don't overcorrect: dogs still beat us on many odours. The point is that your nose is worth paying attention to, not that it's the best in nature.
+predict: Blindfolded students tried to follow a 10-metre chocolate scent trail across a field. How many of the 32 managed it?
+- Almost none: humans can't track scents
+- About a quarter
+* About two-thirds
+scenario: Sameer assumes his nose is useless next to his beagle's, so he ignores a faint burning smell in the flat. An hour later he finds a melted cable behind the TV.
+source: Porter, J., et al. (2007). Mechanisms of scent-tracking in humans. Nature Neuroscience; McGann, J. P. (2017). Poor human olfaction is a 19th-century myth. Science; Gerkin, R. C., & Castro, J. B. (2015). The number of olfactory stimuli that humans can discriminate is still unknown. eLife.
+related: hedonic-adaptation, savoring, inattentional-blindness
+
+## memory-recording-myth
+title: The video-camera memory myth
+aka: Permanent memory
+category: memory
+evidence: busted
+hook: In a survey published in 2011, 63% of Americans agreed that memory works like a video camera. In fact memories are rebuilt, not replayed.
+what: It feels as if memories are recordings stored somewhere, waiting to be played back, and that hypnosis or the right trigger could recover them intact. In fact memory keeps fragments and gist, and rebuilds an event each time you recall it, filling the gaps with what seems likely. Vividness and confidence don't guarantee accuracy.
+study: From the 1930s to the 1960s the neurosurgeon Wilder Penfield electrically stimulated the brains of more than 1,100 patients during epilepsy surgery. A few described vivid scenes, voices or music, which seemed to show that the brain keeps a permanent record of experience. In 1980 Elizabeth and Geoffrey Loftus re-examined the reports: only 40 patients had such experiences, and they looked more like dreams or reconstructions than replays of real events.
+case: In 1983 Jane Dywan and Kenneth Bowers showed people 60 pictures and had them try to recall them every day for a week. Then some were hypnotised and urged to remember more. The hypnotised group came up with more than twice as many new items as the others, but most of the extra items were wrong, and they felt confident about them anyway. Hypnosis had lowered their bar for reporting, not undone their forgetting. Even so, in the same 2011 survey 55% of Americans agreed that hypnosis helps witnesses recall the details of crimes accurately. The nuance: everyday memory is usually right in its gist, and rebuilding is useful, because it lets us generalise and imagine. The danger lies in treating vivid, confident recall, especially when it has been coaxed out, as a recording.
+proof: Busted: the brain-stimulation evidence for permanent recordings doesn't hold up, and hypnosis increases confident errors rather than recovering memories.
+spot: Notice when someone treats a vivid, detailed memory, theirs or a witness's, as proof of exactly what happened.
+use: Write down your memory of a shared event from a year ago, then compare it with a friend's account or a photo, and note what differs.
+guard: Be sceptical of any technique, hypnosis included, that promises to recover hidden memories. More recall and more confidence can simply mean more errors.
+predict: After a week of trying to recall 60 pictures, hypnotised people came up with many new memories. How accurate were the new ones?
+- Mostly correct: hypnosis unlocked stored pictures
+- About as accurate as their earlier memories
+* Most of the extra memories were wrong
+scenario: Years after a minor car accident, Vikram can describe the other driver's red jacket in sharp detail. The dashcam footage shows the jacket was blue.
+source: Penfield, W., & Perot, P. (1963). The brain's record of auditory and visual experience: A final summary and discussion. Brain; Loftus, E. F., & Loftus, G. R. (1980). On the permanence of stored information in the human brain. American Psychologist; Dywan, J., & Bowers, K. (1983). The use of hypnosis to enhance recall. Science; Simons, D. J., & Chabris, C. F. (2011). What people believe about how memory works: A representative survey of the U.S. population. PLoS ONE.
+related: false-memories, misinformation-effect, choice-blindness
+
 # =====================================================================================
 # THE SELF
 # =====================================================================================
@@ -704,6 +807,48 @@ predict: When researchers corrected the moral licensing studies for publication 
 scenario: After running five kilometres in the morning, Varun orders a large dessert at lunch and another at dinner, telling himself the run cancelled them out.
 source: Monin, B., & Miller, D. T. (2001). Moral credentials and the expression of prejudice. Journal of Personality and Social Psychology; Blanken, I., van de Ven, N., & Zeelenberg, M. (2015). A meta-analysis of moral licensing. Personality and Social Psychology Bulletin; Kuper, N., & Bott, A. (2019). Has the evidence for moral licensing been inflated by publication bias? Meta-Psychology; Tiefenbeck, V., et al. (2013). For better or for worse? Empirical evidence of moral licensing in a behavioral energy conservation campaign. Energy Policy.
 related: cognitive-dissonance, self-serving-bias
+
+## acting-extraverted
+title: Acting extraverted
+aka: Acting out of character
+category: self
+evidence: good
+hook: Introverts expect acting outgoing to feel awkward and draining. In experiments it mostly felt better than they predicted.
+what: Introversion is a real trait, but traits describe your habits, not your limits. Most people, introverts included, feel more upbeat while they're being talkative and assertive, and introverts in particular underestimate how good it will feel. The catch is tiredness: stretching your personality for something you care about works best with time to recover afterwards.
+study: In 2013 John Zelenski and colleagues compared what people predicted they would feel if asked to act extraverted in a group discussion with what people actually felt doing it. Acting extraverted lifted mood whatever someone's personality. Introverts predicted it would feel worse than it did, mainly by overestimating how self-conscious and uncomfortable they would be.
+case: In 2019 Rowan Jacques-Hamilton, Jessie Sun and Luke Smillie ran a week-long trial with 147 people in everyday life. Some were asked to act as extraverted as they could in daily life for a week; the rest followed a control task. On average the act-extraverted group felt more positive, and more authentic, not less. But the gains went mostly to people who were already fairly extraverted. The most introverted got little boost, felt more negative and tired, and felt less like themselves. A separate study that tracked 48 people found that outgoing behaviour lifted mood at the time but was followed by more fatigue about three hours later. The nuance: act outgoing for things that matter to you, in doses, and plan quiet time afterwards. A permanent personality transplant has costs.
+proof: Good: the mood boost from acting extraverted replicates well, including for introverts; week-long trials disagree about whether introverts pay a price.
+spot: Notice when you skip a call, a party or a chance to speak up because you predict it will feel awful, and whether it does when you go anyway.
+use: Pick one situation today where speaking up matters to you, and be a little more talkative than usual for ten minutes. Afterwards, compare how it felt with what you expected, and give yourself some quiet time.
+guard: Don't treat this as proof that introverts should become extraverts. It's a tool for moments that matter, not a cure for a personality.
+predict: Introverts predicted how they'd feel acting extraverted in a group discussion. What did the experiments find?
+- Their predictions were right: it felt draining
+* It felt better than they predicted
+- It felt even worse than they predicted
+scenario: Tanvi dreads the networking lunch and almost skips it. She decides to ask three people about their work for twenty minutes, enjoys it more than she expected, then takes a quiet walk before going back to her desk.
+source: Zelenski, J. M., et al. (2013). Personality and affective forecasting: Trait introverts underpredict the hedonic benefits of acting extraverted. Journal of Personality and Social Psychology; Jacques-Hamilton, R., Sun, J., & Smillie, L. D. (2019). Costs and benefits of acting extraverted: A randomized controlled trial. Journal of Experimental Psychology: General; Leikas, S., & Ilmarinen, V.-J. (2017). Happy now, tired later? Journal of Personality.
+related: talking-to-strangers, liking-gap, self-perception, personality-type-myth
+
+## personality-type-myth
+title: The personality type myth
+aka: Personality types
+category: self
+evidence: busted
+hook: In one study, about half of the people who retook a popular personality type test five weeks later got a different four-letter type.
+what: Traits like introversion and extraversion are real and fairly stable, but they're continuous, like height: most people fall somewhere in the middle and fewer at the extremes. Type tests cut each scale at the midpoint and hand you a label, so people near the middle can flip from one type to another between one week and the next. A score tells you more than a box.
+study: Reviewing the Myers-Briggs Type Indicator in 2005, David Pittenger described a study in which about half of the people tested got a different type when they retook it five weeks later. Most of the changes happened on scales where their first score had been close to the middle, exactly where a cut-off makes small differences look like opposites.
+case: In 2002 Tammy Bess and Robert Harvey rescored the Myers-Briggs answers of about 12,000 people on leadership courses. Earlier analyses had shown two humps in the scores, as if people really came in two kinds. With a better scoring method the humps vanished and the scores bunched around the middle. That is how personality researchers treat extraversion: as a dimension on which everyone has a position. The nuance: the preferences these tests ask about aren't meaningless. Extraversion measured as a score is one of the best-studied traits in psychology and predicts real differences in behaviour. The problem is the box: two people either side of the cut-off are more alike than two people who share a label.
+proof: Busted as a description of people: personality scores are continuous and bunch in the middle, and type labels often change on retest.
+spot: Notice when someone uses a type label to predict what a person will or won't do, instead of asking them or watching what they do.
+use: Rate yourself from 1 to 10 on how outgoing you are at work, with friends and with strangers, and notice how much the number changes.
+guard: Don't hire, assign or rule people out by type. If your team uses type tests, treat the results as conversation starters, not verdicts.
+predict: People took a popular personality type test twice, five weeks apart. How many got a different type the second time?
+- Almost no one
+- About 1 in 10
+* About half
+scenario: Aditi's manager keeps her off client pitches because a workshop test labelled her an introvert. A month later Aditi retakes the test and is told she's an extrovert.
+source: Pittenger, D. J. (2005). Cautionary comments regarding the Myers-Briggs Type Indicator. Consulting Psychology Journal: Practice and Research; Bess, T. L., & Harvey, R. J. (2002). Bimodal score distributions and the Myers-Briggs Type Indicator: Fact or artifact? Journal of Personality Assessment.
+related: barnum-effect, acting-extraverted, fundamental-attribution-error
 
 # =====================================================================================
 # THINKING TRAPS
@@ -1171,6 +1316,27 @@ predict: Supporters and opponents of the death penalty rated mixed evidence. Wha
 scenario: Before signing the lease, Farah makes herself write down two ways the cheap flat could turn out to be a bad deal. One of them, the long commute in monsoon traffic, changes her mind.
 source: Lord, C. G., Lepper, M. R., & Preston, E. (1984). Considering the opposite: A corrective strategy for social judgment. Journal of Personality and Social Psychology; Mussweiler, T., Strack, F., & Pfeiffer, T. (2000). Overcoming the inevitable anchoring effect. Personality and Social Psychology Bulletin; Mamede, S., et al. (2010). Effect of availability bias and reflective reasoning on diagnostic accuracy among internal medicine residents. JAMA.
 related: confirmation-bias, anchoring, hindsight-bias, premortem, availability-heuristic
+
+## single-gene-myth
+title: The single-gene myth
+aka: Candidate genes
+category: thinking
+evidence: busted
+hook: A "depression gene" made headlines in 2003. Studies of tens of thousands of people later found no reliable link.
+what: Headlines often announce "the gene for" depression, risk-taking or introversion. Traits like these are partly heritable, as twin studies show, but the genetic influence is spread across thousands of variants, each with a tiny effect. Early studies of single "candidate" genes, in small samples, produced exciting results that much larger studies couldn't find.
+study: In 2003 Avshalom Caspi and colleagues reported in Science that among 847 young adults in New Zealand, people with a short version of the serotonin transporter gene, 5-HTTLPR, were more likely to become depressed after stressful life events. It became one of the most influential findings in psychiatry, and the same gene was later linked to anxiety, sensitivity and introversion.
+case: In 2018 Robert Culverhouse and colleagues pooled 31 data sets covering 38,802 people and found no evidence that the gene and stress together predicted depression. In 2019 Richard Border and colleagues tested 18 of the most studied candidate genes for depression in samples of up to about 443,000 people. None was reliably linked to depression, alone or combined with stress, and as a group they did no better than genes chosen at random. The early positive results were most likely false alarms from small samples. The nuance: genes do matter. A 2015 review of 50 years of twin studies put the average heritability of human traits at about 49%. But that influence comes from thousands of tiny effects, not from one switch.
+proof: Busted: large, carefully planned studies found no reliable effects for the famous candidate genes.
+spot: Notice headlines that credit one gene with a complex trait, such as anxiety, intelligence, risk-taking or happiness.
+use: Next time you see a "gene for" headline, look for how many people were studied and whether a much larger study has tested it since.
+guard: Don't swing to the opposite error of "it's all upbringing". Heritable doesn't mean fixed, and genetic doesn't mean one gene.
+predict: Researchers tested 18 famous "depression genes" in samples of up to about 443,000 people. What did they find?
+- Most were confirmed, with small effects
+- About half were confirmed
+* None was reliably linked to depression
+scenario: Dev reads that one DNA variant makes people anxious and buys a test kit to learn whether his worrying is in his genes. The report gives him a percentage that tells him almost nothing.
+source: Caspi, A., et al. (2003). Influence of life stress on depression: Moderation by a polymorphism in the 5-HTT gene. Science; Culverhouse, R. C., et al. (2018). Collaborative meta-analysis finds no evidence of a strong interaction between stress and 5-HTTLPR genotype contributing to the development of depression. Molecular Psychiatry; Border, R., et al. (2019). No support for historical candidate gene or candidate gene-by-interaction hypotheses for major depression across multiple large samples. American Journal of Psychiatry; Polderman, T. J. C., et al. (2015). Meta-analysis of the heritability of human traits based on fifty years of twin studies. Nature Genetics.
+related: replication-crisis, law-of-small-numbers, illusory-correlation
 
 # =====================================================================================
 # INFLUENCE & PERSUASION
@@ -1947,6 +2113,47 @@ scenario: Kunal turned down a promotion because he'd read that happiness stops r
 source: Kahneman, D., & Deaton, A. (2010). High income improves evaluation of life but not emotional well-being. PNAS; Killingsworth, M. A. (2021). Experienced well-being rises with income, even above $75,000 per year. PNAS; Killingsworth, M. A., Kahneman, D., & Mellers, B. (2023). Income and emotional well-being: A conflict resolved. PNAS; Haushofer, J., & Shapiro, J. (2016). The short-term impact of unconditional cash transfers to the poor. Quarterly Journal of Economics.
 related: hedonic-adaptation, focusing-illusion, prosocial-spending
 
+## venting-myth
+title: The venting myth
+aka: Catharsis
+category: feelings
+evidence: busted
+hook: Hitting a punching bag while thinking of the person who angered you left people angrier and more aggressive than doing nothing.
+what: The idea that anger builds up like steam and has to be let out, by shouting, punching a pillow or smashing plates, is called catharsis. It feels right, and many people believe it. Experiments find the opposite: venting keeps you focused on the provocation and keeps your body revved up, so the anger lasts and aggression rises. What helps is bringing your arousal down.
+study: In 2002 Brad Bushman angered 600 students with harsh written feedback on an essay, supposedly from another student. Some then hit a punching bag while thinking about that person, others hit it while thinking about getting fit, and a third group simply sat quietly. Those who vented while thinking about their critic felt the angriest and were the most aggressive, giving the critic the harshest blasts of noise. The group that did nothing was the least aggressive.
+case: In 2024 Sophie Kjærvik and Brad Bushman combined 154 studies with more than 10,000 participants, from students to offenders. Activities that calm the body, such as slow breathing, meditation, mindfulness and yoga, reliably reduced anger and aggression. Activities that rev the body up, such as running or cycling, didn't reduce anger overall, and jogging, if anything, made it worse. Rage rooms, where people pay to smash plates and old televisions, are built on the opposite assumption. The nuance: exercise is still good for you, and playful ball games did seem to calm people; the problem is release that keeps you revved up and replaying the insult. Calming down first and dealing with the problem afterwards works better.
+proof: Busted: venting has failed experimental tests since the 1970s, and a 2024 meta-analysis of 154 studies found that calming the body, not venting, reduces anger.
+spot: Notice when you, or someone else, replay an insult out loud, slam doors or rant online in the belief that it will get the anger out.
+use: The next time you feel angry today, take ten slow breaths before you say or type anything. Notice whether the urge to snap is weaker afterwards.
+guard: Don't confuse feeling justified with feeling better. If you need to discuss what happened, wait until your body has calmed down.
+predict: Angry students hit a punching bag while thinking about the person who had insulted them. Compared with students who sat quietly, how did they end up?
+- Calmer, because the anger had been let out
+* Angrier and more aggressive
+- No different
+scenario: After a rude email from a client, Arjun storms to the gym and pounds a heavy bag while replaying every word. He comes back even more furious and fires off a reply he later regrets.
+source: Bushman, B. J. (2002). Does venting anger feed or extinguish the flame? Catharsis, rumination, distraction, anger, and aggressive responding. Personality and Social Psychology Bulletin; Kjærvik, S. L., & Bushman, B. J. (2024). A meta-analytic review of anger management activities that increase or decrease arousal: What fuels or douses rage? Clinical Psychology Review; Geen, R. G., Stonner, D., & Shope, G. L. (1975). The facilitation of aggression by aggression: Evidence against the catharsis hypothesis. Journal of Personality and Social Psychology.
+related: reappraisal, self-distancing, affect-labeling
+
+## grief-stages-myth
+title: The five stages of grief
+category: feelings
+evidence: busted
+hook: Grief rarely follows five neat stages. Among older adults who lost a spouse, the most common pattern was steady resilience.
+what: Denial, anger, bargaining, depression and acceptance were described in Elisabeth Kübler-Ross's 1969 book about people who were dying, not people who were bereaved, and were based on clinical impressions rather than tests of whether people pass through them in order. Studies of bereaved people find no fixed order. Many cope steadily from early on, feelings come in waves, and there's no single right way to grieve.
+study: In 2002 George Bonanno and colleagues drew on a study that had interviewed 205 older adults years before their spouse died, then again 6 and 18 months after. The most common pattern, in about 46%, was resilience: low distress before and after the loss. The classic picture of distress that rises after the death and slowly fades fitted only about 11%.
+case: In 2007 Paul Maciejewski and colleagues followed 233 people bereaved by natural deaths for up to two years. Acceptance was the most commonly reported feeling from the first month, higher than disbelief, anger or depression at every point, and yearning was the strongest negative feeling. Most negative feelings were declining by about six months. The researchers argued that the order in which the feelings peaked fitted the stages, but critics such as Margaret Stroebe argue the stages should be dropped, because bereaved people take them as a script they must follow. The nuance: about 1 in 10 bereaved adults develop prolonged grief, an intense longing that disrupts life for many months, and that deserves professional help. Someone who isn't following the stages isn't grieving wrongly.
+proof: Busted: the stages came from observations of dying patients, and studies of bereaved people find early acceptance, common resilience and no fixed sequence.
+spot: Notice when someone, you included, worries about grieving wrongly because they aren't angry yet, aren't sad enough, or feel better sooner than expected.
+use: If someone you know is grieving, ask how they're doing today rather than which stage they're in, and offer one specific kind of help.
+guard: Don't push anyone to talk, cry or move on to a timetable. If intense longing is still stopping someone from functioning many months later, encourage professional support.
+predict: Researchers interviewed 205 older adults before and after their spouse died. What was the most common pattern?
+- Distress rising sharply, then slowly fading over a year
+- Denial and anger first, then depression, then acceptance
+* Steady resilience, with low distress throughout
+scenario: A few months after her father's funeral, Pooja feels mostly at peace and wonders whether something is wrong with her, because a magazine told her that anger and bargaining should come first.
+source: Kübler-Ross, E. (1969). On death and dying. Macmillan; Bonanno, G. A., et al. (2002). Resilience to loss and chronic grief: A prospective study from preloss to 18-months postloss. Journal of Personality and Social Psychology; Maciejewski, P. K., Zhang, B., Block, S. D., & Prigerson, H. G. (2007). An empirical examination of the stage theory of grief. JAMA; Stroebe, M., Schut, H., & Boerner, K. (2017). Cautioning health-care professionals: Bereaved persons are misguided through the stages of grief. Omega; Lundorff, M., et al. (2017). Prevalence of prolonged grief disorder in adult bereavement: A systematic review and meta-analysis. Journal of Affective Disorders.
+related: impact-bias, hedonic-adaptation, expressive-writing
+
 # =====================================================================================
 # RELATIONSHIPS & CONNECTION
 # =====================================================================================
@@ -2375,6 +2582,26 @@ predict: When researchers repeated the 1972 study with the original measures, wh
 scenario: When Arnav's parents forbid him to see Tara, he tells his friends the ban proves how special their love is, and that if his parents had approved he'd probably have lost interest by now.
 source: Driscoll, R., Davis, K. E., & Lipetz, M. E. (1972). Parental interference and romantic love: The Romeo and Juliet effect. Journal of Personality and Social Psychology; Sinclair, H. C., Hood, K. B., & Wright, B. L. (2014). Revisiting the Romeo and Juliet effect. Social Psychology; Sinclair, H. C., et al. (2015). Don't tell me who I can't love. Social Psychology Quarterly.
 related: reactance, social-connection-health, backfire-effect
+
+## feelings-outlast-memory
+title: Feelings outlast memories
+category: connection
+evidence: good
+hook: People with severe amnesia watched sad film clips. They soon forgot the clips, but their sadness lasted far longer.
+what: Remembering an event and feeling its emotional after-effects rely partly on different brain systems, so a feeling can linger after the memory of its cause has gone. That suggests that for people with memory loss, including dementia, a warm visit may lift their mood long after they've forgotten it, and an upsetting moment may linger in the same way.
+study: In 2010 Justin Feinstein, Melissa Duff and Daniel Tranel showed five patients with damage to the hippocampus, a brain area needed to form new memories, sad and happy film clips on different days. Soon afterwards they could recall little or nothing of the films. Yet their sadness or happiness persisted, in some cases for half an hour or more, and the less they remembered, the longer their sadness lasted.
+case: In 2014 Edmarie Guzmán-Vélez, Justin Feinstein and Daniel Tranel repeated the test with 17 people in the early stages of Alzheimer's disease and 17 healthy peers. The patients remembered far less of the clips, some of them nothing at all, yet their sadness and happiness persisted, and again sadness lasted longest in those who remembered least. Decades earlier, Marcia Johnson and colleagues found that people with severe amnesia came to prefer a man described as kind over one described as cruel, though they could recall almost nothing they'd been told about either. The nuance: these are small studies, but they point the same way. Visits, music and kindness still matter to someone who won't remember them, and so does avoiding scolding or arguing with them.
+proof: Good: consistent small studies in amnesia and Alzheimer's disease, from more than one lab, but no large trials.
+spot: Notice when someone with memory problems seems cheered, or upset, long after a visit or a conversation they can no longer recall.
+use: Call or visit an older relative this week and make the time warm, rather than quizzing them on what they remember.
+guard: Don't assume a visit was wasted because the person forgot it. And don't assume a harsh word does no harm for the same reason.
+predict: Patients with amnesia watched sad film clips and soon forgot them. What happened to their sadness?
+- It vanished as soon as they forgot the clips
+* It lingered long after the memory had gone
+- They hadn't felt sad in the first place
+scenario: Every Sunday, Meera's grandmother has forgotten the visit by evening. Her carers notice she is calmer and smiles more for the rest of the day, so Meera keeps coming.
+source: Feinstein, J. S., Duff, M. C., & Tranel, D. (2010). Sustained experience of emotion after loss of memory in patients with amnesia. Proceedings of the National Academy of Sciences; Guzmán-Vélez, E., Feinstein, J. S., & Tranel, D. (2014). Feelings without memory in Alzheimer disease. Cognitive and Behavioral Neurology; Johnson, M. K., Kim, J. K., & Risse, G. (1985). Do alcoholic Korsakoff's syndrome patients acquire affective reactions? Journal of Experimental Psychology: Learning, Memory, and Cognition.
+related: peak-end-rule, mere-exposure, social-connection-health
 
 # =====================================================================================
 # CHOICES & MONEY
@@ -3234,6 +3461,26 @@ scenario: Kriti has walked 9,700 steps by bedtime, so she paces the corridor unt
 source: Pope, D., & Simonsohn, U. (2011). Round numbers as goals. Psychological Science; Allen, E. J., Dechow, P. M., Pope, D. G., & Wu, G. (2017). Reference-dependent preferences: Evidence from marathon runners. Management Science; Heath, C., Larrick, R. P., & Wu, G. (1999). Goals as reference points. Cognitive Psychology.
 related: goal-gradient, endowed-progress, loss-aversion
 
+## ten-thousand-hours
+title: The 10,000-hour rule
+category: habits
+evidence: busted
+hook: 10,000 hours of practice was said to make anyone an expert. In music, practice explained about a fifth of the differences in skill.
+what: Practice matters, especially focused practice on your weak spots with feedback. But there's no magic number of hours, and practice alone doesn't explain who becomes an expert. Starting age, teaching, motivation, the kind of skill and the differences people start with all play a part, and how much practice matters varies hugely between fields.
+study: In 1993 Anders Ericsson, Ralf Krampe and Clemens Tesch-Römer studied violin students at a music academy in Berlin. The best had practised alone more than the others, an estimated average of over 10,000 hours by the age of 20. Malcolm Gladwell's 2008 book Outliers turned that average into a 10,000-hour rule. Ericsson later objected that it was an average, not a rule, and that the hours alone weren't the point.
+case: In 2019 Brooke Macnamara and Megha Maitra repeated the violin study with 39 violinists. Practice still mattered, accounting for about a quarter of the differences in skill. But the group rated best hadn't practised more than the group rated merely good: about 8,200 hours against 9,800, a difference too small to be reliable. A 2014 meta-analysis led by Macnamara found that practice explained 26% of the differences in performance in games such as chess, 21% in music, 18% in sports, 4% in education and under 1% in professions. The nuance: practice is necessary and helps everyone improve. It just isn't the whole story, and no fixed number of hours guarantees expertise.
+proof: Busted as a rule: practice matters, but replications and meta-analyses show it explains a minority of the differences in skill, and no fixed number of hours applies.
+spot: Notice when someone promises mastery after a set number of hours or days, or explains a star's success purely by how much they practised.
+use: Choose one skill you're working on and spend 15 minutes today practising only the part you find hardest, with a way to check your mistakes.
+guard: Don't conclude that practice is pointless or that talent is everything. Expect practice to make you better than you were, not necessarily better than everyone else.
+predict: When the famous violin study was repeated with 39 violinists, how did the best players' practice compare with the good players'?
+- The best had practised about twice as much
+- The best had practised a little more, as the original found
+* The best hadn't practised more than the good players
+scenario: Harsh logs every guitar session in an app, sure that once the counter passes a big round number he'll play like his heroes. Two years in, he still strums the same easy songs he could already play.
+source: Ericsson, K. A., Krampe, R. T., & Tesch-Römer, C. (1993). The role of deliberate practice in the acquisition of expert performance. Psychological Review; Macnamara, B. N., Hambrick, D. Z., & Oswald, F. L. (2014). Deliberate practice and performance in music, games, sports, education, and professions: A meta-analysis. Psychological Science; Macnamara, B. N., & Maitra, M. (2019). The role of deliberate practice in expert performance: Revisiting Ericsson, Krampe & Tesch-Römer (1993). Royal Society Open Science.
+related: growth-mindset, survivorship-bias, habit-formation
+
 # =====================================================================================
 # GROUPS & SOCIETY
 # =====================================================================================
@@ -3682,3 +3929,65 @@ predict: In phone interviews after a football game, how did students describe th
 scenario: When the national team wins the final, Siddharth posts "WE ARE CHAMPIONS!" all day. When they lose the next series, his post reads "these players have no spine".
 source: Cialdini, R. B., et al. (1976). Basking in reflected glory: Three (football) field studies. Journal of Personality and Social Psychology; Boen, F., et al. (2002). Politics and basking-in-reflected-glory: A field study in Flanders. Basic and Applied Social Psychology.
 related: minimal-group, self-serving-bias
+
+## babble-effect
+title: The babble effect
+aka: The babble hypothesis
+category: groups
+evidence: good
+hook: Students who spoke up first and most were rated more competent by their groups, though they were no better at the maths.
+what: We tend to read talkativeness, confidence and speed as signs of competence. So the people who speak first and most often in a meeting tend to be seen as leaders and win influence, whether or not their ideas are better, and what quieter members know can go unused.
+study: In 2009 Cameron Anderson and Gavin Kilduff put students in small groups to solve maths problems together. Students high in dominance spoke up first and more often, and their teammates rated them as more competent and gave them more influence. Yet their scores on standardised maths tests were no higher, and the answers they offered in the group were no more accurate.
+case: In 2020 Neil MacLaren and colleagues studied 33 groups of 4 to 10 students solving problems in a computer simulation, either a military map task or a business problem. Speaking time was the strongest predictor of who emerged as the group's leader, stronger than intelligence or personality, and it still predicted leadership once those were taken into account. The nuance: talking more isn't always empty. People who speak up often do contribute, and groups need someone to coordinate. The danger is that quantity gets mistaken for quality, so quiet people with better information go unheard. Taking turns, collecting written ideas before a discussion and asking each person in turn all help.
+proof: Good: lab experiments and group studies agree that talking first and most wins influence, whatever its link to real competence.
+spot: Notice who did most of the talking in your last meeting, and whether their ideas were actually the ones that worked.
+use: In your next group discussion, ask the quietest person what they think before the decision is made.
+guard: Judge ideas on their content, not on how fast, loud or often they're delivered. Collect views in writing before a discussion so the first speaker doesn't set the agenda.
+predict: In groups solving maths problems, how did dominant students who spoke first and most compare with their teammates?
+- They were more accurate and were rated more competent
+* They were rated more competent but were no more accurate
+- They were rated less competent because they dominated
+scenario: In the planning meeting Rohan talks fast and fills every pause, so everyone defers to his plan. Leela's quieter suggestion, which would have avoided the delay that followed, barely gets discussed.
+source: Anderson, C., & Kilduff, G. J. (2009). Why do dominant personalities attain influence in face-to-face groups? The competence-signaling effects of trait dominance. Journal of Personality and Social Psychology; MacLaren, N. G., et al. (2020). Testing the babble hypothesis: Speaking time predicts leader emergence in small groups. The Leadership Quarterly.
+related: halo-effect, hidden-profiles, charm-that-fades, overconfidence
+
+## social-facilitation
+title: Social facilitation
+aka: The audience effect
+category: groups
+evidence: good
+hook: With four people watching, good pool players' accuracy rose from about 70% to 80%. Weak players' fell from 36% to 25%.
+what: Being watched, or working alongside others, raises arousal. That tends to make simple, well-learned tasks go a little faster and better, and new or complex tasks go worse. The same audience can lift an expert and trip up a beginner.
+study: In a 1982 study, researchers discreetly recorded how often players in a college pool hall sank their shots, then had four people stand round the table and watch. Players who were good went from sinking about 70% of their shots to about 80%. Weak players went from 36% to 25%.
+case: In 1983 Charles Bond and Linda Titus combined 241 studies with nearly 24,000 people. The presence of others slightly sped up simple tasks and made complex tasks slower and less accurate. It raised physiological arousal only when the task was complex. The effects were small, accounting for between 0.3% and 3% of the differences in performance in a typical experiment, which is one reason single dramatic examples should be treated with caution. The nuance: an audience mainly helps with what you've already mastered. Practise new skills in private, and perform well-rehearsed ones in front of others.
+proof: Good: a meta-analysis of 241 studies confirms the pattern, though the effects are small.
+spot: Notice when you type, cook or play better or worse because someone is watching, and whether it's a task you've mastered.
+use: If you're learning something new today, make your first attempts alone, then try it in front of someone once it feels familiar.
+guard: Don't judge a beginner, or yourself, by a nervous first try in front of others. Watching eyes exaggerate the gap between practised and unpractised skills.
+predict: Good pool players were watched by four people. What happened to their accuracy?
+* It went up, from about 70% to 80%
+- It fell, from about 70% to 60%
+- It didn't change
+scenario: Ishaan cooks his signature biryani faster and better when friends crowd into the kitchen to watch. When they watch him try a new recipe, he burns the onions twice.
+source: Michaels, J. W., Blommel, J. M., Brocato, R. M., Linkous, R. A., & Rowe, J. S. (1982). Social facilitation and inhibition in a natural setting. Replications in Social Psychology; Bond, C. F., & Titus, L. J. (1983). Social facilitation: A meta-analysis of 241 studies. Psychological Bulletin; Zajonc, R. B. (1965). Social facilitation. Science.
+related: social-loafing, spotlight-effect, illusion-of-transparency
+
+## open-plan-offices
+title: Open-plan offices
+category: groups
+evidence: good
+hook: When two companies moved staff into open-plan offices, face-to-face interaction fell by about 70% and messages went up.
+what: Taking down walls is meant to make colleagues talk and collaborate more. In practice many people respond to constant visibility and noise by withdrawing: they put on headphones, look busy and switch to email and chat. Open layouts also tend to bring more noise, less privacy and more interruptions, which hurt focused work.
+study: In 2018 Ethan Bernstein and Stephen Turban studied two company headquarters before and after a move to open-plan offices. Employees wore sensors that recorded face-to-face interaction, and the researchers counted electronic messages. After the move, face-to-face interaction fell by about 70% at both companies. At one, people sent each other 56% more emails, and instant messages rose by 67%.
+case: In 2011 Jan Pejtersen and colleagues surveyed 2,403 Danish office workers. Those in open-plan offices shared by more than six people had 62% more days of sickness absence than those in single offices. In 2013 Jungsoo Kim and Richard de Dear analysed a large database of workplace satisfaction surveys. People in open-plan offices were more bothered by noise and lack of privacy, and easier interaction didn't make up for it in their overall satisfaction. The nuance: most of this evidence is observational and comes from particular workplaces, and layout is only part of the story. Quiet rooms, phone booths and agreed focus hours are attempts to keep the benefits of sitting together without constant exposure.
+proof: Good: field and survey studies point the same way, though most are observational and offices differ a lot.
+spot: Notice when a busy, open space makes you put on headphones, message the person a few desks away, or save your hard thinking for home.
+use: Block one hour of uninterrupted focus time today: silence notifications and, if you can, move somewhere quiet.
+guard: Don't assume every shared office is bad or every private one good. Look at noise, interruptions and whether people can choose where to work.
+predict: After two companies switched to open-plan offices, what happened to face-to-face interaction?
+- It roughly doubled
+- It barely changed
+* It fell by about 70%
+scenario: When Neha's firm tore down its cubicles to encourage collaboration, the floor went quiet: everyone wore headphones and messaged colleagues sitting three desks away.
+source: Bernstein, E. S., & Turban, S. (2018). The impact of the "open" workspace on human collaboration. Philosophical Transactions of the Royal Society B; Pejtersen, J. H., Feveile, H., Christensen, K. B., & Burr, H. (2011). Sickness absence associated with shared and open-plan offices: A national cross sectional questionnaire survey. Scandinavian Journal of Work, Environment & Health; Kim, J., & de Dear, R. (2013). Workspace satisfaction: The privacy-communication trade-off in open-plan offices. Journal of Environmental Psychology.
+related: brainstorming, social-facilitation, multitasking-myth

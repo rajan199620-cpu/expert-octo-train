@@ -17,7 +17,7 @@ are in [`docs/screenshots`](docs/screenshots).
 | Optional, mid-day | A **surprise spot check** at a random time between noon and 6 pm | BeReal-style unpredictability keeps attention fresh; off by default (max 2 nudges/day otherwise) |
 | Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", returning after 1, 3, 7, 16, 35, 90 days | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
 
-## The library: 180 concepts, honestly labelled
+## The library: 195 concepts, honestly labelled
 
 Nine areas, dealt round-robin so neighbouring days differ (interleaving): memory & perception,
 the self, thinking traps, influence & persuasion, emotions & wellbeing, relationships, choices &
@@ -39,11 +39,13 @@ can't give the answer away. Every figure was checked against the original paper 
 summary; where a number couldn't be confirmed, the text stays qualitative.
 
 Evidence labels come from the replication literature (Many Labs, registered replication reports,
-meta-analyses): **Solid** (59) · **Good** (91) · **Debated** (17) · **Busted** (13). The busted
+meta-analyses): **Solid** (60) · **Good** (97) · **Debated** (17) · **Busted** (21). The busted
 ones are taught as myths with a "plot twist" card: ego depletion, power posing, the Stanford
 Prison Experiment, the hungry-judge effect, learning styles, the Mozart effect, the backfire
 effect, the 7-38-55 rule, the Hawthorne effect, the Zeigarnik memory effect, behavioural priming
-(the "Florida effect"), spotting liars from body language, and the Romeo and Juliet effect. Several famous
+(the "Florida effect"), spotting liars from body language, the Romeo and Juliet effect, venting
+anger, the 10,000-hour rule, the single-gene myth, personality types, left- and right-brained
+people, the weak human nose, the video-camera model of memory and the five stages of grief. Several famous
 findings are shown with their modern corrections (the bystander effect vs. CCTV footage, the
 "hot hand" maths error, the marshmallow test with family background controlled, Dunning-Kruger's
 statistical debate).
@@ -68,11 +70,25 @@ teaming"), broken windows, implicit egotism and moral licensing. Three are taugh
 *debated*, because a 2023 re-examination found its best-controlled studies show no clear effect and
 much of the early work came from a researcher with several retracted papers. Principles that
 are already in the library, unsupported, or better left to professionals (violence-prediction
-checklists, restraining-order advice) were left out; the full verdict for every principle is in
-the report that accompanied this change.
+checklists, restraining-order advice) were left out.
+
+### From two more books (October 2026)
+
+15 more concepts came from *Quiet* (Cain) and *The Man Who Mistook His Wife for a Hat* (Sacks),
+checked the same way. From *Quiet*: acting extraverted (introverts underestimate how good it
+feels, and pay for it in tiredness later), the babble effect (talking first and most passes for
+competence), social facilitation, open-plan offices and the multitasking myth, plus four myths the
+evidence has overturned: venting anger, the 10,000-hour rule, the single "gene for" a trait, and
+personality types. From Sacks: face blindness and feelings outlasting memories, plus four myths:
+left- and right-brained people, the weak human nose, memory as a video recording, and grief that
+moves in stages. Sacks's case histories aren't used as evidence for anything: a 2025 *New Yorker*
+investigation reported that Sacks's own journals describe changing and inventing details in them,
+so only principles with independent research went in. Untested and purely clinical claims were
+left out.
 
 New concepts sit at the end of each area, so the order for anyone already using the app is
-unchanged up to day 135; people who had seen everything meet the new ones before any repeat.
+unchanged up to day 135 (day 144 for the second batch); people who had seen everything meet the
+new ones before any repeat.
 
 ## Progress, the way the big learning apps do it (October 2026)
 
@@ -180,7 +196,7 @@ signature stable so updates install over each other and Google sign-in keeps wor
 the certificate, publishes the APK to the link above and commits screenshots.
 
 - `core/` is pure Kotlin (library parsing, daily scheduling, spaced review, stats, merge,
-  backup format, account linking) with content checks on all 180 concepts and randomised
+  backup format, account linking) with content checks on all 195 concepts and randomised
   stress tests: years of irregular use never repeat a concept early; merges are commutative,
   idempotent and associative over hundreds of random states; backups round-trip awkward text;
   alarms keep the wall-clock time across daylight-saving changes; three phones and two Google

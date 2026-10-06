@@ -302,7 +302,7 @@ class LibraryUpgradeTest {
     private val now = TestLibrary.library
 
     /** Concepts added in October 2026 from five books (see README); everything else was already there. */
-    private val added = setOf(
+    private val fromFiveBooks = setOf(
         "focal-is-causal", "implicit-egotism", "moral-licensing", "law-of-small-numbers", "affect-heuristic",
         "outcome-bias", "trusting-intuition", "consider-the-opposite", "behavioural-priming",
         "underestimating-compliance", "forced-teaming", "worries-rarely-happen", "money-and-happiness",
@@ -311,20 +311,35 @@ class LibraryUpgradeTest {
         "less-is-better", "opportunity-cost-neglect", "premortem", "round-number-goals", "panic-myth",
         "hidden-profiles", "broken-windows", "reflected-glory",
     )
-    private val before = Library(Library.interleave(now.all.filter { it.id !in added }))
+
+    /** Concepts added after that, from Quiet and The Man Who Mistook His Wife for a Hat (see README). */
+    private val fromTwoMoreBooks = setOf(
+        "multitasking-myth", "left-right-brain-myth", "face-blindness", "weak-nose-myth", "memory-recording-myth",
+        "acting-extraverted", "personality-type-myth", "single-gene-myth", "venting-myth", "grief-stages-myth",
+        "feelings-outlast-memory", "ten-thousand-hours", "babble-effect", "social-facilitation", "open-plan-offices",
+    )
+
+    private val added = fromFiveBooks + fromTwoMoreBooks
+
+    /** The library as people first had it (151 concepts), and as it was after the five books (180). */
+    private val original = Library(Library.interleave(now.all.filter { it.id !in added }))
+    private val afterFiveBooks = Library(Library.interleave(now.all.filter { it.id !in fromTwoMoreBooks }))
+
+    /** Each earlier library, with the concepts that arrived after it. */
+    private val upgrades = listOf(original to added, afterFiveBooks to fromTwoMoreBooks)
     private val start: LocalDate = LocalDate.of(2026, 10, 2)
 
-    /** [days] of use on the old library, with notes, guesses and reviews, as a phone would hold it. */
-    private fun userAfter(days: Int, seed: Int): AppState {
+    /** [days] of use on [lib], with notes, guesses and reviews, as a phone would hold it. */
+    private fun userAfter(days: Int, seed: Int, lib: Library): AppState {
         val rnd = Random(seed)
         var s = AppState()
         for (d in 0 until days) {
             val day = start.plusDays(d.toLong())
-            s = Curriculum.assign(day, before, s, d.toLong())
+            s = Curriculum.assign(day, lib, s, d.toLong())
             val id = s.assignments.getValue(day).conceptId
             if (rnd.nextInt(3) > 0) s = s.upsert(Entry("e$d", id, day, Mode.entries.random(rnd), "n", null, d.toLong(), d.toLong()))
             s = s.copy(guesses = s.guesses + (id to Guess(rnd.nextInt(3), d.toLong())))
-            for (card in Spacing.due(s, before, day)) {
+            for (card in Spacing.due(s, lib, day)) {
                 val c = s.cards[card.conceptId] ?: card
                 s = s.copy(cards = s.cards + (card.conceptId to Spacing.grade(c, rnd.nextInt(10) < 7, day)))
             }
@@ -334,58 +349,77 @@ class LibraryUpgradeTest {
 
     @Test
     fun `the library grew by exactly the new concepts`() {
-        assertEquals(151, before.size)
-        assertEquals(180, now.size)
+        assertEquals(151, original.size)
+        assertEquals(180, afterFiveBooks.size)
+        assertEquals(180 + fromTwoMoreBooks.size, now.size)
         assertTrue(added.all { now.contains(it) })
+        assertTrue(fromFiveBooks.intersect(fromTwoMoreBooks).isEmpty())
     }
 
     @Test
     fun `stress - an upgrade never changes a day already had, today, or the review schedule`() {
-        for ((i, days) in listOf(1, 2, 9, 30, 100, 135, 136, 150, 151, 152, 400).withIndex()) {
-            val s = userAfter(days, i)
-            val today = start.plusDays(days - 1L)
-            for ((day, a) in s.assignments) {
-                assertEquals(a.conceptId, Curriculum.pick(day, now, s))
-                assertTrue(Curriculum.assign(day, now, s, 0) === s)
+        for ((before, _) in upgrades) {
+            for ((i, days) in listOf(1, 2, 9, 30, 100, 135, 136, 144, 145, 150, 151, 152, 180, 181, 195, 196, 400).withIndex()) {
+                val s = userAfter(days, i, before)
+                val today = start.plusDays(days - 1L)
+                for ((day, a) in s.assignments) {
+                    assertEquals(a.conceptId, Curriculum.pick(day, now, s))
+                    assertTrue(Curriculum.assign(day, now, s, 0) === s)
+                }
+                assertEquals(Spacing.cards(s, before), Spacing.cards(s, now))
+                for (card in Spacing.due(s, now, today.plusDays(1))) {
+                    val q = Quiz.question(card, now, s.unlocked.keys, seed = days.toLong())
+                    assertTrue(q.answer in q.options.indices)
+                }
+                assertEquals(s, Codec.decode(Codec.encode(s, 0)).copy(settings = s.settings))
             }
-            assertEquals(Spacing.cards(s, before), Spacing.cards(s, now))
-            for (card in Spacing.due(s, now, today.plusDays(1))) {
-                val q = Quiz.question(card, now, s.unlocked.keys, seed = days.toLong())
-                assertTrue(q.answer in q.options.indices)
-            }
-            assertEquals(s, Codec.decode(Codec.encode(s, 0)).copy(settings = s.settings))
         }
     }
 
     @Test
     fun `people part-way through see every concept, old and new, before any repeat`() {
-        for ((i, days) in listOf(1, 50, 135, 140).withIndex()) {
-            var s = userAfter(days, 100 + i)
-            val shown = ArrayList(s.assignments.toSortedMap().values.map { it.conceptId })
-            for (d in days until now.size) {
-                val day = start.plusDays(d.toLong())
-                s = Curriculum.assign(day, now, s, d.toLong())
-                shown += s.assignments.getValue(day).conceptId
+        for ((before, _) in upgrades) {
+            // Part-way means before the old library ran out; past that, people were already revisiting.
+            for ((i, days) in listOf(1, 50, 135, 140, 144, 170, 179).filter { it < before.size }.withIndex()) {
+                var s = userAfter(days, 100 + i, before)
+                val shown = ArrayList(s.assignments.toSortedMap().values.map { it.conceptId })
+                for (d in days until now.size) {
+                    val day = start.plusDays(d.toLong())
+                    s = Curriculum.assign(day, now, s, d.toLong())
+                    shown += s.assignments.getValue(day).conceptId
+                }
+                assertEquals("after $days days on the ${before.size}-concept library", now.size, shown.toSet().size)
+                assertEquals(now.size, shown.size)
             }
-            assertEquals("after $days days on the old library", now.size, shown.toSet().size)
-            assertEquals(now.size, shown.size)
         }
     }
 
     @Test
     fun `people who had seen everything meet the new concepts before any revisit`() {
-        var s = userAfter(200, 7) // past the old library's 151 days, so already revisiting
-        val next = (200 until 200 + added.size).map { d ->
-            val day = start.plusDays(d.toLong())
-            s = Curriculum.assign(day, now, s, d.toLong())
-            s.assignments.getValue(day).conceptId
+        for ((before, newer) in upgrades) {
+            if (newer.isEmpty()) continue
+            val first = before.size + 49 // past the old library, so already revisiting
+            var s = userAfter(first, 7, before)
+            val next = (first until first + newer.size).map { d ->
+                val day = start.plusDays(d.toLong())
+                s = Curriculum.assign(day, now, s, d.toLong())
+                s.assignments.getValue(day).conceptId
+            }
+            assertEquals(newer, next.toSet())
+            assertEquals(now.all.filter { it.id in newer }.map { it.id }, next)
         }
-        assertEquals(added, next.toSet())
-        assertEquals(now.all.filter { it.id in added }.map { it.id }, next)
     }
 
     @Test
     fun `specimen numbers already dealt in the first 135 days don't move`() {
-        for (c in before.all.filter { it.number <= 135 }) assertEquals(c.id, c.number, now[c.id]!!.number)
+        for (c in original.all.filter { it.number <= 135 }) assertEquals(c.id, c.number, now[c.id]!!.number)
+    }
+
+    @Test
+    fun `the second addition moves nothing before its first new day`() {
+        if (fromTwoMoreBooks.isEmpty()) return
+        val firstNew = now.all.filter { it.id in fromTwoMoreBooks }.minOf { it.number }
+        assertTrue("first new day $firstNew", firstNew > 136)
+        for (c in afterFiveBooks.all.filter { it.number < firstNew }) assertEquals(c.id, c.number, now[c.id]!!.number)
     }
 }
