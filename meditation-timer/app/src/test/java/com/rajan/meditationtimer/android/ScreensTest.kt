@@ -662,6 +662,8 @@ class ScreensTest {
         seed(days = 3)
         val sits = SessionLog.get(app).records.value.size
         app.getSharedPreferences("google_backup", 0).edit().putString("email", "me@example.com").commit()
+        // Seeding saved the log, which already loaded the (then empty) account: load it afresh.
+        GoogleBackup.resetForTests()
         launch()
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.onNodeWithText("Backup").performClick()
@@ -733,7 +735,9 @@ class ScreensTest {
         compose.onNodeWithText("Box").performScrollTo().performClick()
         while (shadowOf(app).nextStartedService != null) Unit
         compose.onNodeWithText("Start").performScrollTo().performClick()
-        compose.waitForIdle()
+        // The orb redraws every frame, so time is stepped by hand from here.
+        compose.mainClock.autoAdvance = false
+        compose.mainClock.advanceTimeBy(500)
         val started = shadowOf(app).nextStartedService
         assertEquals(BreathService::class.java.name, started?.component?.className)
         assertEquals("Box", started?.getStringExtra("pattern"))
@@ -741,21 +745,23 @@ class ScreensTest {
         scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
         assertNull(shadowOf(app).nextStoppedService)
         scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithText("Stop").performClick()
-        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(500)
         assertEquals(BreathService::class.java.name, shadowOf(app).nextStoppedService?.component?.className)
         compose.onNodeWithText("Start").assertExists()
 
         // Stopped from the notification: the screen closes the exercise too.
         compose.onNodeWithText("Start").performScrollTo().performClick()
-        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(500)
         val intent = shadowOf(app).nextStartedService!!
         val service = Robolectric.buildService(BreathService::class.java, intent).create().startCommand(0, 1)
         val stop = shadowOf(app.getSystemService(android.app.NotificationManager::class.java)).allNotifications.last { it.channelId == "breathe" }.actions.single()
         service.withIntent(shadowOf(stop.actionIntent).savedIntent).startCommand(0, 2)
-        compose.waitForIdle()
-        compose.onNodeWithText("Start").assertExists()
+        shadowOf(Looper.getMainLooper()).idle()
+        compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithText("Stop").assertDoesNotExist()
+        compose.onNodeWithText("Start").assertExists()
     }
 
     @Test
