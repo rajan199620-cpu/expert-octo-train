@@ -1,7 +1,8 @@
 # Meditation Timer (Android)
 
-A quiet meditation app built around a synthesised singing bowl. Everything beyond the core
-timer is opt-in, so the defaults behave exactly like the plain timer.
+A quiet meditation app built around a synthesised singing bowl. Out of the box a sit is a minute
+of slow settle-in breaths, then the timer and its bells; the check-ins and the daily reading can
+be switched off, and distraction counting is off unless you turn it on.
 
 **Download:** [meditation-timer.apk](https://github.com/rajan199620-cpu/expert-octo-train/releases/download/apk/meditation-timer.apk)
 always serves the newest build (CI republishes it on every push).
@@ -171,9 +172,10 @@ week (a rest day; a second miss that week ends it) and History says when a rest 
 broken streaks discourage, repairable ones much less (Silverman & Barasch, 2023).
 
 **Practice tools** (Sit → Practice tools, each optional):
-- **Count distractions**: during a sit, tap anywhere or press a volume key each time you notice the
-  mind has wandered. The screen stays on (at your normal brightness) so taps register. The finish screen and History
-  ("Catching the wandering mind", per 10 minutes) show the count, framed as a skill, not a score.
+- **Count distractions** (off unless you turn it on): during a sit, tap anywhere or press a volume
+  key each time you notice the mind has wandered. The screen stays on (at your normal brightness)
+  so taps register; with counting off it sleeps as usual. The finish screen and History ("Catching
+  the wandering mind", per 10 minutes) show the count, framed as a skill, not a score.
 - **Check in before and after**: one tap for how you feel going in (Tense → Calm) and coming out.
   History shows "What a sit changes": the average shift and how often you came out calmer.
 - **Daily reminder**: a time plus a habit cue ("After morning tea"), an if-then plan. Skipped on

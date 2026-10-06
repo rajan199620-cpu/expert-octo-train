@@ -48,8 +48,10 @@ object Guide {
             "Noticing a wandering mind",
             "Tap when you catch it, then come back",
             listOf(
-                "With Count distractions on (Practice tools), tap anywhere on the screen or press a volume " +
-                    "key each time you notice the mind has wandered. A light buzz confirms it.",
+                "Counting is optional and off unless you turn it on: Practice tools → Count distractions. " +
+                    "Without it, you simply notice and come back, and the screen can sleep as usual.",
+                "With it on, tap anywhere on the screen or press a volume key each time you notice the mind " +
+                    "has wandered. A light buzz confirms it.",
                 "A higher count isn't worse: it means you noticed more often. History shows the trend.",
                 "The screen stays on while counting so taps register. Your brightness isn't changed.",
             ),

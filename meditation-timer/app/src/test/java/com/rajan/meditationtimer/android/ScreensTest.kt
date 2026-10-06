@@ -10,6 +10,7 @@ import android.appwidget.AppWidgetManager
 import android.os.Looper
 import android.os.SystemClock
 import android.view.KeyEvent
+import android.view.WindowManager
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import org.junit.Assert.assertNotNull
@@ -161,7 +162,7 @@ class ScreensTest {
         compose.onNode(hasText("Begin  ·", substring = true) and hasAnyAncestor(isDialog())).performClick()
         compose.waitForIdle()
         assertEquals(5, SessionRepository.pendingBefore)
-        assertTrue(SessionRepository.counting)
+        assertFalse("counting is off unless switched on", SessionRepository.counting)
         val started = shadowOf(app).nextStartedService
         assertEquals(MeditationService::class.java.name, started.component?.className)
     }
@@ -519,6 +520,38 @@ class ScreensTest {
         compose.onNodeWithText("Done").performScrollTo().performClick()
         compose.onNodeWithText("birds", substring = true).assertExists()
         compose.onNodeWithText("Background sound").assertDoesNotExist()
+    }
+
+    @Test
+    fun `counting is optional - off unless chosen, then taps and volume keys do nothing and the screen may sleep`() {
+        assertFalse("off by default", Prefs(app).countDistractions)
+        Prefs(app).checkIns = false
+        launch()
+        compose.onNodeWithText("Begin  ·", substring = true).performClick()
+        compose.waitForIdle()
+        assertFalse(SessionRepository.counting)
+        // The running screen: no counting hint, and a tap or a volume key counts nothing.
+        compose.mainClock.autoAdvance = false
+        val config = SessionConfig(1200, 5, 10, true, 0)
+        SessionRepository.update(SessionState.Running(SessionClock(SystemClock.elapsedRealtime() - 420_000), config))
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.onNodeWithText("Mind wandered?", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Close your eyes. The bell will call you back.").assertExists()
+        compose.onNodeWithText("Today’s focus", substring = true).performClick()
+        compose.mainClock.advanceTimeBy(100)
+        scenario!!.onActivity { it.onKeyDown(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_UP)) }
+        assertEquals(0, SessionRepository.noticed.value)
+        assertNull("volume keys stay volume keys", VolumeKeys.handler)
+        // Nothing holds the screen on: it sleeps like any other while you sit.
+        scenario!!.onActivity { assertEquals(0, it.window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+        // Turned on in Practice tools, the next sit counts.
+        SessionRepository.reset()
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        compose.onNodeWithText("Practice tools").performScrollTo().performClick()
+        compose.onNodeWithText("Count distractions").performClick()
+        compose.waitForIdle()
+        assertTrue(Prefs(app).countDistractions)
     }
 
     @Test

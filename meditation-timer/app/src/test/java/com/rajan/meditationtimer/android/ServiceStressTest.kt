@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.net.Uri
 import android.os.Looper
 import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
@@ -22,6 +24,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowMediaPlayer
+import org.robolectric.shadows.util.DataSource
 import java.io.File
 import java.time.Duration
 import java.time.ZoneId
@@ -175,6 +179,56 @@ class ServiceStressTest {
         val deadline = System.currentTimeMillis() + 20_000
         while (AmbientPlayer.live.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(100)
         assertEquals(0, AmbientPlayer.live.get())
+    }
+
+    @Test
+    fun `background sound gives way to calls and other apps, and comes back after a call`() {
+        val audio = app.getSystemService(AudioManager::class.java)
+        val uri = Uri.parse("content://test/my-rain.mp3")
+        ShadowMediaPlayer.addMediaInfo(DataSource.toDataSource(app, uri), ShadowMediaPlayer.MediaInfo(60_000, 0))
+        val player = AmbientPlayer(app)
+        player.start(Ambience.CUSTOM, 0.5f, uri, fadeInMs = 50)
+        assertEquals(AmbientPlayer.State.PLAYING, player.state)
+        val focus = shadowOf(audio).lastAudioFocusRequest
+        assertEquals("asks for the speaker like any media app", AudioManager.AUDIOFOCUS_GAIN, focus.durationHint)
+        val listener = focus.listener
+
+        // A call rings: the sound pauses, and carries on when the call ends.
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+        assertEquals(AmbientPlayer.State.PAUSED, player.state)
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        assertEquals(AmbientPlayer.State.PLAYING, player.state)
+
+        // You pause the sit during a call: the call ending doesn't start the sound again.
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+        player.pause()
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        assertEquals(AmbientPlayer.State.PAUSED, player.state)
+
+        // You resume while a call is still on: the sound waits for the call to end.
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+        player.resume()
+        assertEquals(AmbientPlayer.State.PAUSED, player.state)
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+        assertEquals(AmbientPlayer.State.PLAYING, player.state)
+
+        // A navigation prompt only dips it (Android does that itself): it keeps playing.
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK)
+        assertEquals(AmbientPlayer.State.PLAYING, player.state)
+
+        // Music or a video starts in another app: the sound stops for the rest of the sit.
+        listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS)
+        idle(3)
+        assertEquals(AmbientPlayer.State.STOPPED, player.state)
+        player.resume()
+        assertEquals(AmbientPlayer.State.STOPPED, player.state)
+
+        // Refused outright (a call already on when the sit starts): silence, not sound over the call.
+        shadowOf(audio).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+        player.start(Ambience.CUSTOM, 0.5f, uri, fadeInMs = 50)
+        assertEquals(AmbientPlayer.State.STOPPED, player.state)
+        shadowOf(audio).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+        player.stopNow()
     }
 
     @Test

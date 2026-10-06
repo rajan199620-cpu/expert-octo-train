@@ -437,8 +437,8 @@ private fun PracticeTools(prefs: Prefs) {
         }
         ToggleRow(
             "Count distractions",
-            "Each time you notice the mind has wandered, tap the screen or press a volume key, then return. " +
-                "The screen stays on while you sit, so taps register.",
+            "Optional, off unless you turn it on. Each time you notice the mind has wandered, tap the screen " +
+                "or press a volume key, then return. The screen stays on while you sit, so taps register.",
             counting,
         ) { counting = it; prefs.countDistractions = it }
         ToggleRow(

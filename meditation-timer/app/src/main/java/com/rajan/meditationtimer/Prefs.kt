@@ -113,9 +113,13 @@ class Prefs(context: Context) {
         sp.edit { putString(KEY_BREATH_CHECKS, (breathChecks + check).joinToString("\n") { it.encode() }) }
     }
 
-    /** Tap or press a volume key during a sit each time you notice the mind has wandered. */
+    /**
+     * Tap or press a volume key during a sit each time you notice the mind has wandered. Off
+     * unless you turn it on: it keeps the screen awake for the whole sit, and many people would
+     * rather just notice and return than also tap.
+     */
     var countDistractions: Boolean
-        get() = sp.getBoolean(KEY_COUNT, true)
+        get() = sp.getBoolean(KEY_COUNT, false)
         set(value) = sp.edit { putBoolean(KEY_COUNT, value) }
 
     /** Days a week you mean to sit (Monday–Sunday); 0 = no goal. 5 leaves room for a busy week. */
