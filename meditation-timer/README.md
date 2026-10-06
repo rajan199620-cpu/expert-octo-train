@@ -96,7 +96,8 @@ always serves the newest build (CI republishes it on every push).
 
 **Breathe**: paced breathing (Coherent 5.5/5.5, Box 4-4-4-4, 4-7-8) with an expanding circle
 and a vibration at each phase change (one tap in, two taps out, a long buzz to hold), so you can
-follow it eyes-closed.
+follow it eyes-closed. The taps come from a small foreground service, so they carry on with the
+phone locked; its notification has a *Stop* button.
 
 **Mala**: japa counter (27/54/108) with a ring of beads. Tap the circle or press **either volume
 key** to count; a bell and a strong buzz mark each finished round. The count survives closing the app.
@@ -236,7 +237,8 @@ since 31 August 2026. Build locally with the Android SDK installed: `./gradlew a
 
 - **Screen off / locked:** the session runs in a foreground service holding a partial
   wake lock, so bells stay on time for long sits. A notification shows a live countdown with
-  *Pause* and *End* actions.
+  *Pause* and *End* actions. Breathe-tab exercises get the same treatment, so their taps keep
+  time with the screen off.
 - **Pause and a safe End**: Pause freezes the clock and holds the bells (Do Not Disturb lifts
   while paused, so calls get through). End doesn't quit at once: the sit pauses and shows
   "Ending in 5…" with *Keep sitting*, so a stray tap costs nothing. Early ends of a minute or

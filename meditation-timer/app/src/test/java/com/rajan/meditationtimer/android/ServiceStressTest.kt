@@ -9,10 +9,12 @@ import android.content.Intent
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Looper
+import android.os.SystemClock
 import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -25,6 +27,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowMediaPlayer
+import org.robolectric.shadows.ShadowPowerManager
 import org.robolectric.shadows.util.DataSource
 import java.io.File
 import java.time.Duration
@@ -73,6 +76,50 @@ class ServiceStressTest {
     }
 
     private val records get() = SessionLog.get(app).records.value
+
+    @Test
+    fun `breathe-tab taps carry on with the phone locked, end on time and stop from the notification`() {
+        val box = BreathPattern.ALL.first { it.name == "Box" }
+        val played = BreathBuzz.played.get()
+        val first = SystemClock.elapsedRealtime()
+        BreathService.start(app, box, 1, first)
+        val s = Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        // No screen here at all: everything comes from the service.
+        val seen = mutableListOf<BreathBuzz.Kind?>()
+        repeat(8) { phase ->
+            idle(if (phase == 0) 2 else 4)
+            seen += BreathBuzz.last
+        }
+        val (i, h, o) = Triple(BreathBuzz.Kind.IN, BreathBuzz.Kind.HOLD, BreathBuzz.Kind.OUT)
+        assertEquals(listOf(i, h, o, h, i, h, o, h), seen)
+        assertEquals("one cue per phase, none doubled", 8, BreathBuzz.played.get() - played)
+        assertTrue("holds the CPU so taps stay on time", ShadowPowerManager.getLatestWakeLock().isHeld)
+        // The screen rebuilt (rotation) asks again with the same start: no restart, no extra tap.
+        BreathService.start(app, box, 1, first)
+        assertNull(shadowOf(app).nextStartedService)
+        // 1 minute of box rounds up to 4 whole breaths (64 s) = 16 phases.
+        idle(60)
+        assertEquals(16, BreathBuzz.played.get() - played)
+        assertTrue("stops itself at the end", shadowOf(s.get()).isStoppedBySelf)
+        assertFalse("and lets the CPU sleep", ShadowPowerManager.getLatestWakeLock().isHeld)
+        idle(60)
+        assertEquals(16, BreathBuzz.played.get() - played)
+
+        // Stop in the notification: quiet at once, and the screen is told.
+        val started = SystemClock.elapsedRealtime()
+        BreathService.start(app, box, 5, started)
+        val t = Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        idle(10)
+        val before = BreathBuzz.played.get()
+        val notification = shadowOf(app.getSystemService(NotificationManager::class.java)).allNotifications.last { it.channelId == "breathe" }
+        val stop = notification.actions.single()
+        assertEquals("Stop", stop.title.toString())
+        t.withIntent(shadowOf(stop.actionIntent).savedIntent).startCommand(0, ++startId)
+        assertEquals(started, BreathService.cancelled.value)
+        idle(120)
+        assertEquals(before, BreathBuzz.played.get())
+        assertTrue(shadowOf(t.get()).isStoppedBySelf)
+    }
 
     @Test
     fun `settle-in breaths tap once in and twice out, hold while paused, rejoin on resume, and never change the sit`() {

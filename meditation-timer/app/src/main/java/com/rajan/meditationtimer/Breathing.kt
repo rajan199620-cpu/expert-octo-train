@@ -48,7 +48,8 @@ data class BreathPattern(
 
     val cycleMs: Long get() = ((inhaleSec + holdInSec + exhaleSec + holdOutSec) * 1000).toLong()
 
-    private val phases: List<Pair<BreathPhase, Long>>
+    /** The phases of one breath with their lengths (ms), in order; 0-second phases left out. */
+    val phases: List<Pair<BreathPhase, Long>>
         get() = listOf(
             BreathPhase.INHALE to inhaleSec,
             BreathPhase.HOLD_IN to holdInSec,

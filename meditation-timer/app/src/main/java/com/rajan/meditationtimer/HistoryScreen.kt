@@ -75,6 +75,7 @@ fun HistoryTab() {
     val noticing = remember(records) { History.noticing(records, zone, today) }
     LaunchedEffect(Unit) { GoogleBackup.load(context) }
     val cloud by GoogleBackup.state.collectAsStateWithLifecycle()
+    var confirming by remember { mutableStateOf(false) }
 
     // Back up = save a CSV file you keep (Drive, Downloads...); Restore = read one back.
     // Together they carry your history to a new phone or across a reinstall.
@@ -382,11 +383,23 @@ private fun GoogleCard() {
                 email == null -> TextButton(onClick = { GoogleBackup.connect(context) { consent.launch(it) } }) {
                     Text("Connect Google account")
                 }
+                // One stray tap shouldn't quietly stop the backups: ask first, right here.
+                confirming -> {
+                    TextButton(onClick = { confirming = false; GoogleBackup.disconnect(context) }) { Text("Yes, disconnect") }
+                    TextButton(onClick = { confirming = false }) { Text("Keep backing up") }
+                }
                 else -> {
                     TextButton(onClick = { GoogleBackup.syncNow(context) }) { Text("Back up now") }
-                    TextButton(onClick = { GoogleBackup.disconnect(context) }) { Text("Disconnect") }
+                    TextButton(onClick = { confirming = true }) { Text("Disconnect") }
                 }
             }
+        }
+        if (confirming && email != null && !cloud.busy) {
+            Text(
+                "New sits will stop being backed up. Nothing is deleted: what's on this phone and in your Drive stays.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

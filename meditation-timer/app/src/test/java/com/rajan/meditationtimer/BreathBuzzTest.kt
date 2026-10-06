@@ -108,4 +108,22 @@ class BreathBuzzTest {
             elapsed += 10
         }
     }
+
+    @Test
+    fun `an exercise is cued at every phase start and nowhere else`() {
+        val box = BreathPattern.ALL.first { it.name == "Box" }
+        val (i, h, o) = Triple(BreathBuzz.Kind.IN, BreathBuzz.Kind.HOLD, BreathBuzz.Kind.OUT)
+        assertEquals(
+            listOf(0L to i, 4_000L to h, 8_000L to o, 12_000L to h, 16_000L to i, 20_000L to h, 24_000L to o, 28_000L to h),
+            BreathBuzz.cues(box, 2 * box.cycleMs),
+        )
+        // Every rhythm and length: one cue per phase, each matching what the screen shows then.
+        for (pattern in BreathPattern.ALL) for (minutes in listOf(1, 3, 5, 10)) {
+            val total = pattern.breathsFor(minutes) * pattern.cycleMs
+            val cues = BreathBuzz.cues(pattern, total)
+            assertEquals(pattern.name, pattern.phases.size * pattern.breathsFor(minutes), cues.size.toLong())
+            for ((at, kind) in cues) assertEquals("${pattern.name} at $at", BreathBuzz.of(pattern.at(at).phase), kind)
+            assertTrue(cues.all { it.first < total })
+        }
+    }
 }

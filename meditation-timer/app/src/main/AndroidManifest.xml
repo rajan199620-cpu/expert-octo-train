@@ -43,6 +43,14 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Meditation timer that rings bells at user-chosen times while the screen is off" />
         </service>
+        <service
+            android:name=".BreathService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Paced-breathing exercise that vibrates at each breath while the screen is off" />
+        </service>
         <receiver
             android:name=".ReminderReceiver"
             android:exported="false">

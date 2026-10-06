@@ -62,6 +62,18 @@ object BreathBuzz {
         BreathPhase.HOLD_IN, BreathPhase.HOLD_OUT -> Kind.HOLD
     }
 
+    /** Every phase start in a [totalMs]-long exercise, as (ms from the start, the buzz that marks it). */
+    fun cues(pattern: BreathPattern, totalMs: Long): List<Pair<Long, Kind>> = buildList {
+        var t = 0L
+        while (t < totalMs) {
+            for ((phase, length) in pattern.phases) {
+                if (t >= totalMs) break
+                add(t to of(phase))
+                t += length
+            }
+        }
+    }
+
     /** Breath cues played so far, and the last one: tests check the pacing with them. */
     val played = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile var last: Kind? = null

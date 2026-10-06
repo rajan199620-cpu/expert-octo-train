@@ -89,6 +89,8 @@ class ScreensTest {
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         SessionRepository.reset()
         SessionRepository.startCounting(false)
+        app.getSharedPreferences("google_backup", 0).edit().clear().commit()
+        GoogleBackup.resetForTests()
     }
 
     @After
@@ -656,6 +658,28 @@ class ScreensTest {
     }
 
     @Test
+    fun `disconnecting google backup asks first and deletes nothing`() {
+        seed(days = 3)
+        val sits = SessionLog.get(app).records.value.size
+        app.getSharedPreferences("google_backup", 0).edit().putString("email", "me@example.com").commit()
+        launch()
+        compose.onAllNodesWithText("History").onLast().performClick()
+        compose.onNodeWithText("Backup").performClick()
+        compose.onNodeWithText("me@example.com").assertExists()
+        compose.onNodeWithText("Disconnect").performScrollTo().performClick()
+        compose.onNodeWithText("Nothing is deleted", substring = true).assertExists()
+        // Changed their mind: still connected.
+        compose.onNodeWithText("Keep backing up").performClick()
+        compose.onNodeWithText("me@example.com").assertExists()
+        assertEquals("me@example.com", app.getSharedPreferences("google_backup", 0).getString("email", null))
+        compose.onNodeWithText("Disconnect").performScrollTo().performClick()
+        compose.onNodeWithText("Yes, disconnect").performClick()
+        compose.onNodeWithText("Connect Google account").assertExists()
+        assertNull(app.getSharedPreferences("google_backup", 0).getString("email", null))
+        assertEquals("the sits on this phone stay", sits, SessionLog.get(app).records.value.size)
+    }
+
+    @Test
     fun `weekly goal set in practice tools shows in history and the widget line`() {
         seed(days = 10)
         launch()
@@ -692,41 +716,46 @@ class ScreensTest {
         compose.mainClock.autoAdvance = false
         compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithText("In · left nostril").assertExists()
-        assertEquals("one tap to breathe in", BreathBuzz.Kind.IN, BreathBuzz.last)
         shot("17-breathe-session")
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_000))
         compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithText("Out · right nostril").assertExists()
-        assertEquals("two taps to breathe out", BreathBuzz.Kind.OUT, BreathBuzz.last)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_500))
         compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithText("In · right nostril").assertExists()
-        assertEquals(BreathBuzz.Kind.IN, BreathBuzz.last)
     }
 
     @Test
-    fun `box breathing cues each phase by rhythm - tap, long buzz, two taps, long buzz`() {
+    fun `the breathe screen hands the taps to the service, which outlives a locked screen but not Stop`() {
         launch()
         compose.onAllNodesWithText("Breathe").onLast().performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Box").performScrollTo().performClick()
-        val before = BreathBuzz.played.get()
+        while (shadowOf(app).nextStartedService != null) Unit
         compose.onNodeWithText("Start").performScrollTo().performClick()
-        compose.mainClock.autoAdvance = false
-        val seen = mutableListOf<BreathBuzz.Kind?>()
-        // Half-way through each 4-second phase of two full rounds.
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(2_000))
-        compose.mainClock.advanceTimeBy(500)
-        repeat(8) { phase ->
-            if (phase > 0) {
-                shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(4_000))
-                compose.mainClock.advanceTimeBy(500)
-            }
-            seen += BreathBuzz.last
-        }
-        val (i, h, o) = Triple(BreathBuzz.Kind.IN, BreathBuzz.Kind.HOLD, BreathBuzz.Kind.OUT)
-        assertEquals(listOf(i, h, o, h, i, h, o, h), seen)
-        assertEquals("one cue per phase, none doubled", 8, BreathBuzz.played.get() - before)
+        compose.waitForIdle()
+        val started = shadowOf(app).nextStartedService
+        assertEquals(BreathService::class.java.name, started?.component?.className)
+        assertEquals("Box", started?.getStringExtra("pattern"))
+        // Locking the phone stops the activity but must leave the taps running.
+        scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
+        assertNull(shadowOf(app).nextStoppedService)
+        scenario!!.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        compose.onNodeWithText("Stop").performClick()
+        compose.waitForIdle()
+        assertEquals(BreathService::class.java.name, shadowOf(app).nextStoppedService?.component?.className)
+        compose.onNodeWithText("Start").assertExists()
+
+        // Stopped from the notification: the screen closes the exercise too.
+        compose.onNodeWithText("Start").performScrollTo().performClick()
+        compose.waitForIdle()
+        val intent = shadowOf(app).nextStartedService!!
+        val service = Robolectric.buildService(BreathService::class.java, intent).create().startCommand(0, 1)
+        val stop = shadowOf(app.getSystemService(android.app.NotificationManager::class.java)).allNotifications.last { it.channelId == "breathe" }.actions.single()
+        service.withIntent(shadowOf(stop.actionIntent).savedIntent).startCommand(0, 2)
+        compose.waitForIdle()
+        compose.onNodeWithText("Start").assertExists()
+        compose.onNodeWithText("Stop").assertDoesNotExist()
     }
 
     @Test

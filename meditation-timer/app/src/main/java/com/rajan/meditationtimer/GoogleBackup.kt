@@ -64,6 +64,12 @@ object GoogleBackup {
         _state.value = CloudState(email = sp.getString(KEY_EMAIL, null), lastSyncMs = sp.getLong(KEY_LAST, 0))
     }
 
+    /** Forgets what was loaded, so a test starts from what its own preferences say. */
+    internal fun resetForTests() {
+        loaded = false
+        _state.value = CloudState()
+    }
+
     private fun request() = AuthorizationRequest.builder().setRequestedScopes(listOf(Scope(SCOPE))).build()
 
     /**

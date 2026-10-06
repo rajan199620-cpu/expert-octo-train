@@ -1,5 +1,8 @@
 package com.rajan.meditationtimer
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
@@ -47,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
@@ -276,12 +280,17 @@ private fun BreathingSession(
     LaunchedEffect(done) { if (done) onFinished() }
 
     // One tap to breathe in, two to breathe out, a long buzz to hold, so each phase can be told
-    // apart with eyes closed (a touch-feedback click was the same for all four, and silent when
-    // touch vibration is switched off).
+    // apart with eyes closed. The taps come from a service so they carry on with the phone locked;
+    // it stops when this screen goes (Stop, Back, the end), but not when it is only rebuilt.
     val context = LocalContext.current
-    val buzzer = remember { BreathBuzzer(context) }
-    LaunchedEffect(state.phase, state.completedCycles) {
-        if (!done) buzzer.play(BreathBuzz.of(state.phase))
+    LaunchedEffect(startedAt) {
+        BreathService.start(context, pattern, minutes, startedAt)
+        // Stopped from the notification: close the exercise here too.
+        BreathService.cancelled.first { it == startedAt }
+        onStop()
+    }
+    DisposableEffect(startedAt) {
+        onDispose { if (context.findActivity()?.isChangingConfigurations != true) BreathService.stop(context) }
     }
 
     Column(
@@ -329,4 +338,10 @@ private fun BreathOrb(expansion: Float, modifier: Modifier = Modifier) {
         )
         drawCircle(Color.White.copy(alpha = 0.35f), radius = radius, style = Stroke(width = 1.5.dp.toPx()))
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
