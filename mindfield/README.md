@@ -84,7 +84,8 @@ left- and right-brained people, the weak human nose, memory as a video recording
 moves in stages. Sacks's case histories aren't used as evidence for anything: a 2025 *New Yorker*
 investigation reported that Sacks's own journals describe changing and inventing details in them,
 so only principles with independent research went in. Untested and purely clinical claims were
-left out.
+left out. The verdict for every principle in all seven books, the stress test and its results are in
+[docs/book-review-and-stress-test.pdf](docs/book-review-and-stress-test.pdf).
 
 New concepts sit at the end of each area, so the order for anyone already using the app is
 unchanged up to day 135 (day 144 for the second batch); people who had seen everything meet the
