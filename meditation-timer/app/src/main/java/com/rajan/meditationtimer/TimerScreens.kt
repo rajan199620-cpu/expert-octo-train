@@ -505,7 +505,7 @@ private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChang
 private fun DurationDial(minutes: Int, onMinus: () -> Unit, onPlus: () -> Unit) {
     val accent = LocalAccent.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        RoundButton("−", onMinus)
+        RoundButton("−", "One minute shorter", onMinus)
         Box(Modifier.size(200.dp).glow(accent.main), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize().padding(10.dp)) {
                 val stroke = 8.dp.toPx()
@@ -525,7 +525,7 @@ private fun DurationDial(minutes: Int, onMinus: () -> Unit, onPlus: () -> Unit) 
                 Text("minutes", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        RoundButton("+", onPlus)
+        RoundButton("+", "One minute longer", onPlus)
     }
 }
 

@@ -18,7 +18,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDate
@@ -327,7 +329,8 @@ private fun TabBar(selected: Tab, onTab: (Tab) -> Unit) {
             .clip(shape)
             .background(Color.White.copy(alpha = 0.07f))
             .border(1.dp, Color.White.copy(alpha = 0.08f), shape)
-            .padding(6.dp),
+            .padding(6.dp)
+            .selectableGroup(),
     ) {
         for (tab in Tab.entries) {
             val isSelected = tab == selected
@@ -337,7 +340,8 @@ private fun TabBar(selected: Tab, onTab: (Tab) -> Unit) {
                     .weight(1f)
                     .clip(RoundedCornerShape(22.dp))
                     .background(if (isSelected) tab.accent.main.copy(alpha = 0.16f) else Color.Transparent)
-                    .clickable { onTab(tab) }
+                    // Read out as a tab, and which one is selected.
+                    .selectable(selected = isSelected, role = Role.Tab) { onTab(tab) }
                     .padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),

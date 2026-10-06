@@ -13,6 +13,10 @@ import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.Role
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -520,6 +524,27 @@ class ScreensTest {
         compose.onNodeWithText("Done").performScrollTo().performClick()
         compose.onNodeWithText("birds", substring = true).assertExists()
         compose.onNodeWithText("Background sound").assertDoesNotExist()
+    }
+
+    @Test
+    fun `screen readers hear tabs as tabs and which is selected, and what minus and plus do`() {
+        launch()
+        val tab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
+        compose.onNode(hasText("Sit") and tab).assertIsSelected()
+        compose.onNode(hasText("Breathe") and tab).assertIsNotSelected()
+        compose.onNode(hasText("Breathe") and tab).performClick()
+        compose.waitForIdle()
+        compose.onNode(hasText("Breathe") and tab).assertIsSelected()
+        compose.onNode(hasText("Sit") and tab).assertIsNotSelected()
+        compose.onNode(hasText("Sit") and tab).performClick()
+        compose.waitForIdle()
+        // The − and + around the dial say what they do, not "minus sign".
+        compose.onNodeWithContentDescription("One minute longer").performClick()
+        compose.onNodeWithText("Begin  ·  21 min").assertExists()
+        compose.onNodeWithContentDescription("One minute shorter").performClick()
+        compose.onNodeWithContentDescription("One minute shorter").performClick()
+        compose.onNodeWithText("Begin  ·  19 min").assertExists()
+        compose.onNodeWithText("−").assertDoesNotExist()
     }
 
     @Test

@@ -10,6 +10,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -184,7 +188,7 @@ fun GradientButton(text: String, onClick: () -> Unit, modifier: Modifier = Modif
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(RoundedCornerShape(29.dp))
             .background(Brush.horizontalGradient(listOf(accent.main, accent.second)))
-            .clickable(interaction, LocalIndication.current) { view.tick(); onClick() },
+            .clickable(interaction, LocalIndication.current, role = Role.Button) { view.tick(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Text(text, color = OnAccent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -206,7 +210,7 @@ fun ControlButton(label: String, icon: ControlIcon, onClick: () -> Unit) {
     Column(
         Modifier
             .clip(RoundedCornerShape(20.dp))
-            .clickable { view.tick(); onClick() }
+            .clickable(role = Role.Button) { view.tick(); onClick() }
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -241,18 +245,25 @@ fun ControlButton(label: String, icon: ControlIcon, onClick: () -> Unit) {
     }
 }
 
+/** A round symbol button; [description] is what a screen reader says instead of the symbol. */
 @Composable
-fun RoundButton(label: String, onClick: () -> Unit) {
+fun RoundButton(label: String, description: String, onClick: () -> Unit) {
     Box(
         Modifier
             .size(52.dp)
             .clip(CircleShape)
             .background(Glass)
             .border(1.dp, GlassEdge, CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+        Text(
+            label,
+            Modifier.clearAndSetSemantics { },
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 
