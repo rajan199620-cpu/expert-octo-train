@@ -40,8 +40,9 @@ the watch for as long as you like, with the phone at home or switched off.
    **Review offline**; the deck list has **Offline review**. Tap the deck and review as usual:
    buttons, side button, Bury.
 3. **Back home**: your grades go into AnkiDroid by themselves, in the order you gave them.
-   The Offline screen shows how many are still waiting for the phone. Opening AnkiWatch
-   Phone also applies any that are waiting.
+   The Offline screen shows how many are still waiting for the phone, and says *All grades
+   are in AnkiDroid* within moments of the phone confirming it has them. Opening AnkiWatch
+   Phone, or the deck list on the watch, also applies any that are waiting.
 
 How it behaves:
 
@@ -139,9 +140,12 @@ Turn Wireless debugging off again afterwards if you like; it only matters for in
 ### Updating
 
 Download the newer artifact and run the install script again. Both apps must always come
-from the **same** download (they are signed together). If the signing key changed, the
-script removes the old version first; nothing is lost, because your reviews live in
-AnkiDroid.
+from the **same** download (they are signed together). If the signing key changed, the old
+version has to be removed first. Your reviews are safe in AnkiDroid, but removing the watch
+app also deletes its offline downloads and any grades that haven't reached the phone yet, so
+the script asks first: check that the watch's Offline review screen doesn't say *grades
+waiting for your phone*, then type `y`. (`-Yes`, or `--yes` for `install.sh`, skips the
+question.)
 
 To make updates install in place without that, give the builds a permanent key once:
 create a keystore (`keytool -genkeypair -keystore ankiwatch.p12 -alias ankiwatch -keyalg RSA
@@ -209,7 +213,9 @@ Never commit the keystore; this repository is public.
   any size. Offline review with no phone and a fake clock (learning cards coming back,
   waiting, *Show it now*, side button, Bury, a restart mid-session), a 100-card random
   offline session, the Offline screen's states, and the watch's download store (restarts,
-  damaged files, overlapping decks, 300 random operations). Screenshots captured.
+  damaged files, overlapping decks, 300 random operations). On the watch's own Data Layer:
+  grades the phone acknowledges stop counting as waiting at once, and nothing else does
+  (1,250 grades in split acks). Screenshots captured.
 - Phone code against the real AnkiDroid app on an emulator: cloze fields and numbers, deck
   counts, answers landing in AnkiDroid's scheduler, Bury (the card leaves today's queue, its
   siblings stay; burying a whole deck empties today's queue; a stale or bogus bury fails
@@ -218,11 +224,13 @@ Never commit the keystore; this repository is public.
   own order with labels the watch can read; the same grades given live on one deck and
   offline on its twin (applied later, delivered shuffled) leave identical schedules; a whole
   offline session asks for as many answers per card as AnkiDroid does live; duplicated,
-  out-of-order and unreadable grades; 200 offline grades from ten decks in one go.
+  out-of-order and unreadable grades; 200 offline grades from ten decks in one go; every
+  grade the phone is done with acknowledged to the watch, and none it isn't.
 - The downloadable APKs themselves: on a phone emulator the watch APK must be refused and
   the phone APK must install and keep running; on the Wear OS emulator the watch APK must.
   The install scripts are run against a fake adb (watch, phone, wrong address, a watch on
-  USB) in bash and PowerShell.
+  USB, the question before removing a watch app: yes, no, no answer, `-Yes`) in bash and
+  PowerShell.
 
 Run the core suite locally with `./gradlew :core:test` (`-Pstress.iterations=20000` for a
 longer run).

@@ -70,7 +70,8 @@ class WearListenerService : WearableListenerService() {
         when (messageEvent.path) {
             DataLayerManager.PATH_REQUEST_DECKS -> {
                 exchangeLog.request("deck list")
-                runProcessing { handleDeckRequest() }
+                // Long: grades still queued from an offline session go in first.
+                runProcessing(LONG_WAKELOCK_TIMEOUT_MS) { handleDeckRequest() }
             }
             DataLayerManager.PATH_REQUEST_CARDS -> {
                 exchangeLog.request("cards")
@@ -162,6 +163,15 @@ class WearListenerService : WearableListenerService() {
         if (!ankiHelper.hasPermission()) {
             reportError("AnkiWatch needs permission to access AnkiDroid. Please open AnkiWatch Phone on your phone.")
             return
+        }
+
+        // Grades still queued go in first, so the counts sent back include them. This also
+        // delivers grades whose arrival didn't wake this service, whenever the watch shows
+        // its deck list.
+        try {
+            answerSync.run(log = false)
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't apply queued grades before sending decks", e)
         }
 
         val decks = ankiHelper.getDecks()

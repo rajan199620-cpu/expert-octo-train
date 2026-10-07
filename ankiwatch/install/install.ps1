@@ -11,9 +11,11 @@
 # debugging on the watch. Pair once first:  .\adb.exe pair <ip>:<pairing port> <code>
 # -Phone also installs the phone app on a phone connected by USB with USB debugging on.
 # adb is found next to this script or in the current folder; otherwise pass -Adb <path>.
+# -Yes skips the question asked before removing a watch app signed with another key.
 param(
     [Parameter(Mandatory = $true)][string]$Watch,
     [switch]$Phone,
+    [switch]$Yes,
     [string]$Adb = "adb"
 )
 
@@ -57,12 +59,29 @@ function Get-WatchFeature([string]$Serial) {
 function Install-Once([string]$Serial, [string]$Apk) {
     $out = Invoke-Adb @("-s", $Serial, "install", "-r", "--no-streaming", $Apk)
     if ($out -match "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match") {
-        # A build signed with a different key: remove the old one first.
-        Write-Host "  Signing key changed - reinstalling (review history lives in AnkiDroid, nothing is lost)."
+        # A build signed with a different key: the old one has to go first.
+        Confirm-Removal $Serial
         Invoke-Adb @("-s", $Serial, "uninstall", $Package) | Out-Null
         $out = Invoke-Adb @("-s", $Serial, "install", "--no-streaming", $Apk)
     }
     return $out
+}
+
+# Removing the watch app also deletes its offline downloads and any grades that haven't
+# reached the phone yet, so ask first. On a phone nothing is lost: reviews live in AnkiDroid.
+function Confirm-Removal([string]$Serial) {
+    if ($Yes -or (Get-WatchFeature $Serial) -ne "true") {
+        Write-Host "  Signing key changed - removing the old app first (your reviews live in AnkiDroid)."
+        return
+    }
+    Write-Host "  This download is signed differently, so the old watch app has to be removed first." -ForegroundColor Yellow
+    Write-Host "  That also deletes the watch's offline downloads and any grades still waiting for your phone." -ForegroundColor Yellow
+    Write-Host '  On the watch, AnkiWatch > Offline review must not say "grades waiting for your phone".' -ForegroundColor Yellow
+    $answer = Read-Host "  Remove it and install this one? Type y and press Enter"
+    # "$answer": Read-Host gives $null when input has ended, and $null -notmatch is not true.
+    if ("$answer" -notmatch '^\s*[yY]') {
+        Fail "Stopped. Nothing on the watch was changed. Once its grades are in AnkiDroid, run this again."
+    }
 }
 
 function Install-Apk([string]$Serial, [string]$Apk, [switch]$OverWifi) {

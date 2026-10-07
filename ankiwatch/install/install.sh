@@ -6,6 +6,8 @@
 #   ./install.sh 192.168.1.23:41235           # watch only (phone APK opened on the phone)
 #   ./install.sh 192.168.1.23:41235 --phone   # watch + phone over USB debugging
 #
+# --yes skips the question asked before removing a watch app signed with another key.
+#
 # The address is the "IP address & Port" under Developer options > Wireless debugging on the
 # watch. Pair once first:  adb pair <ip>:<pairing port> <pairing code>
 # adb is taken from $ADB, else PATH, else an adb next to this script.
@@ -20,11 +22,20 @@ if [ -z "${ADB:-}" ]; then
   fi
 fi
 if [ $# -lt 1 ]; then
-  echo "usage: install.sh <watch-ip:port> [--phone]   (set ADB=/path/to/adb if adb isn't on PATH)" >&2
+  echo "usage: install.sh <watch-ip:port> [--phone] [--yes]   (set ADB=/path/to/adb if adb isn't on PATH)" >&2
   exit 1
 fi
 WATCH="$1"
-PHONE="${2:-}"
+shift
+PHONE=""
+YES=""
+for arg in "$@"; do
+  case "$arg" in
+    --phone) PHONE=--phone ;;
+    --yes) YES=1 ;;
+    *) echo "unknown option: $arg" >&2; exit 1 ;;
+  esac
+done
 
 # "true" on a Wear OS watch, "false" on a phone; anything else if the device can't say.
 watch_feature() {
@@ -37,12 +48,44 @@ install_once() {
   local serial="$1" apk="$2" out
   out="$("$ADB" -s "$serial" install -r --no-streaming "$apk" 2>&1 || true)"
   if grep -qE "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match" <<<"$out"; then
-    # A build signed with a different key: remove the old one first.
-    echo "  Signing key changed - reinstalling (review history lives in AnkiDroid, nothing is lost)." >&2
+    # A build signed with a different key: the old one has to go first.
+    if ! confirm_removal "$serial"; then
+      printf '%s' "$STOPPED"
+      return
+    fi
     "$ADB" -s "$serial" uninstall "$PACKAGE" >/dev/null 2>&1 || true
     out="$("$ADB" -s "$serial" install --no-streaming "$apk" 2>&1 || true)"
   fi
   printf '%s' "$out"
+}
+
+# What install_once prints when the user chose not to remove the old app.
+STOPPED="(stopped before removing the old app)"
+
+# Removing the watch app also deletes its offline downloads and any grades that haven't
+# reached the phone yet, so ask first. On a phone nothing is lost: reviews live in AnkiDroid.
+confirm_removal() {
+  local serial="$1" answer=""
+  if [ -n "$YES" ] || [ "$(watch_feature "$serial")" != "true" ]; then
+    echo "  Signing key changed - removing the old app first (your reviews live in AnkiDroid)." >&2
+    return 0
+  fi
+  echo "  This download is signed differently, so the old watch app has to be removed first." >&2
+  echo "  That also deletes the watch's offline downloads and any grades still waiting for your phone." >&2
+  echo '  On the watch, AnkiWatch > Offline review must not say "grades waiting for your phone".' >&2
+  printf '  Remove it and install this one? Type y and press Enter: ' >&2
+  read -r answer || true
+  case "$answer" in
+    y* | Y*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+stop_if_declined() {
+  if [ "$1" = "$STOPPED" ]; then
+    echo "Stopped. Nothing on the watch was changed. Once its grades are in AnkiDroid, run this again." >&2
+    exit 1
+  fi
 }
 
 device_answered() { grep -qE "Success|Failure \[|INSTALL_" <<<"$1"; }
@@ -55,11 +98,13 @@ install_apk() {
   fi
   echo "Installing $(basename "$apk") ($(( $(wc -c <"$apk") / 1048576 )) MB) on $serial ..."
   out="$(install_once "$serial" "$apk")"
+  stop_if_declined "$out"
   if ! device_answered "$out"; then
     # No answer from the device's installer: the transfer was cut off.
     echo "  The transfer was cut off; reconnecting and trying once more ..."
     if [ -n "$over_wifi" ]; then "$ADB" connect "$serial" >/dev/null 2>&1 || true; fi
     out="$(install_once "$serial" "$apk")"
+    stop_if_declined "$out"
   fi
   if grep -q "INSTALL_FAILED_MISSING_SHARED_LIBRARY" <<<"$out"; then
     echo "$serial is not a Wear OS watch, so it refuses the watch app." >&2

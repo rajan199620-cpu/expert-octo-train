@@ -421,11 +421,18 @@ class AnkiDroidIntegrationTest {
     /** The Data Layer's queue of answers, in memory: what the phone sees once the watch is back. */
     private class FakeQueue(items: List<QueuedAnswer>) : AnswerQueue {
         val items = items.toMutableList()
+        /** Each ack sent to the watch: the names of the answers it covers. */
+        val acks = ArrayList<List<String>>()
         override suspend fun pendingAnswers(): List<QueuedAnswer> = items.toList()
         override suspend fun deleteAnswerItem(uri: Uri) {
             items.removeAll { it.first == uri }
         }
+        override suspend fun acknowledge(names: List<String>) {
+            acks += names.toList()
+        }
     }
+
+    private fun names(items: List<QueuedAnswer>): Set<String> = items.map { Wire.answerName(it.first.path)!! }.toSet()
 
     private fun sync(queue: FakeQueue): AnswerSync.Report =
         runBlocking { AnswerSync(helper, queue, AnswerDedupeStore(context), ExchangeLog(context)).run() }!!
@@ -581,20 +588,28 @@ class AnkiDroidIntegrationTest {
             queued(c3.noteId, 0, Wire.EASE_BURY, deck.id, seq = 4)
         )
         // Delivered backwards: applying Good before Again would leave c1 relearning instead.
-        val first = sync(FakeQueue(items.reversed()))
+        val firstQueue = FakeQueue(items.reversed())
+        val first = sync(firstQueue)
         assertEquals(4, first.applied)
         assertEquals(Triple(0, 1, 0), counts(deck))
         val due = helper.getScheduledCards(deck.id, limit = 10)
         assertEquals(listOf(c1.noteId), due.map { it.noteId })
         val afterFirst = dueLabels(deck)
+        // The watch is told about all four at once, in one ack.
+        assertEquals(1, firstQueue.acks.size)
+        assertEquals(names(items), firstQueue.acks.single().toSet())
 
-        // Redelivered (a delete that didn't stick): nothing is applied twice.
-        val again = sync(FakeQueue(items))
+        // Redelivered (a delete that didn't stick): nothing is applied twice, and the watch
+        // is told again, so its copies go too.
+        val againQueue = FakeQueue(items)
+        val again = sync(againQueue)
         assertEquals(0, again.applied)
         assertEquals(4, again.duplicates)
         assertEquals(afterFirst, dueLabels(deck))
+        assertEquals(names(items), againQueue.acks.flatten().toSet())
 
         // An item without an ease is skipped, not read as Bury; a live answer last gets a reply.
+        // Both are done with, so both are acknowledged.
         val broken = queued(c1.noteId, 0, null, deck.id, seq = 10)
         val liveOne = queued(c1.noteId, 0, 3, deck.id, seq = 11, offline = false)
         val fake = FakeQueue(listOf(liveOne, broken))
@@ -603,7 +618,13 @@ class AnkiDroidIntegrationTest {
         assertEquals(1, third.applied)
         assertEquals(c1.noteId, third.replyTo?.noteId)
         assertTrue(fake.items.isEmpty())
+        assertEquals(names(listOf(liveOne, broken)), fake.acks.flatten().toSet())
         assertEquals(Triple(0, 0, 0), counts(deck)) // Good on the second step graduated c1
+
+        // Nothing queued: nothing to acknowledge.
+        val empty = FakeQueue(emptyList())
+        assertEquals(null, runBlocking { AnswerSync(helper, empty, AnswerDedupeStore(context), ExchangeLog(context)).run() })
+        assertTrue(empty.acks.isEmpty())
     }
 
     @Test
@@ -613,9 +634,13 @@ class AnkiDroidIntegrationTest {
         val (a, b) = helper.getScheduledCards(deck.id, limit = 10)
         val broken = object : AnswerQueue {
             val deleted = ArrayList<Uri>()
+            val acked = ArrayList<String>()
             override suspend fun pendingAnswers(): List<QueuedAnswer> = throw IllegalStateException("Wearable API unavailable")
             override suspend fun deleteAnswerItem(uri: Uri) {
                 deleted += uri
+            }
+            override suspend fun acknowledge(names: List<String>) {
+                acked += names
             }
         }
         val arrived = listOf(queued(b.noteId, 0, 4, deck.id, seq = 2, offline = false), queued(a.noteId, 0, 4, deck.id, seq = 1))
@@ -625,6 +650,7 @@ class AnkiDroidIntegrationTest {
         assertEquals(2, report.applied)
         assertEquals(b.noteId, report.replyTo?.noteId) // the live one came last
         assertEquals(arrived.map { it.first }.reversed(), broken.deleted) // applied in the order given
+        assertEquals(names(arrived), broken.acked.toSet())
         assertEquals(Triple(0, 0, 0), counts(deck))
     }
 
@@ -642,11 +668,15 @@ class AnkiDroidIntegrationTest {
             for (card in pack.cards) recorded += queued(card.noteId, card.cardOrd, listOf(3, 4, 4, Wire.EASE_BURY)[rnd.nextInt(4)], deck.id, ++seq)
         }
         val start = SystemClock.uptimeMillis()
-        val report = sync(FakeQueue(recorded.shuffled(rnd)))
+        val queue = FakeQueue(recorded.shuffled(rnd))
+        val report = sync(queue)
         val perAnswer = (SystemClock.uptimeMillis() - start) / recorded.size
         Log.i(TAG, "backlog: ${recorded.size} offline grades applied in ${perAnswer}ms each: ${report.outcome}")
         assertEquals(200, report.applied)
         assertTrue("${perAnswer}ms per grade", perAnswer < 500)
         for (deck in decks) assertEquals(0, counts(deck).first)
+        // All 200 acknowledged together, each once.
+        assertEquals(200, queue.acks.flatten().size)
+        assertEquals(names(recorded), queue.acks.flatten().toSet())
     }
 }

@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import java.io.IOException
 import java.util.UUID
@@ -59,6 +61,10 @@ class DataLayerClient(
     // uuid -> the DataItem uri we wrote for that answer, so we can delete it once the
     // phone acks having applied it. Bounded implicitly: entries are removed on ack.
     private val pendingAnswers = ConcurrentHashMap<String, Uri>()
+
+    // One count (with its clean-up of acknowledged grades) at a time: the screens, the
+    // answer path and the Data Layer callback all ask for one.
+    private val gradesLock = Mutex()
 
     // Deck the watch is currently viewing cards for. Used to drop a slow /response/cards
     // that arrives after the user has switched decks (#7).
@@ -269,11 +275,22 @@ class DataLayerClient(
         _offlineVersion.value = _offlineVersion.value + 1
     }
 
-    /** Counts the grades still waiting for the phone (each is a DataItem until applied). */
+    /**
+     * Counts the grades still waiting for the phone (each is a DataItem until applied), after
+     * clearing the ones the phone has acknowledged.
+     */
     suspend fun refreshPendingGrades() {
+        gradesLock.withLock { countPendingGrades() }
+    }
+
+    private suspend fun countPendingGrades() {
         try {
-            val uri = Uri.Builder().scheme(PutDataRequest.WEAR_URI_SCHEME).path(PATH_ANSWER_PREFIX).build()
-            val buffer = dataClient.getDataItems(uri, DataClient.FILTER_PREFIX).await()
+            clearAcknowledged()
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't clear acknowledged grades: ${e.message}")
+        }
+        try {
+            val buffer = dataClient.getDataItems(prefixUri(PATH_ANSWER_PREFIX), DataClient.FILTER_PREFIX).await()
             try {
                 _pendingGrades.value = buffer.count
             } finally {
@@ -283,6 +300,42 @@ class DataLayerClient(
             Log.w(TAG, "Couldn't count queued grades: ${e.message}")
         }
     }
+
+    /**
+     * Deletes the answers the phone has acknowledged, then the acks themselves. The phone
+     * deletes the answers as well, but Android can take half an hour to tell the watch, and
+     * meanwhile they would count as waiting (and keep new downloads back).
+     */
+    private suspend fun clearAcknowledged() {
+        val acks = ArrayList<Uri>()
+        val done = HashSet<String>()
+        val ackBuffer = dataClient.getDataItems(prefixUri(Wire.PATH_ANSWER_ACK_PREFIX), DataClient.FILTER_PREFIX).await()
+        try {
+            for (item in ackBuffer) {
+                acks.add(item.uri)
+                DataMapItem.fromDataItem(item).dataMap.getStringArray(Wire.KEY_ACKED)?.let { done.addAll(it) }
+            }
+        } finally {
+            ackBuffer.release()
+        }
+        if (acks.isEmpty()) return
+        val answerBuffer = dataClient.getDataItems(prefixUri(PATH_ANSWER_PREFIX), DataClient.FILTER_PREFIX).await()
+        val acknowledged = try {
+            answerBuffer.mapNotNull { item -> item.uri.takeIf { Wire.answerName(it.path)?.let(done::contains) == true } }
+        } finally {
+            answerBuffer.release()
+        }
+        for (uri in acknowledged) {
+            dataClient.deleteDataItems(uri).await()
+            Wire.answerName(uri.path)?.let { pendingAnswers.remove(it) }
+        }
+        // Only now: should this stop half-way, the acks are still there to be read again.
+        for (uri in acks) dataClient.deleteDataItems(uri).await()
+        Log.d(TAG, "Cleared ${acknowledged.size} grades the phone acknowledged")
+    }
+
+    private fun prefixUri(path: String): Uri =
+        Uri.Builder().scheme(PutDataRequest.WEAR_URI_SCHEME).path(path).build()
 
     /** Stores a download from the phone and removes its DataItem (the cards can be large). */
     private suspend fun importPack(item: DataItem) {
@@ -390,9 +443,14 @@ class DataLayerClient(
         var answersChanged = false
         for (event in dataEvents) {
             val path = event.dataItem.uri.path ?: continue
-            // Our own answers: written here, deleted by the phone once applied.
+            // Our own answers: written here, deleted once the phone has applied them.
             if (path.startsWith(PATH_ANSWER_PREFIX)) {
                 answersChanged = true
+                continue
+            }
+            // The phone saying which answers it has: cleared by the count below.
+            if (path.startsWith(Wire.PATH_ANSWER_ACK_PREFIX)) {
+                if (event.type == DataEvent.TYPE_CHANGED) answersChanged = true
                 continue
             }
             if (event.type != DataEvent.TYPE_CHANGED) continue

@@ -19,6 +19,7 @@ import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 /**
  * Manages communication with the Wear OS watch via the Wearable Data Layer API.
@@ -189,9 +190,9 @@ class DataLayerManager(context: Context) : AnswerQueue {
     }
 
     /**
-     * Deletes a processed answer DataItem. Doubles as the ACK: once the item is gone the
-     * watch's queued grade has been fully applied. Best-effort — the phone's persistent
-     * dedupe is the real guard against double-application if this delete doesn't stick.
+     * Deletes a processed answer DataItem. Best-effort — the phone's persistent dedupe is the
+     * real guard against double-application if this delete doesn't stick. The watch hears of
+     * it only at Android's next sync, so [acknowledge] tells it straight away.
      */
     override suspend fun deleteAnswerItem(uri: Uri) {
         try {
@@ -199,6 +200,28 @@ class DataLayerManager(context: Context) : AnswerQueue {
             Log.d(TAG, "Deleted answer item $uri (removed=$removed)")
         } catch (e: Exception) {
             Log.w(TAG, "Failed to delete answer item $uri: ${e.message}")
+        }
+    }
+
+    /**
+     * Tells the watch which answers the phone is done with: urgent DataItems, so they go at
+     * once and still arrive if the watch app isn't running. The watch deletes them once it
+     * has deleted the answers (see [Wire.PATH_ANSWER_ACK_PREFIX]). Best-effort: the
+     * deletions reach the watch eventually anyway.
+     */
+    override suspend fun acknowledge(names: List<String>) {
+        for (chunk in Wire.ackChunks(names)) {
+            try {
+                val request = PutDataMapRequest.create("${Wire.PATH_ANSWER_ACK_PREFIX}${UUID.randomUUID()}").apply {
+                    dataMap.putStringArray(Wire.KEY_ACKED, chunk.toTypedArray())
+                    dataMap.putLong(KEY_TIMESTAMP, System.currentTimeMillis())
+                }
+                request.setUrgent()
+                dataClient.putDataItem(request.asPutDataRequest()).await()
+                Log.d(TAG, "Acknowledged ${chunk.size} answers to the watch")
+            } catch (e: Exception) {
+                Log.w(TAG, "Couldn't acknowledge ${chunk.size} answers: ${e.message}")
+            }
         }
     }
 

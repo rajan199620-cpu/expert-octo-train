@@ -103,10 +103,10 @@ class AnswerApplier(
 
 /**
  * Applies every grade the watch has queued (DataItems under /answer/), in the order it was
- * given on the watch, deleting each item once AnkiDroid has it: hundreds at once when the
- * watch is back from an offline session, one at a time while reviewing live. Nothing is
- * consumed while AnkiDroid can't be reached, and a failure part-way leaves the rest queued
- * for the next run.
+ * given on the watch, deleting each item once AnkiDroid has it and then acknowledging them
+ * to the watch: hundreds at once when the watch is back from an offline session, one at a
+ * time while reviewing live. Nothing is consumed while AnkiDroid can't be reached, and a
+ * failure part-way leaves the rest queued for the next run.
  *
  * Both the listener service and the phone app's screen run this, so one lock for the whole
  * process keeps two runs from applying the same items twice.
@@ -174,6 +174,7 @@ class AnswerSync(
         var malformed = 0
         var stopped: String? = null
         var done = 0
+        val handled = ArrayList<String>()
         for ((uri, answer) in ordered) {
             val result = try {
                 applier.apply(answer)
@@ -188,9 +189,18 @@ class AnswerSync(
                 AnswerApplier.Result.NOT_APPLIED -> notApplied++
                 AnswerApplier.Result.MALFORMED -> malformed++
             }
-            // The delete doubles as the watch's acknowledgement.
             dataLayer.deleteAnswerItem(uri)
+            Wire.answerName(uri.path)?.let { handled.add(it) }
             done++
+        }
+        // The watch hears of those deletions only when Android next syncs, which can take half
+        // an hour; until then it would show the grades as waiting. The ack tells it now.
+        if (handled.isNotEmpty()) {
+            try {
+                dataLayer.acknowledge(handled)
+            } catch (e: Exception) {
+                Log.w(TAG, "Couldn't acknowledge ${handled.size} answers", e)
+            }
         }
         val last = answers.lastOrNull()
         val report = Report(
@@ -237,4 +247,7 @@ typealias QueuedAnswer = Pair<Uri, DataMap>
 interface AnswerQueue {
     suspend fun pendingAnswers(): List<QueuedAnswer>
     suspend fun deleteAnswerItem(uri: Uri)
+
+    /** Tells the watch the phone is done with the answers [names] ([Wire.answerName]). */
+    suspend fun acknowledge(names: List<String>)
 }

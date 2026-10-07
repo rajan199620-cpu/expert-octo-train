@@ -20,6 +20,27 @@ object Wire {
     const val PATH_ANSWER_PREFIX = "/answer/"
 
     /**
+     * Phone → watch: the answers the phone is done with (put into AnkiDroid, or dropped as
+     * unusable), as DataItems under this prefix listing the answers' names ([KEY_ACKED]).
+     * The phone deletes each answer too, but Android can take half an hour to pass a deletion
+     * on, and until then the watch would count the grade as still waiting. So the watch
+     * deletes its own copies as soon as an ack arrives, and then the ack.
+     */
+    const val PATH_ANSWER_ACK_PREFIX = "/ack/answers/"
+
+    /** Most answer names in one ack: a thousand UUIDs keep it well under a DataItem's 100 KB. */
+    const val ACK_CHUNK = 1_000
+
+    /** The name (UUID) of the answer stored at [path], or null if [path] isn't an answer's. */
+    fun answerName(path: String?): String? = path
+        ?.takeIf { it.startsWith(PATH_ANSWER_PREFIX) }
+        ?.substring(PATH_ANSWER_PREFIX.length)
+        ?.takeIf { it.isNotEmpty() && '/' !in it }
+
+    /** [names] split into acks of at most [ACK_CHUNK] names, each name once, order kept. */
+    fun ackChunks(names: Collection<String>): List<List<String>> = names.distinct().chunked(ACK_CHUNK)
+
+    /**
      * Answer ease meaning "bury this card until tomorrow" instead of a grade. AnkiDroid's
      * grades are 1–4, so 0 is free, and bury rides the same queued, deduplicated path.
      */
@@ -68,6 +89,8 @@ object Wire {
     const val KEY_NEXT_REVIEW_TIMES = "next_review_times"
     const val KEY_ANSWER_UUID = "answer_uuid"
     const val KEY_ACKED_ANSWER_UUID = "acked_answer_uuid"
+    /** On an ack ([PATH_ANSWER_ACK_PREFIX]): the names of the answers the phone is done with. */
+    const val KEY_ACKED = "acked"
 
     // Offline downloads and the answers given from them.
     const val KEY_PACK = "pack"
