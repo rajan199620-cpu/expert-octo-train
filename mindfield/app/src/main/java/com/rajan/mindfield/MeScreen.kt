@@ -1,12 +1,11 @@
 package com.rajan.mindfield
 
-import android.Manifest
 import android.app.TimePickerDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
-import android.os.Build
+import android.text.format.DateFormat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -22,7 +21,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -34,11 +35,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import java.time.format.TextStyle
-import java.time.ZoneId
 import java.time.YearMonth
-import com.rajan.mindfield.core.WeekGoal
 import com.rajan.mindfield.core.Progress
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -47,6 +47,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,6 +62,9 @@ import com.rajan.mindfield.core.Schedule
 import com.rajan.mindfield.core.Stats
 import com.rajan.mindfield.core.Sync
 import com.rajan.mindfield.core.ThemeMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -70,13 +75,14 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
     val p = palette
     val library = Store.library
     val cloud by GoogleSync.state.collectAsStateWithLifecycle()
-    val days = Stats.checkInDays(state)
-    val streak = Progress.streak(days, today)
-    val longest = Stats.longestStreak(days)
+    // Worked out once per change to the journal, not on every redraw (the longest streak isn't cheap).
+    val days = remember(state.entries) { Stats.checkInDays(state) }
+    val streak = remember(days, today) { Progress.streak(days, today) }
+    val longest = remember(days, today) { Stats.longestStreak(days, today) }
     val goal = Progress.weekGoal(days, today, state.settings.weeklyGoal)
-    val predictions = Stats.predictions(state, library)
-    val modes = Stats.modeCounts(state)
-    val life = Stats.lifeList(state)
+    val predictions = remember(state.guesses) { Stats.predictions(state, library) }
+    val modes = remember(state.entries) { Stats.modeCounts(state) }
+    val life = remember(state.entries) { Stats.lifeList(state) }
     val todayColor = state.assignments[today]?.conceptId?.let { library[it] }?.category?.accent(p.dark) ?: p.brand
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
@@ -99,7 +105,7 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
                 BigStat("Best", "$longest", Modifier.weight(1f))
             }
             WeekDots(Stats.week(days, today), todayColor, Modifier.fillMaxWidth())
-            Text(weekGoalLine(goal), style = MaterialTheme.typography.titleSmall, color = if (goal.met) todayColor else p.ink)
+            Text(Progress.goalLine(goal, Progress.openDays(days, today)), style = MaterialTheme.typography.titleSmall, color = if (goal.met) todayColor else p.ink)
             Text(
                 "A day counts when you file a field report, even a “not today”. One missed day a week is forgiven" +
                     if (streak.restThisWeek && streak.days >= 2) ", and this week's has been used." else ".",
@@ -107,15 +113,15 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile("Discovered", "${state.unlocked.size}", "of ${library.size}", Modifier.weight(1f))
+            StatTile("Discovered", "${Stats.discovered(state, library)}", "of ${library.size}", Modifier.weight(1f))
             StatTile("Seen in the wild", "${life.size}", "concepts", Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatTile("Field notes", "${state.liveEntries.size}", "written", Modifier.weight(1f))
             StatTile(
                 "Predictions",
-                if (predictions.made == 0) "–" else "${predictions.right * 100 / predictions.made}%",
-                if (predictions.made == 0) "none yet" else "right · ${predictions.surprised} surprises",
+                if (predictions.made == 0) "–" else "${predictions.percent}%",
+                if (predictions.made == 0) "none yet" else "right · ${predictions.surprised} ${if (predictions.surprised == 1) "surprise" else "surprises"}",
                 Modifier.weight(1f),
             )
         }
@@ -170,7 +176,8 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
         // One row per topic, each opening its own sheet, instead of six long cards to scroll past.
         Panel(padding = 10.dp) {
             val s = state.settings
-            SheetRow("Notifications", notificationSummary(s.morningOn, s.morningMinute, s.eveningOn, s.eveningMinute, s.spotCheckOn)) {
+            val is24 = DateFormat.is24HourFormat(LocalContext.current)
+            SheetRow("Notifications", notificationSummary(s.morningOn, s.morningMinute, s.eveningOn, s.eveningMinute, s.spotCheckOn, is24)) {
                 onSheet(SettingsSheet.NOTIFICATIONS)
             }
             SheetRow("Weekly goal", if (s.weeklyGoal == 0) "Off" else "${s.weeklyGoal} days a week with a field report") { onSheet(SettingsSheet.GOAL) }
@@ -202,17 +209,9 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
     }
 }
 
-/** "3 of 5 days this week · 2 to go", "Goal met ✓ · 3 weeks running", or a plain count without a goal. */
-fun weekGoalLine(g: WeekGoal): String = when {
-    g.goal <= 0 -> if (g.daysThisWeek == 1) "1 day this week" else "${g.daysThisWeek} days this week"
-    g.met && g.weeksRunning >= 2 -> "Goal met ✓ · ${g.weeksRunning} weeks running"
-    g.met -> "Goal met ✓ · ${g.daysThisWeek} of ${g.goal} days this week"
-    else -> "${g.daysThisWeek} of ${g.goal} days this week · ${g.daysLeft} to go"
-}
-
-private fun notificationSummary(morningOn: Boolean, morning: Int, eveningOn: Boolean, evening: Int, spot: Boolean): String = buildList {
-    add(if (morningOn) "Morning ${Schedule.label(morning)}" else "No morning concept")
-    add(if (eveningOn) "evening ${Schedule.label(evening)}" else "no evening report")
+private fun notificationSummary(morningOn: Boolean, morning: Int, eveningOn: Boolean, evening: Int, spot: Boolean, is24: Boolean): String = buildList {
+    add(if (morningOn) "Morning ${Schedule.label(morning, is24)}" else "No morning concept")
+    add(if (eveningOn) "evening ${Schedule.label(evening, is24)}" else "no evening report")
     if (spot) add("spot checks")
 }.joinToString(" · ")
 
@@ -226,8 +225,8 @@ private fun MonthReviewCard(state: AppState, today: LocalDate, color: Color, nav
     var shownText by rememberSaveable { mutableStateOf(first.toString()) }
     val shown = YearMonth.parse(shownText).takeIf { it in months } ?: first
     val index = months.indexOf(shown)
-    val m = remember(state, shown) { Progress.month(state, library, shown, today, ZoneId.systemDefault()) } ?: return
-    val name = shown.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) + if (shown.year != today.year) " ${shown.year}" else ""
+    val m = remember(state, shown) { Progress.month(state, library, shown, today, Store.now().zone) } ?: return
+    val name = shown.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH) + if (shown.year != today.year) " ${shown.year}" else ""
     Panel {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -235,8 +234,8 @@ private fun MonthReviewCard(state: AppState, today: LocalDate, color: Color, nav
                 Text(if (m.inProgress) "$name so far" else "$name in the field", style = MaterialTheme.typography.titleLarge)
             }
             // Older months to the left, newer to the right, like a calendar.
-            MonthArrow("‹", index < months.lastIndex) { shownText = months[index + 1].toString() }
-            MonthArrow("›", index > 0) { shownText = months[index - 1].toString() }
+            MonthArrow("‹", "Earlier month", index < months.lastIndex) { shownText = months[index + 1].toString() }
+            MonthArrow("›", "Later month", index > 0) { shownText = months[index - 1].toString() }
         }
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("${m.reports}", style = MaterialTheme.typography.displaySmall, color = color)
@@ -292,14 +291,18 @@ private fun MonthReviewCard(state: AppState, today: LocalDate, color: Color, nav
 }
 
 @Composable
-private fun MonthArrow(text: String, enabled: Boolean, onClick: () -> Unit) {
+private fun MonthArrow(text: String, label: String, enabled: Boolean, onClick: () -> Unit) {
     val p = palette
-    Text(
-        text,
-        Modifier.clip(CircleShape).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 12.dp, vertical = 4.dp),
-        style = MaterialTheme.typography.headlineSmall,
-        color = if (enabled) p.brand else p.faint.copy(alpha = 0.4f),
-    )
+    Box(
+        Modifier
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+            .clip(CircleShape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = MaterialTheme.typography.headlineSmall, color = if (enabled) p.brand else p.faint.copy(alpha = 0.4f))
+    }
 }
 
 /** Your intuition against chance, and your consistency against what usually happens, with sources. */
@@ -362,11 +365,17 @@ private fun StatTile(label: String, value: String, sub: String, modifier: Modifi
     }
 }
 
+/** A setting: a switch (the whole row toggles it, and a screen reader hears on or off) or a link. */
 @Composable
 private fun SettingRow(title: String, subtitle: String?, checked: Boolean?, onClick: () -> Unit) {
     val p = palette
+    val tap = if (checked != null) {
+        Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = { onClick() })
+    } else {
+        Modifier.clickable(role = Role.Button, onClick = onClick)
+    }
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(role = if (checked != null) Role.Switch else Role.Button, onClick = onClick).padding(vertical = 8.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).then(tap).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -376,15 +385,16 @@ private fun SettingRow(title: String, subtitle: String?, checked: Boolean?, onCl
         if (checked != null) {
             Switch(
                 checked = checked,
-                onCheckedChange = { onClick() },
+                onCheckedChange = null,
                 colors = SwitchDefaults.colors(checkedTrackColor = p.brand, checkedThumbColor = if (p.dark) p.bg else Color.White),
             )
         }
     }
 }
 
-private fun pickTime(context: Context, minute: Int, onPick: (Int) -> Unit) {
-    TimePickerDialog(context, { _, h, m -> onPick(h * 60 + m) }, minute / 60, minute % 60, false).show()
+/** The phone's own time picker, on the 24-hour clock if that's how the phone is set. */
+fun pickTime(context: Context, minute: Int, onPick: (Int) -> Unit) {
+    TimePickerDialog(context, { _, h, m -> onPick(h * 60 + m) }, minute / 60, minute % 60, DateFormat.is24HourFormat(context)).show()
 }
 
 @Composable
@@ -392,8 +402,13 @@ private fun NotificationSettings(state: AppState) {
     val p = palette
     val context = LocalContext.current
     val s = state.settings
-    var allowed by remember { mutableStateOf(Notifier.allowed(context)) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed = it }
+    // Off for the whole app, or the morning or evening ones switched off on their own.
+    fun reachable() = Notifier.allowed(context) && !Notifier.blocked(context, Store.state.value.settings)
+    var allowed by remember { mutableStateOf(reachable()) }
+    val turnOn = rememberEnableNotifications { allowed = reachable() }
+    val is24 = DateFormat.is24HourFormat(context)
+    // Android delivers inexact reminders up to about an hour late; only say "at" when it's on the minute.
+    val at = if (Scheduler.exact(context)) "At" else "Around"
     Panel {
         SectionLabel("Notifications", "🔔")
         if (!allowed) {
@@ -402,27 +417,25 @@ private fun NotificationSettings(state: AppState) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("Notifications are off, so the daily concept can't reach you.", style = MaterialTheme.typography.bodyMedium)
-                SoftButton("Allow notifications", color = p.bad) {
-                    if (Build.VERSION.SDK_INT >= 33) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
+                SoftButton("Turn on notifications", color = p.bad, onClick = turnOn)
             }
         }
-        SettingRow("Morning concept", if (s.morningOn) "At ${Schedule.label(s.morningMinute)} · tap to change" else "Off", s.morningOn) {
+        SettingRow("Morning concept", if (s.morningOn) "$at ${Schedule.label(s.morningMinute, is24)}" else "Off", s.morningOn) {
             Store.settings { it.copy(morningOn = !it.morningOn) }
         }
-        if (s.morningOn) SoftButton("Change morning time (${Schedule.label(s.morningMinute)})") {
+        if (s.morningOn) SoftButton("Change morning time (${Schedule.label(s.morningMinute, is24)})") {
             pickTime(context, s.morningMinute) { m -> Store.settings { it.copy(morningMinute = m) } }
         }
-        SettingRow("Evening field report", if (s.eveningOn) "At ${Schedule.label(s.eveningMinute)}; log in one tap from the notification" else "Off", s.eveningOn) {
+        SettingRow("Evening field report", if (s.eveningOn) "$at ${Schedule.label(s.eveningMinute, is24)}; log in one tap from the notification" else "Off", s.eveningOn) {
             Store.settings { it.copy(eveningOn = !it.eveningOn) }
         }
-        if (s.eveningOn) SoftButton("Change evening time (${Schedule.label(s.eveningMinute)})") {
+        if (s.eveningOn) SoftButton("Change evening time (${Schedule.label(s.eveningMinute, is24)})") {
             pickTime(context, s.eveningMinute) { m -> Store.settings { it.copy(eveningMinute = m) } }
         }
         var unrestricted by remember { mutableStateOf(Health.ignoringBatteryOptimizations(context)) }
         androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
             unrestricted = Health.ignoringBatteryOptimizations(context)
-            allowed = Notifier.allowed(context)
+            allowed = reachable()
             onPauseOrDispose { }
         }
         SettingRow(
@@ -459,12 +472,13 @@ private fun FocusSettings(state: AppState) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AppearanceSettings(state: AppState) {
     val p = palette
     Panel {
         SectionLabel("Appearance & guide", "🎨")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ThemeMode.entries.forEach { t -> ChoiceChip(t.label, state.settings.theme == t, p.brand) { Store.settings { it.copy(theme = t) } } }
         }
         SettingRow(
@@ -482,7 +496,7 @@ fun GoogleCard(cloud: CloudState, compact: Boolean = false) {
     val p = palette
     val context = LocalContext.current
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-        GoogleSync.onConsentResult(context, result.data)
+        GoogleSync.onConsentResult(context, result.resultCode, result.data)
     }
     Panel {
         SectionLabel("Google account", "☁️")
@@ -494,7 +508,8 @@ fun GoogleCard(cloud: CloudState, compact: Boolean = false) {
             )
             if (cloud.lastSyncMs > 0) {
                 val t = java.time.Instant.ofEpochMilli(cloud.lastSyncMs).atZone(java.time.ZoneId.systemDefault())
-                Text("Last backed up ${t.format(DateTimeFormatter.ofPattern("d MMM, h:mm a", Locale.getDefault()))}", style = MaterialTheme.typography.bodySmall, color = p.faint)
+                val clock = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a"
+                Text("Last backed up ${t.format(DateTimeFormatter.ofPattern("d MMM, $clock", Locale.ENGLISH))}", style = MaterialTheme.typography.bodySmall, color = p.faint)
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SoftButton(if (cloud.busy) "Syncing…" else "Sync now") { if (!cloud.busy) GoogleSync.syncNow(context) }
@@ -565,24 +580,42 @@ private fun BackupCard() {
     val p = palette
     val context = LocalContext.current
     var message by remember { mutableStateOf<String?>(null) }
+    var working by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    // Files can live in a cloud folder, so reading and writing happen off the main thread.
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
         if (uri != null) {
-            message = runCatching {
-                context.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { it.write(Codec.encode(Store.state.value, System.currentTimeMillis())) }
-                "Saved a full backup."
-            }.getOrElse { "Couldn't save: ${it.message}" }
+            working = true
+            message = "Saving…"
+            scope.launch {
+                message = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use {
+                            it.write(Codec.encode(Store.state.value, System.currentTimeMillis(), pretty = true))
+                        }
+                        "Saved a full backup."
+                    }.getOrElse { "Couldn't save: ${it.message}" }
+                }
+                working = false
+            }
         }
     }
     val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
-            message = runCatching {
-                val text = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
-                val other = Codec.decode(text)
-                val before = Store.state.value
-                Store.update { Sync.merge(it, other) }
-                val n = Sync.restoredEntries(before, Store.state.value)
-                if (n == 0) "Merged. Nothing new in that file." else "Restored $n field ${if (n == 1) "note" else "notes"}."
-            }.getOrElse { "That file couldn't be read: ${it.message}" }
+            working = true
+            message = "Restoring…"
+            scope.launch {
+                message = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val text = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
+                        val other = Codec.decode(text)
+                        var n = 0
+                        Store.update { local -> Sync.adopt(local, other).also { n = Sync.restoredEntries(local, it) } }
+                        if (n == 0) "Merged. Nothing new in that file." else "Restored $n field ${if (n == 1) "note" else "notes"}."
+                    }.getOrElse { "That file couldn't be read: ${it.message}" }
+                }
+                working = false
+            }
         }
     }
     Panel {
@@ -593,8 +626,8 @@ private fun BackupCard() {
         )
         // Buttons move to a new line at large text sizes rather than breaking a word in two.
         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SoftButton("Save backup") { export.launch("mindfield-backup-${LocalDate.now()}.json") }
-            SoftButton("Restore") { import.launch(arrayOf("application/json", "text/plain", "*/*")) }
+            SoftButton("Save backup") { if (!working) export.launch("mindfield-backup-${Store.today()}.json") }
+            SoftButton("Restore") { if (!working) import.launch(arrayOf("application/json", "text/plain", "*/*")) }
         }
         message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = p.muted) }
     }

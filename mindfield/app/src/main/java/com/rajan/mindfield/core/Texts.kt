@@ -6,6 +6,24 @@ import java.util.Locale
 
 /** Plain-text versions of things you might want to send or keep outside the app. */
 object Texts {
+    /** At most [max] characters, never cutting an emoji or other two-part character in half. */
+    fun clip(text: String, max: Int): String {
+        if (text.length <= max) return text
+        val end = if (max > 0 && Character.isHighSurrogate(text[max - 1])) max - 1 else max
+        return text.substring(0, end)
+    }
+
+    /**
+     * What a text box keeps when [next] is typed over [previous], with a limit of [max] characters:
+     * a paste is cut to fit, but a note that was already longer (from a sync or a reply) is never
+     * cut, it just can't grow.
+     */
+    fun cap(previous: String, next: String, max: Int): String = when {
+        next.length <= max || next.length <= previous.length -> next
+        previous.length >= max -> previous
+        else -> clip(next, max)
+    }
+
     /**
      * A concept as a message for a friend. Explaining an idea to someone else is one of the
      * better ways to learn it (expecting to teach improves recall).
@@ -46,12 +64,15 @@ object Texts {
  * Is the phone delivering the daily notification? Some phones' battery managers silently stop
  * apps' alarms. [reference] is the latest of: the last morning notification that actually fired,
  * when the morning time was last set, and the first day of use. Two missed mornings in a row
- * (allowing half an hour's slack today) means something is blocking it.
+ * (allowing an hour's slack today, as Android may deliver an inexact alarm that late) means
+ * something is blocking it.
  */
 object Delivery {
+    const val SLACK_MINUTES = 60
+
     fun looksBlocked(morningOn: Boolean, reference: LocalDate?, today: LocalDate, minuteNow: Int, morningMinute: Int): Boolean {
         if (!morningOn || reference == null) return false
-        val latestExpected = if (minuteNow >= morningMinute + 30) today else today.minusDays(1)
+        val latestExpected = if (minuteNow >= morningMinute + SLACK_MINUTES) today else today.minusDays(1)
         return latestExpected >= reference.plusDays(2)
     }
 }

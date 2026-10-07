@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App shortcut icon: the notification glyph on the app's own colour, so it shows up on light
+     and dark launcher menus alike (the white glyph alone vanished on a light menu). -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground>
+        <inset
+            android:drawable="@drawable/ic_stat_mindfield"
+            android:inset="30dp" />
+    </foreground>
+</adaptive-icon>

@@ -19,25 +19,30 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,17 +55,22 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import com.rajan.mindfield.core.Entry
 import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.ThemeMode
+import java.time.Duration
 import java.time.LocalDate
 
 enum class Tab(val label: String) { TODAY("Today"), GUIDE("Guide"), REVIEW("Review"), JOURNAL("Journal"), ME("You") }
@@ -91,10 +101,27 @@ class MainActivity : ComponentActivity() {
         today = store.today()
         Notifier.channels(this)
         GoogleSync.load(this)
-        Scheduler.scheduleAll(this)
+        // Arms what isn't armed; a reminder that's due but hasn't arrived yet keeps its time.
+        Scheduler.ensureAll(this)
         tab = savedInstanceState?.getString(KEY_TAB)?.let { n -> Tab.entries.firstOrNull { it.name == n } } ?: Tab.TODAY
         concept = savedInstanceState?.getString(KEY_CONCEPT)
-        if (savedInstanceState == null) handle(intent)
+        // A turned phone, a theme change or the system reclaiming the app keeps an open sheet and its draft.
+        settingsSheet = savedInstanceState?.getString(KEY_SHEET)
+        logRequest = savedInstanceState?.let { restoreLog(it) }
+        // Reopened from Recents, the intent is the one that first opened the app: don't act on it again.
+        if (savedInstanceState == null && (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0) handle(intent)
+
+        // Open past midnight: turn to the new day and its concept, as coming back to the app would.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    val now = Store.now()
+                    val midnight = now.toLocalDate().plusDays(1).atStartOfDay(now.zone)
+                    delay(Duration.between(now, midnight).toMillis().coerceIn(1_000, 3_600_000))
+                    newDay()
+                }
+            }
+        }
 
         // System bar icons follow the app's theme (which can differ from the phone's); set before
         // the first frame and again whenever the theme setting changes, never from inside composition.
@@ -112,7 +139,11 @@ class MainActivity : ComponentActivity() {
             }
             MindfieldTheme(dark) {
                 if (!state.settings.onboarded) {
-                    Onboarding(onDone = { Store.settings { it.copy(onboarded = true) }; Store.todayConcept() })
+                    Onboarding(onDone = {
+                        today = Store.today()
+                        Store.settings { it.copy(onboarded = true) }
+                        Store.todayConcept()
+                    })
                 } else {
                     Root(
                         tab = tab,
@@ -152,8 +183,16 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Coming back after midnight: move to the new day and pick its concept.
-        today = Store.today()
+        newDay()
+        // A save that failed (a full phone) and a backup that didn't get through try again.
+        Store.retrySave()
+        GoogleSync.retryIfPending(this)
+    }
+
+    private fun newDay() {
+        val day = Store.today()
         if (Store.state.value.settings.onboarded) Store.todayConcept()
+        today = day
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -165,12 +204,27 @@ class MainActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         outState.putString(KEY_TAB, tab.name)
         concept?.let { outState.putString(KEY_CONCEPT, it) }
+        settingsSheet?.let { outState.putString(KEY_SHEET, it) }
+        logRequest?.let { r ->
+            outState.putString(KEY_LOG_CONCEPT, r.conceptId)
+            r.mode?.let { outState.putString(KEY_LOG_MODE, it.key) }
+            r.edit?.let { outState.putString(KEY_LOG_EDIT, it.id) }
+        }
+    }
+
+    /** The field-report sheet that was open, looked up again; an entry deleted meanwhile closes it. */
+    private fun restoreLog(saved: Bundle): LogRequest? {
+        val id = saved.getString(KEY_LOG_CONCEPT) ?: return null
+        val edit = saved.getString(KEY_LOG_EDIT)?.let { e -> Store.state.value.liveEntries.firstOrNull { it.id == e } ?: return null }
+        return LogRequest(id, saved.getString(KEY_LOG_MODE)?.let { Mode.of(it) }, edit)
     }
 
     private fun handle(intent: Intent?) {
         when (intent?.action) {
             ACTION_TODAY -> { tab = Tab.TODAY; concept = null }
             ACTION_LOG, ACTION_SHORTCUT_LOG -> {
+                // A report is being written: a notification or the widget mustn't throw it away.
+                if (logRequest != null) return
                 tab = Tab.TODAY
                 concept = null
                 if (Store.state.value.settings.onboarded) {
@@ -187,6 +241,10 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val KEY_TAB = "tab"
         private const val KEY_CONCEPT = "concept"
+        private const val KEY_SHEET = "sheet"
+        private const val KEY_LOG_CONCEPT = "log_concept"
+        private const val KEY_LOG_MODE = "log_mode"
+        private const val KEY_LOG_EDIT = "log_edit"
         const val ACTION_TODAY = "com.rajan.mindfield.OPEN_TODAY"
         const val ACTION_LOG = "com.rajan.mindfield.OPEN_LOG_FOR"
         const val ACTION_JOURNAL = "com.rajan.mindfield.OPEN_JOURNAL"
@@ -196,6 +254,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Root(
     tab: Tab,
@@ -217,27 +276,42 @@ private fun Root(
     BackHandler(enabled = openConcept != null && logRequest == null) { onCloseConcept() }
     BackHandler(enabled = logRequest != null) { onCloseLog() }
 
+    // Each tab and concept page keeps its place (scroll, a review round, a search) while you're elsewhere.
+    val saved = rememberSaveableStateHolder()
     Box(Modifier.fillMaxSize().paper(p, tint)) {
-        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                // While the field-report sheet is open, a screen reader stays in it.
+                .then(if (logRequest != null) Modifier.clearAndSetSemantics { } else Modifier),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 val screen: Any = openConcept ?: tab
                 AnimatedContent(
                     targetState = screen,
+                    // Comfortable line lengths on tablets, unfolded phones and in landscape.
+                    modifier = Modifier.widthIn(max = 640.dp),
                     transitionSpec = { fadeIn(tween(260, delayMillis = 60)) togetherWith fadeOut(tween(160)) },
+                    contentKey = { screenKey(it) },
                     label = "screen",
                 ) { target ->
-                    when (target) {
-                        is String -> Store.library[target]?.let { ConceptScreen(it, state, today, nav, onBack = onCloseConcept) }
-                        Tab.TODAY -> TodayScreen(state, today, nav)
-                        Tab.GUIDE -> GuideScreen(state, nav)
-                        Tab.REVIEW -> ReviewScreen(state, today, nav)
-                        Tab.JOURNAL -> JournalScreen(state, today, nav)
-                        Tab.ME -> MeScreen(state, today, nav, settingsSheet, onSettingsSheet)
-                        else -> Unit
+                    saved.SaveableStateProvider(screenKey(target)) {
+                        when (target) {
+                            is String -> Store.library[target]?.let { ConceptScreen(it, state, today, nav, onBack = onCloseConcept) }
+                            Tab.TODAY -> TodayScreen(state, today, nav)
+                            Tab.GUIDE -> GuideScreen(state, nav)
+                            Tab.REVIEW -> ReviewScreen(state, today, nav)
+                            Tab.JOURNAL -> JournalScreen(state, today, nav)
+                            Tab.ME -> MeScreen(state, today, nav, settingsSheet, onSettingsSheet)
+                            else -> Unit
+                        }
                     }
                 }
             }
-            TabBar(tab, tint) { nav.tab(it) }
+            // Out of the way while typing, so a plan or a search has the room above the keyboard.
+            if (!WindowInsets.isImeVisible) TabBar(tab, tint) { nav.tab(it) }
         }
         // AnimatedContent keeps the closing sheet's request while it animates away.
         AnimatedContent(
@@ -254,6 +328,9 @@ private fun Root(
     }
 }
 
+/** A stable name for each screen, for the transition and for keeping its state. */
+private fun screenKey(screen: Any): String = if (screen is Tab) screen.name else "concept:$screen"
+
 /** The bottom bar; the selected tab sits in a soft pill of today's colour. */
 @Composable
 private fun TabBar(selected: Tab, tint: Color, onTab: (Tab) -> Unit) {
@@ -261,22 +338,25 @@ private fun TabBar(selected: Tab, tint: Color, onTab: (Tab) -> Unit) {
     val shape = RoundedCornerShape(26.dp)
     Row(
         Modifier
+            .widthIn(max = 640.dp)
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .clip(shape)
             .background(p.surface)
             .border(1.dp, p.line, shape)
-            .padding(5.dp),
+            .padding(5.dp)
+            .selectableGroup(),
     ) {
         for (t in Tab.entries) {
             val on = t == selected
-            val color = if (on) tint else p.faint
+            val color = if (on) tint else p.muted
             Column(
                 Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(21.dp))
                     .background(if (on) tint.copy(alpha = 0.14f) else Color.Transparent)
-                    .clickable(role = Role.Tab) { onTab(t) }
+                    // A screen reader says which tab is selected.
+                    .selectable(selected = on, role = Role.Tab) { onTab(t) }
                     .semantics { contentDescription = t.label }
                     .padding(vertical = 7.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,

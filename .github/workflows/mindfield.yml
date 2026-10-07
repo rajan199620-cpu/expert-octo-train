@@ -2,6 +2,9 @@ name: Mindfield APK
 
 on:
   push:
+    # Only the app's own branch builds and publishes; a branch carrying an older copy of the app
+    # must not replace the download link with an older build.
+    branches: [claude/mindfield-app]
     paths:
       - "mindfield/**"
       - ".github/workflows/mindfield.yml"
@@ -10,9 +13,15 @@ on:
       - "mindfield/**"
   workflow_dispatch:
 
+# One build at a time per branch, in push order, so the newest push publishes last.
+concurrency:
+  group: mindfield-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: write # to publish the APK and commit screenshots
     defaults:
@@ -78,7 +87,7 @@ jobs:
       # Artifact links expire; a release asset has a stable URL that always serves the newest
       # build: https://github.com/<repo>/releases/download/mindfield-apk/mindfield.apk
       - name: Publish to the permanent download link
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/claude/mindfield-app'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -91,7 +100,7 @@ jobs:
           fi
           gh release upload mindfield-apk "$RUNNER_TEMP/mindfield.apk" --clobber
       - name: Commit screenshots
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/claude/mindfield-app'
         run: |
           mkdir -p docs/screenshots
           rm -f docs/screenshots/*.png

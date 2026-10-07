@@ -162,7 +162,8 @@ object Emblems {
                 fun branch(x: Float, y: Float, len: Float, angle: Float, depth: Int, idx: Int) {
                     val x2 = x + len * cos(angle)
                     val y2 = y + len * sin(angle)
-                    val onLit = depth == 0 || (idx shr (2 - depth)) == (lit shr (2 - depth))
+                    // On the route to the lit leaf: this branch is that leaf's ancestor at this depth.
+                    val onLit = depth == 0 || idx == (lit shr (2 - depth))
                     val p = if (onLit) Paint(ink).apply { color = glow; strokeWidth = s * 0.03f } else ink.apply { alpha = 170 }
                     canvas.drawLine(x, y, x2, y2, p)
                     if (depth < 2) {

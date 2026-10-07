@@ -112,7 +112,11 @@ fun Heatmap(weeks: List<List<Pair<LocalDate, Int>>>, today: LocalDate, color: Co
     val p = palette
     val peak = weeks.flatten().maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Canvas(Modifier.fillMaxWidth().aspectRatio(weeks.size / 7f).semantics { contentDescription = "Field notes over the last ${weeks.size} weeks" }) {
+        val past = weeks.flatten().filter { !it.first.isAfter(today) }
+        val notes = past.sumOf { it.second }
+        val days = past.count { it.second > 0 }
+        val summary = "$notes field ${if (notes == 1) "note" else "notes"} on $days ${if (days == 1) "day" else "days"} in the last ${weeks.size} weeks"
+        Canvas(Modifier.fillMaxWidth().aspectRatio(weeks.size / 7f).semantics { contentDescription = summary }) {
             val cols = weeks.size
             val gap = 3.dp.toPx()
             val cell = (size.width - gap * (cols - 1)) / cols

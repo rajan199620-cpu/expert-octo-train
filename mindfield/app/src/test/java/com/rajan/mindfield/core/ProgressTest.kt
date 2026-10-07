@@ -80,6 +80,21 @@ class ProgressTest {
     }
 
     @Test
+    fun `the goal line never counts down to a goal the week can no longer reach`() {
+        val monday = today.with(DayOfWeek.MONDAY) // today is a Wednesday
+        val days = setOf(monday)
+        assertEquals(5, Progress.openDays(days, today)) // Wednesday to Sunday
+        assertEquals(4, Progress.openDays(days + today, today))
+        val reachable = Progress.weekGoal(days, today, 5)
+        assertEquals("1 of 5 days this week · 4 to go", Progress.goalLine(reachable, Progress.openDays(days, today)))
+        val outOfReach = Progress.weekGoal(days, today, 7)
+        val line = Progress.goalLine(outOfReach, Progress.openDays(days, today))
+        assertTrue(line, line.startsWith("1 of 7 days this week") && "to go" !in line)
+        assertEquals("Goal met ✓ · 1 of 1 days this week", Progress.goalLine(Progress.weekGoal(days, today, 1), 5))
+        assertEquals("1 day this week", Progress.goalLine(Progress.weekGoal(days, today, 0), 5))
+    }
+
+    @Test
     fun `month in review adds up from the journal`() {
         val sept = YearMonth.of(2026, 9)
         val ids = library.all.map { it.id }
@@ -125,6 +140,24 @@ class ProgressTest {
     }
 
     @Test
+    fun `the month you started counts from your first day, not the 1st`() {
+        val id = library.all.first().id
+        val state = AppState(assignments = mapOf(LocalDate.of(2026, 9, 21) to Assignment(id, 1)), entries = listOf(entry(LocalDate.of(2026, 9, 22), id)))
+        assertEquals(10, Progress.month(state, library, YearMonth.of(2026, 9), today, zone)!!.daysSoFar) // 21st to 30th
+        assertNull(Progress.month(state, library, YearMonth.of(2026, 10), today, zone)) // nothing in October yet
+    }
+
+    @Test
+    fun `a month with only repeat concepts and no notes isn't listed, so the card never vanishes`() {
+        val ids = library.all.map { it.id }
+        // Everything was met in August; September only brought revisits.
+        val assignments = (1..20).associate { d -> LocalDate.of(2026, 8, d) to Assignment(ids[d], 1L) } +
+            (1..5).associate { d -> LocalDate.of(2026, 9, d) to Assignment(ids[d], 2L) }
+        val state = AppState(assignments = assignments)
+        assertEquals(listOf(YearMonth.of(2026, 8)), Progress.months(state, today))
+    }
+
+    @Test
     fun `month review never shows impossible numbers on random journals`() {
         val rnd = Random(9)
         val ids = library.all.map { it.id }
@@ -135,7 +168,9 @@ class ProgressTest {
             val assignments = (0L until rnd.nextLong(0, 120)).associate { today.minusDays(it) to Assignment(ids[rnd.nextInt(ids.size)], it) }
             val state = AppState(assignments = assignments, entries = entries)
             for (ym in Progress.months(state, today)) {
-                val m = Progress.month(state, library, ym, today, zone) ?: continue
+                val m = Progress.month(state, library, ym, today, zone)
+                assertNotNull("$ym is listed, so it has a review", m)
+                m!!
                 assertTrue(m.daysLogged in 0..m.daysSoFar)
                 assertTrue(m.sightings <= m.reports)
                 assertEquals(m.reports, m.byMode.values.sum())
@@ -165,6 +200,10 @@ class ProgressTest {
         assertTrue(Progress.predictionLine(good).contains("70%") && Progress.predictionLine(good).contains("$chance%"))
         val poor = Progress.standing(state(1, 10), library, today)
         assertTrue(Progress.predictionLine(poor).contains("Surprises are the point"))
+        // Well below chance is said as it is, not as "about what blind guessing gets".
+        assertTrue(Progress.predictionLine(poor).contains("below what blind guessing gets"))
+        val near = Progress.standing(state(3, 10), library, today)
+        assertTrue(Progress.predictionLine(near).contains("about what blind guessing gets"))
         assertEquals(41, good.dayNumber)
         assertTrue(good.activeThisWeek)
         assertTrue(Progress.consistencyLine(good).startsWith("Day 41 and still going"))
@@ -180,6 +219,12 @@ class ProgressTest {
         state = state.copy(guesses = mapOf(id to Guess(0, 0)), plans = mapOf(today to Plan("At lunch, I'll notice it", 0)))
         state = state.upsert(entry(today, id))
         assertTrue(Progress.todayPath(state, library, today, id).all { it.done })
+        // A note about another concept today doesn't tick off today's report.
+        val other = library.all[5].id
+        val elsewhere = AppState(assignments = mapOf(today to Assignment(id, 0))).upsert(entry(today, other))
+        assertFalse(Progress.todayPath(elsewhere, library, today, id)[2].done)
+        assertFalse(elsewhere.reportedOn(today))
+        assertTrue(elsewhere.upsert(entry(today, id)).reportedOn(today))
         // A blank plan isn't a plan.
         assertFalse(Progress.todayPath(state.copy(plans = mapOf(today to Plan("  ", 0))), library, today, id)[1].done)
         // A concept met two days ago is due for review today: the path shows it, not yet done.

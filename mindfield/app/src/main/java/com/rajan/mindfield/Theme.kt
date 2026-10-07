@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
@@ -45,22 +46,31 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rajan.mindfield.core.Category
 import com.rajan.mindfield.core.Evidence
 
-/** The app's two moods: warm field-guide paper by day, deep ink by night. */
+/**
+ * The app's two moods: warm field-guide paper by day, deep ink by night. Every colour used for
+ * text, faint included, reads at 4.5:1 or better on the page and on cards (WCAG AA).
+ */
 @Immutable
 data class Palette(
     val dark: Boolean,
@@ -83,10 +93,10 @@ val LightPalette = Palette(
     raised = Color(0xFFEFE6D6),
     ink = Color(0xFF1E1A15),
     muted = Color(0xFF6B6357),
-    faint = Color(0xFF9F9686),
+    faint = Color(0xFF736B5D),
     line = Color(0x221E1A15),
     brand = Color(0xFF2F3A8F),
-    good = Color(0xFF2E7D4F),
+    good = Color(0xFF2A7449),
     bad = Color(0xFFB3412E),
 )
 
@@ -97,7 +107,7 @@ val DarkPalette = Palette(
     raised = Color(0xFF242733),
     ink = Color(0xFFEFE8DB),
     muted = Color(0xFFA9A194),
-    faint = Color(0xFF6F6A62),
+    faint = Color(0xFF908A80),
     line = Color(0x26EFE8DB),
     brand = Color(0xFFA9B4FF),
     good = Color(0xFF7FD3A0),
@@ -114,12 +124,12 @@ object Palettes {
         Category.MEMORY to Tones(0xFF3D6FA3, 0xFF8DBBEA, 0xFF1D3757, 0xFF2F5C8C, "👁"),
         Category.SELF to Tones(0xFF8A4C9C, 0xFFD6A1EA, 0xFF3A1F45, 0xFF6B3B7E, "👤"),
         Category.THINKING to Tones(0xFF4A55B5, 0xFFA3ABF7, 0xFF20255C, 0xFF3A44A0, "🧩"),
-        Category.INFLUENCE to Tones(0xFFC0533A, 0xFFF2967E, 0xFF55200F, 0xFFA3442D, "📣"),
-        Category.FEELINGS to Tones(0xFFC2456E, 0xFFF59AB8, 0xFF561731, 0xFF9E3559, "🌊"),
-        Category.CONNECTION to Tones(0xFFC07016, 0xFFF6B25E, 0xFF553006, 0xFFA2600F, "🤝"),
-        Category.DECISIONS to Tones(0xFF1D817A, 0xFF67D4C9, 0xFF0C3936, 0xFF18706A, "⚖️"),
-        Category.HABITS to Tones(0xFF4F8A35, 0xFFA2D987, 0xFF213E18, 0xFF3F7029, "🔁"),
-        Category.GROUPS to Tones(0xFFA0800F, 0xFFEBCB62, 0xFF463707, 0xFF8A6E12, "👥"),
+        Category.INFLUENCE to Tones(0xFFB04A33, 0xFFF2967E, 0xFF55200F, 0xFFA3442D, "📣"),
+        Category.FEELINGS to Tones(0xFFB43E66, 0xFFF59AB8, 0xFF561731, 0xFF9E3559, "🌊"),
+        Category.CONNECTION to Tones(0xFF9E5A0E, 0xFFF6B25E, 0xFF553006, 0xFFA2600F, "🤝"),
+        Category.DECISIONS to Tones(0xFF1A7670, 0xFF67D4C9, 0xFF0C3936, 0xFF18706A, "⚖️"),
+        Category.HABITS to Tones(0xFF3F7329, 0xFFA2D987, 0xFF213E18, 0xFF3F7029, "🔁"),
+        Category.GROUPS to Tones(0xFF806408, 0xFFEBCB62, 0xFF463707, 0xFF8A6E12, "👥"),
     )
 
     fun accent(c: Category, dark: Boolean): Color = Color(sets.getValue(c).let { if (dark) it.dark else it.light })
@@ -129,9 +139,9 @@ object Palettes {
     fun emoji(c: Category): String = sets.getValue(c).emoji
 
     fun evidence(e: Evidence, dark: Boolean): Color = when (e) {
-        Evidence.SOLID -> if (dark) Color(0xFF7FD3A0) else Color(0xFF2E7D4F)
+        Evidence.SOLID -> if (dark) Color(0xFF7FD3A0) else Color(0xFF2A7449)
         Evidence.GOOD -> if (dark) Color(0xFF9CC4F2) else Color(0xFF2F6AA8)
-        Evidence.DEBATED -> if (dark) Color(0xFFF0C46A) else Color(0xFF9A6A00)
+        Evidence.DEBATED -> if (dark) Color(0xFFF0C46A) else Color(0xFF8A5F00)
         Evidence.BUSTED -> if (dark) Color(0xFFF29A86) else Color(0xFFB3412E)
     }
 }
@@ -184,10 +194,19 @@ fun MindfieldTheme(dark: Boolean, content: @Composable () -> Unit) {
             )
         }
     }
-    CompositionLocalProvider(LocalPalette provides p, LocalContentColor provides p.ink) {
+    // The app is in English only: keep it left to right on phones set to Arabic, Hebrew or Persian,
+    // so the week, the charts and the text all run the same way.
+    CompositionLocalProvider(LocalPalette provides p, LocalContentColor provides p.ink, LocalLayoutDirection provides LayoutDirection.Ltr) {
         MaterialTheme(colorScheme = scheme, typography = AppType, content = content)
     }
 }
+
+/**
+ * Text on a filled colour: white on darker colours, near-black on lighter ones, whichever reads
+ * better (the two give equal contrast at a relative luminance of about 0.19). Dark mode's pastel
+ * accents need dark text; white on them is about 2:1.
+ */
+fun onColor(fill: Color): Color = if (fill.luminance() > 0.19f) Color(0xFF111217) else Color.White
 
 val palette: Palette @Composable get() = LocalPalette.current
 
@@ -241,7 +260,7 @@ fun Pill(text: String, color: Color, modifier: Modifier = Modifier, filled: Bool
             .background(if (filled) color else color.copy(alpha = 0.14f))
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .padding(horizontal = 12.dp, vertical = 5.dp),
-        color = if (filled) Color.White else color,
+        color = if (filled) onColor(color) else color,
         style = MaterialTheme.typography.labelLarge,
         maxLines = 1,
     )
@@ -299,18 +318,19 @@ fun PrimaryButton(text: String, color: Color, modifier: Modifier = Modifier, ena
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.97f else 1f, tween(120), label = "press")
+    val fill = if (enabled) color else color.copy(alpha = 0.35f)
     Box(
         modifier
             .fillMaxWidth()
             .heightIn(min = 54.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(RoundedCornerShape(27.dp))
-            .background(if (enabled) color else color.copy(alpha = 0.35f))
+            .background(fill)
             .clickable(interaction, LocalIndication.current, enabled = enabled, role = Role.Button) { view.tick(); onClick() }
             .padding(horizontal = 20.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = Color.White, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Text(text, color = onColor(fill.compositeOver(palette.bg)), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
     }
 }
 
@@ -331,7 +351,7 @@ fun SoftButton(text: String, modifier: Modifier = Modifier, color: Color = palet
     }
 }
 
-/** A selectable chip; selected chips fill with their colour. */
+/** A selectable chip; selected chips fill with their colour, and a screen reader says whether it's on. */
 @Composable
 fun ChoiceChip(text: String, selected: Boolean, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val p = palette
@@ -342,9 +362,9 @@ fun ChoiceChip(text: String, selected: Boolean, color: Color, modifier: Modifier
             .clip(shape)
             .background(if (selected) color else p.surface)
             .border(1.dp, if (selected) color else p.line, shape)
-            .clickable(role = Role.Checkbox, onClick = onClick)
+            .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
             .padding(horizontal = 14.dp, vertical = 9.dp),
-        color = if (selected) Color.White else p.ink,
+        color = if (selected) onColor(color) else p.ink,
         style = MaterialTheme.typography.labelLarge,
         maxLines = 1,
     )
@@ -356,7 +376,19 @@ fun WeekDots(week: List<Pair<java.time.LocalDate, Boolean?>>, color: Color, modi
     val p = palette
     Row(modifier, horizontalArrangement = Arrangement.SpaceBetween) {
         week.forEach { (day, done) ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val name = day.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH)
+            Column(
+                // One stop per day for a screen reader, rather than a dot that's only a colour.
+                Modifier.clearAndSetSemantics {
+                    contentDescription = "$name: " + when (done) {
+                        true -> "field report filed"
+                        false -> "no field report"
+                        null -> "still to come"
+                    }
+                },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 Box(
                     Modifier
                         .size(26.dp)
@@ -371,10 +403,10 @@ fun WeekDots(week: List<Pair<java.time.LocalDate, Boolean?>>, color: Color, modi
                         .border(1.dp, if (done == null) p.line else Color.Transparent, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (done == true) Text("✓", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                    if (done == true) Text("✓", color = onColor(color), style = MaterialTheme.typography.labelMedium)
                 }
                 Text(
-                    day.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault()),
+                    day.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.ENGLISH),
                     style = MaterialTheme.typography.labelSmall,
                     color = p.faint,
                 )

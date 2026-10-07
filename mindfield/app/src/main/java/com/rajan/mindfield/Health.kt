@@ -27,6 +27,14 @@ object Health {
     /** The morning time or switch changed: start counting from today. */
     fun resetBaseline(context: Context, day: LocalDate) = prefs(context).edit { putLong(KEY_BASELINE, day.toEpochDay()) }
 
+    /**
+     * The morning reminder is armed for the first time on this install (a new phone, a reinstall):
+     * count from today, never from another phone's history or the day you first used the app.
+     */
+    fun startCounting(context: Context, day: LocalDate) {
+        if (!prefs(context).contains(KEY_BASELINE)) resetBaseline(context, day)
+    }
+
     private fun day(context: Context, key: String): LocalDate? =
         prefs(context).getLong(key, Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE }?.let(LocalDate::ofEpochDay)
 

@@ -6,11 +6,18 @@ import java.time.LocalDate
 object Curriculum {
     const val FIRST = "frequency-illusion"
 
+    /** Before the app existed: a clock reading earlier than this is wrong, so no day is fixed for it. */
+    val EARLIEST: LocalDate = LocalDate.of(2025, 1, 1)
+
+    /** Once everything has been seen, a concept shown this recently isn't picked again (while others are left). */
+    const val REVISIT_GAP_DAYS = 14
+
     /**
      * The concept for [day]. A day that already has one keeps it. A new day takes the next concept
      * you haven't seen, in library order. With focus areas chosen, two days in three come from them
      * and the third keeps some breadth. Once everything has been seen it revisits the concepts you
-     * have spotted least, longest ago first.
+     * have spotted least, longest ago first, skipping any shown in the last [REVISIT_GAP_DAYS] days
+     * (so one concept you never spot can't come back every day).
      */
     fun pick(day: LocalDate, library: Library, state: AppState): String {
         state.assignments[day]?.conceptId?.takeIf { library.contains(it) }?.let { return it }
@@ -31,10 +38,10 @@ object Curriculum {
             }
             return pool.first().id
         }
-        return revisit(library, state)
+        return revisit(day, library, state)
     }
 
-    private fun revisit(library: Library, state: AppState): String {
+    private fun revisit(day: LocalDate, library: Library, state: AppState): String {
         val sightings = HashMap<String, Int>()
         for (e in state.liveEntries) if (e.mode.isSighting) sightings.merge(e.conceptId, 1, Int::plus)
         val lastShown = HashMap<String, LocalDate>()
@@ -42,7 +49,9 @@ object Curriculum {
             val last = lastShown[a.conceptId]
             if (last == null || d > last) lastShown[a.conceptId] = d
         }
-        return library.all.minWithOrNull(
+        val gap = minOf(REVISIT_GAP_DAYS, library.size - 1).toLong()
+        val rested = library.all.filter { c -> lastShown[c.id]?.let { it >= day.minusDays(gap) } != true }
+        return rested.ifEmpty { library.all }.minWithOrNull(
             compareBy<Concept>({ sightings[it.id] ?: 0 }, { lastShown[it.id] ?: LocalDate.MIN }, { it.number }),
         )!!.id
     }
@@ -117,15 +126,16 @@ data class Question(
 object Quiz {
     /**
      * "Name it" (an everyday story: which concept is this?) once you know four or more concepts,
-     * alternating with recalling the study's result, which uses the "Predict first" question.
-     * Concepts marked related are never offered as wrong answers, because they would fit too.
+     * alternating review by review with recalling the study's result, which uses the "Predict
+     * first" question, so a concept you've mastered still gets both. Concepts marked related are
+     * never offered as wrong answers, because they would fit too.
      */
     fun question(card: Card, library: Library, unlocked: Collection<String>, seed: Long): Question {
         val concept = library[card.conceptId] ?: error("unknown concept ${card.conceptId}")
         val rnd = kotlin.random.Random(seed xor card.conceptId.hashCode().toLong())
         val related = concept.related.toSet() + library.all.filter { concept.id in it.related }.map { it.id }
         val candidates = unlocked.filter { it != concept.id && it !in related && library.contains(it) }.sorted()
-        val nameIt = candidates.size >= 3 && (card.box % 2 == 0)
+        val nameIt = candidates.size >= 3 && (card.right + card.wrong) % 2 == 0
         return if (nameIt) {
             val wrong = candidates.shuffled(rnd).take(3).map { library[it]!!.title }
             val options = (wrong + concept.title).shuffled(rnd)

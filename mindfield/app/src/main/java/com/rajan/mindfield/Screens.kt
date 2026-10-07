@@ -1,5 +1,8 @@
 package com.rajan.mindfield
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -33,6 +37,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,7 +47,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,10 +64,14 @@ import com.rajan.mindfield.core.Quiz
 import com.rajan.mindfield.core.Spacing
 import com.rajan.mindfield.core.Stats
 import com.rajan.mindfield.core.Texts
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlin.math.roundToInt
 
 // --- Field guide -------------------------------------------------------------------------------
 
@@ -100,7 +113,7 @@ fun GuideScreen(state: AppState, nav: Nav) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Headline(
                     "Field guide",
-                    "${unlocked.size} of ${library.size} discovered · ${Stats.lifeList(state).size} seen in the wild",
+                    "${Stats.discovered(state, library)} of ${library.size} discovered · ${Stats.lifeList(state).size} seen in the wild",
                 )
                 OutlinedTextField(
                     value = query,
@@ -194,17 +207,48 @@ private fun SealedTile(concept: Concept) {
 
 // --- Review ------------------------------------------------------------------------------------
 
-private data class Round(val cards: List<Card>, val practice: Boolean)
+/** A round of questions: its cards as they were when it started, and the seed its questions come from. */
+private data class Round(val cards: List<Card>, val practice: Boolean, val seed: Long)
+
+/** Keeps a round in progress through a turn of the phone, a trip to another tab or a concept page. */
+private val RoundSaver = listSaver<Round?, Any>(
+    save = { r ->
+        if (r == null) {
+            emptyList()
+        } else {
+            listOf<Any>(r.practice, r.seed) + r.cards.flatMap { c ->
+                listOf<Any>(c.conceptId, c.box, c.due.toString(), c.lastReviewed?.toString().orEmpty(), c.right, c.wrong)
+            }
+        }
+    },
+    restore = { l ->
+        if (l.size < 2) {
+            null
+        } else {
+            val cards = l.drop(2).chunked(6).map { c ->
+                Card(
+                    conceptId = c[0] as String,
+                    box = c[1] as Int,
+                    due = LocalDate.parse(c[2] as String),
+                    lastReviewed = (c[3] as String).ifEmpty { null }?.let { LocalDate.parse(it) },
+                    right = c[4] as Int,
+                    wrong = c[5] as Int,
+                )
+            }
+            Round(cards, practice = l[0] as Boolean, seed = l[1] as Long)
+        }
+    },
+)
 
 /** Spaced retrieval: each concept comes back after 1, 3, 7, 16, 35 and 90 days. */
 @Composable
 fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
     val p = palette
     val library = Store.library
-    var round by remember { mutableStateOf<Round?>(null) }
-    var index by remember { mutableIntStateOf(0) }
-    var answered by remember { mutableStateOf<Int?>(null) }
-    var right by remember { mutableIntStateOf(0) }
+    var round by rememberSaveable(stateSaver = RoundSaver) { mutableStateOf<Round?>(null) }
+    var index by rememberSaveable { mutableIntStateOf(0) }
+    var answered by rememberSaveable { mutableStateOf<Int?>(null) }
+    var right by rememberSaveable { mutableIntStateOf(0) }
     val current = round
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
@@ -219,7 +263,10 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
                     SectionLabel("Ready now", "🃏")
                     Text(if (due.size == 1) "1 card to review" else "${due.size} cards to review", style = MaterialTheme.typography.headlineSmall)
                     Text("Name the concept from an everyday story, or recall what the study found.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
-                    PrimaryButton("Start review", p.brand) { round = Round(due, practice = false); index = 0; answered = null; right = 0 }
+                    PrimaryButton("Start review", p.brand) {
+                        round = Round(due, practice = false, seed = today.toEpochDay() * 31)
+                        index = 0; answered = null; right = 0
+                    }
                 }
             } else {
                 Panel {
@@ -235,7 +282,9 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
                     )
                     if (cards.isNotEmpty()) {
                         SoftButton("Practise anyway (doesn't change your schedule)") {
-                            round = Round(cards.shuffled(kotlin.random.Random(today.toEpochDay())).take(5), practice = true)
+                            // A different handful each time, not the same five all day.
+                            val seed = System.currentTimeMillis()
+                            round = Round(cards.shuffled(kotlin.random.Random(seed)).take(5), practice = true, seed = seed)
                             index = 0; answered = null; right = 0
                         }
                     }
@@ -247,7 +296,11 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
             Panel {
                 Text("$right of ${current.cards.size}", style = MaterialTheme.typography.displaySmall)
                 Text(
-                    if (right == current.cards.size) "A clean sweep." else "Misses come back tomorrow. Struggling to recall is what makes it stick.",
+                    when {
+                        right == current.cards.size -> "A clean sweep."
+                        current.practice -> "Practice doesn't change your schedule. Struggling to recall is what makes it stick."
+                        else -> "Misses come back tomorrow. Struggling to recall is what makes it stick."
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Spacer(Modifier.size(4.dp))
@@ -256,7 +309,7 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
         } else {
             val card = current.cards[index]
             val question = remember(card.conceptId, index, current) {
-                Quiz.question(card, library, state.unlocked.keys, seed = today.toEpochDay() * 31 + index)
+                Quiz.question(card, library, state.unlocked.keys, seed = current.seed + index)
             }
             val concept = library[card.conceptId]!!
             QuestionView(question, concept, index, current.cards.size, answered, onAnswer = { choice ->
@@ -289,7 +342,12 @@ private fun QuestionView(
     val accent = if (answered == null) p.brand else concept.category.accent(p.dark)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text("${index + 1} of $total", style = MaterialTheme.typography.labelLarge, color = p.muted, modifier = Modifier.weight(1f))
-        Text("End", style = MaterialTheme.typography.labelLarge, color = p.muted, modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onQuit).padding(8.dp))
+        Box(
+            Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "End this round", onClick = onQuit),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("End", style = MaterialTheme.typography.labelLarge, color = p.muted, modifier = Modifier.padding(8.dp))
+        }
     }
     ProgressBar((index + if (answered != null) 1 else 0) / total.toFloat(), p.brand)
     Panel {
@@ -309,7 +367,12 @@ private fun QuestionView(
     if (answered != null) {
         val correct = answered == q.answer
         Panel(border = concept.category.accent(p.dark).copy(alpha = 0.5f)) {
-            Text(if (correct) "✓ Right" else "Not this time", style = MaterialTheme.typography.titleMedium, color = if (correct) p.good else p.bad)
+            Text(
+                if (correct) "✓ Right" else "Not this time",
+                Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                style = MaterialTheme.typography.titleMedium,
+                color = if (correct) p.good else p.bad,
+            )
             Text(concept.title, style = MaterialTheme.typography.headlineSmall)
             Text(concept.hook, style = MaterialTheme.typography.bodyMedium)
             Text("Open the concept →", style = MaterialTheme.typography.labelLarge, color = concept.category.accent(p.dark), modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpen).padding(vertical = 4.dp))
@@ -344,7 +407,7 @@ private fun RetentionPanel(cards: List<Card>) {
         }
         val reviewed = cards.filter { it.right + it.wrong > 0 }
         if (reviewed.isNotEmpty()) {
-            val rate = reviewed.sumOf { it.right } * 100 / reviewed.sumOf { it.right + it.wrong }.coerceAtLeast(1)
+            val rate = (reviewed.sumOf { it.right } * 100.0 / reviewed.sumOf { it.right + it.wrong }.coerceAtLeast(1)).roundToInt()
             Text("You've answered $rate% of review questions correctly.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
         }
     }
@@ -362,8 +425,8 @@ fun relativeDay(day: LocalDate, today: LocalDate): String = when (val d = Chrono
     0L -> "today"
     1L -> "tomorrow"
     -1L -> "yesterday"
-    in 2L..6L -> "on ${day.format(DateTimeFormatter.ofPattern("EEEE", Locale.getDefault()))}"
-    else -> if (d > 0) "on ${day.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))}" else day.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
+    in 2L..6L -> "on ${day.format(DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH))}"
+    else -> if (d > 0) "on ${day.format(DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH))}" else day.format(DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH))
 }
 
 // --- Journal -----------------------------------------------------------------------------------
@@ -378,12 +441,29 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
     var limit by rememberSaveable { mutableIntStateOf(60) }
     val q = query.trim().lowercase()
     val all = remember(state.entries) { state.liveEntries.sortedWith(compareByDescending<com.rajan.mindfield.core.Entry> { it.day }.thenByDescending { it.createdAt }) }
-    val matching = all.filter { e ->
-        (filter == null || e.mode == filter) &&
-            (q.isEmpty() || e.note.lowercase().contains(q) || Store.library[e.conceptId]?.title?.lowercase()?.contains(q) == true)
+    // Lowercased once per change to the journal, not on every keystroke.
+    val searchable = remember(all) { all.map { e -> e to (e.note + "\n" + Store.library[e.conceptId]?.title.orEmpty()).lowercase() } }
+    val matching = remember(searchable, q, filter) {
+        searchable.filter { (e, text) -> (filter == null || e.mode == filter) && (q.isEmpty() || text.contains(q)) }.map { it.first }
+    }
+    val scope = rememberCoroutineScope()
+    // A long journal is too big to hand to another app as text, so it's saved as a file instead.
+    val saveExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val saved = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val text = Texts.journal(Store.state.value, Store.library, Store.today())
+                        context.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { it.write(text) }
+                    }.isSuccess
+                }
+                Toast.makeText(context, if (saved) "Saved your field journal." else "Couldn't save the journal there.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     val shown = matching.take(limit)
     val todayConcept = state.assignments[today]?.conceptId
+    val looks = remember(state.entries, today) { Stats.onThisDay(state, today) }
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize(),
@@ -394,11 +474,14 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
                 Row(verticalAlignment = Alignment.Top) {
                     Headline("Field journal", "${all.size} ${if (all.size == 1) "note" else "notes"} · how psychology showed up in your days", Modifier.weight(1f))
                     if (all.isNotEmpty()) {
-                        Pill("Export", p.brand, onClick = { shareText(context, "Mindfield field journal", Texts.journal(state, Store.library, today)) })
+                        Pill("Export", p.brand, onClick = {
+                            val text = Texts.journal(state, Store.library, today)
+                            if (text.length <= SHARE_LIMIT) shareText(context, "Mindfield field journal", text)
+                            else saveExport.launch("mindfield-journal-$today.txt")
+                        })
                     }
                 }
             }
-            val looks = Stats.onThisDay(state, today)
             if (looks.isNotEmpty() && filter == null && q.isEmpty()) {
                 item {
                     Panel(border = p.brand.copy(alpha = 0.35f)) {
@@ -476,7 +559,7 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
                     .background(p.brand)
                     .clickable(role = Role.Button) { nav.log(LogRequest(todayConcept)) }
                     .padding(horizontal = 22.dp, vertical = 14.dp),
-                color = if (p.dark) p.bg else Color.White,
+                color = onColor(p.brand),
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
             )
@@ -484,8 +567,11 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
     }
 }
 
+/** Sharing passes text through Android in one parcel of about 1 MB; past this a file is the safe way. */
+private const val SHARE_LIMIT = 100_000
+
 fun dayHeading(day: LocalDate, today: LocalDate): String = when (ChronoUnit.DAYS.between(day, today)) {
     0L -> "Today"
     1L -> "Yesterday"
-    else -> day.format(DateTimeFormatter.ofPattern(if (day.year == today.year) "EEEE d MMMM" else "d MMMM yyyy", Locale.getDefault()))
+    else -> day.format(DateTimeFormatter.ofPattern(if (day.year == today.year) "EEEE d MMMM" else "d MMMM yyyy", Locale.ENGLISH))
 }

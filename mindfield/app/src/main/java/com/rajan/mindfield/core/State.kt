@@ -41,8 +41,12 @@ data class Entry(
     val deleted: Boolean = false,
 )
 
-/** Which concept a day showed. Fixed once made, so a day's concept never changes under you. */
-data class Assignment(val conceptId: String, val assignedAt: Long)
+/**
+ * Which concept a day showed. Fixed once made, so a day's concept never changes under you.
+ * [engaged] is set once you predict, plan or log on that day's concept, so when two phones picked
+ * different concepts for the same day, a sync keeps the one you actually worked on.
+ */
+data class Assignment(val conceptId: String, val assignedAt: Long, val engaged: Boolean = false)
 
 /** Your "Predict first" answer for a concept: the first guess is the one that counts. */
 data class Guess(val choice: Int, val at: Long)
@@ -101,9 +105,32 @@ data class AppState(
 
     val isEmpty: Boolean get() = assignments.isEmpty() && entries.isEmpty() && guesses.isEmpty()
 
+    /**
+     * Nothing made here yet: no notes, predictions, plans or reviews. A new phone that has only been
+     * shown a concept or two is fresh; those days are placeholders a restored backup should replace.
+     */
+    val isFresh: Boolean get() = entries.isEmpty() && guesses.isEmpty() && plans.isEmpty() && cards.isEmpty()
+
     fun entriesFor(conceptId: String) = liveEntries.filter { it.conceptId == conceptId }
 
     fun entriesOn(day: LocalDate) = liveEntries.filter { it.day == day }
+
+    /**
+     * True once that day's own concept has a field report. A note about an older concept doesn't
+     * count: the evening report, the widget and today's path are about the day's concept. (Streaks
+     * count any report: checking in is the habit.)
+     */
+    fun reportedOn(day: LocalDate): Boolean {
+        val id = assignments[day]?.conceptId ?: return false
+        return liveEntries.any { it.day == day && it.conceptId == id }
+    }
+
+    /** Marks [day]'s concept as worked on (see [Assignment.engaged]), if it is [conceptId] (any, when null). */
+    fun engaged(day: LocalDate, conceptId: String? = null): AppState {
+        val a = assignments[day] ?: return this
+        if (a.engaged || (conceptId != null && a.conceptId != conceptId)) return this
+        return copy(assignments = assignments + (day to a.copy(engaged = true)))
+    }
 
     fun upsert(entry: Entry): AppState {
         val i = entries.indexOfFirst { it.id == entry.id }

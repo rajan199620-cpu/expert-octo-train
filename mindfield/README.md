@@ -179,7 +179,16 @@ with the same journal (merging is tested to be order-independent).
 ## Reminders and Google Play
 
 - **On time where Android allows it without asking:** exact alarms on Android 12 and older.
-  On newer phones the reminders are inexact and may arrive a few minutes late.
+  On newer phones the reminders are inexact: Android may deliver them up to about an hour late,
+  so the settings say "around 8:00 am" there. A reminder that's due but hasn't arrived yet isn't
+  lost when you open the app or change a setting, and one missed while the phone was off still
+  comes if it's switched back on within two hours.
+- **Nothing before you've finished the welcome steps:** no reminders, and no concept picked early.
+- **Notifications switched off** (for the app, or just the morning or evening ones): Today says
+  so, and "Turn on" shows Android's prompt while it can, otherwise the app's notification settings.
+- **Travel:** "today", the reminders and the evening report follow the phone into a new time zone.
+  An evening report set after midnight, or one that arrives late, is about the day just ending,
+  and the evening and spot-check nudges expire at 4 am.
 - **Why not exact everywhere:** Google Play allows the exact-alarm permission only for
   alarm-clock and calendar apps.
 - **Battery saving:** if two mornings pass without a notification, a banner opens the
@@ -207,6 +216,38 @@ the certificate, publishes the APK to the link above and commits screenshots.
 - `android/` tests run the real alarms, notifications (one-tap logging, the reply box,
   after-midnight taps), widget, storage through simulated process death and a corrupt file, a
   year of random use, and every screen at normal size and at 150% font on a small phone, with
-  screenshots.
+  screenshots. They also cover time-zone travel, a late reminder, notifications switched off, a
+  full phone (a save that fails), a damaged journal with a finished copy to fall back on, the
+  field-report sheet surviving a turn of the phone, a review round surviving a trip to another
+  tab, the widget turning over at midnight, and every text colour reading at 4.5:1 or better.
+
+### Stress test (October 2026)
+
+An automated review of the whole app, area by area, reported 169 problems; 160 were confirmed on
+a second, independent check, and the fixes are in this build. The main ones:
+
+- **Time zones:** the app kept the time zone it started in, so after travel "today" and every
+  reminder stayed in the old zone. It now follows the phone.
+- **Saving:** a full phone crashed the app; now it says so and saves again when it can, and a
+  power cut can't leave an empty journal.
+- **Dark mode and contrast:** white text on the pastel buttons was about 2:1. Every text colour
+  now reads at 4.5:1 or better (WCAG AA), in both themes.
+- **Notes in progress:** turning the phone, a dark-mode switch or a notification tap closed the
+  field-report sheet and lost the note; Back or a stray tap discarded it silently. Now it's kept,
+  and closing with a draft asks first.
+- **Reminders:** opening the app while a late reminder was on its way cancelled it for the day;
+  a phone with notifications off still had concepts picked for it every day; a one-tap log made
+  a second sound. All fixed.
+- **Two phones:** a sync could swap the day's concept and re-lock one you'd already studied, and
+  a new phone restoring a backup made concept one today's concept everywhere. Now the concept you
+  worked on keeps its day, and a new phone takes the backup's days and settings.
+- **Smaller things:** the month review, best streak, "On this day" and prediction score are
+  counted right in edge cases; a concept you never spot no longer comes back every day once
+  everything has been seen; times follow the phone's 24-hour setting; screen readers hear
+  which tab, chip and setting is selected and whether an answer was right.
+
+Not changed: release builds are still signed with the committed public test key (switching to a
+private key needs key rotation so existing installs can update), and R8 shrinking stays off until
+it can be checked on a device.
 
 Fonts: Fraunces and Inter (SIL Open Font License).

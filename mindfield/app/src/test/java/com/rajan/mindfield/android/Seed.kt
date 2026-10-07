@@ -6,6 +6,7 @@ import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.Outcome
 import com.rajan.mindfield.core.Quiz
 import com.rajan.mindfield.core.Spacing
+import com.rajan.mindfield.core.SystemZoneClock
 import org.robolectric.Shadows.shadowOf
 import java.time.Clock
 import java.time.LocalDate
@@ -27,7 +28,7 @@ object Seed {
     }
 
     fun backToNow() {
-        Store.clock = Clock.systemDefaultZone()
+        Store.clock = SystemZoneClock
     }
 
     private val notes = listOf(

@@ -79,6 +79,24 @@ class CurriculumTest {
     }
 
     @Test
+    fun `after the whole guide, a concept you never spot comes back only every couple of weeks`() {
+        var s = AppState()
+        library.all.forEachIndexed { i, c -> s = s.copy(assignments = s.assignments + (day0.plusDays(i.toLong()) to Assignment(c.id, i.toLong()))) }
+        val skip = library.all[37].id
+        library.all.filter { it.id != skip }.forEachIndexed { i, c -> s = s.upsert(entry("e$i", c.id, day0)) }
+        val start = day0.plusDays(library.size.toLong())
+        val revisited = (0L until 60L).map { d ->
+            val day = start.plusDays(d)
+            s = Curriculum.assign(day, library, s, d)
+            s.assignments.getValue(day).conceptId
+        }
+        val days = revisited.indices.filter { revisited[it] == skip }
+        assertEquals(0, days.first())
+        assertTrue("shown on days $days", days.zipWithNext().all { (a, b) -> b - a > Curriculum.REVISIT_GAP_DAYS })
+        assertTrue(revisited.toSet().size > 40)
+    }
+
+    @Test
     fun `a removed concept is replaced rather than crashing`() {
         val s = AppState(assignments = mapOf(day0 to Assignment("no-longer-exists", 1)))
         val next = Curriculum.assign(day0, library, s, 2)
@@ -140,9 +158,9 @@ class QuizTest {
     @Test
     fun `every concept makes a valid question of both kinds`() {
         for (c in library.all) {
-            for (box in 0..1) {
-                val q = Quiz.question(Card(c.id, box, day0, null, 0, 0), library, everything, seed = 7)
-                assertEquals(if (box == 0) Question.Kind.NAME_IT else Question.Kind.RECALL, q.kind)
+            for (reviews in 0..1) {
+                val q = Quiz.question(Card(c.id, reviews, day0, null, reviews, 0), library, everything, seed = 7)
+                assertEquals(if (reviews == 0) Question.Kind.NAME_IT else Question.Kind.RECALL, q.kind)
                 assertEquals(q.options.size, q.options.toSet().size)
                 assertTrue(q.answer in q.options.indices)
                 if (q.kind == Question.Kind.NAME_IT) {
@@ -156,6 +174,15 @@ class QuizTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `mastered concepts still alternate between naming it and recalling the study`() {
+        val kinds = (0..5).map { n ->
+            Quiz.question(Card("anchoring", Spacing.MAX_BOX, day0, day0, 3 + n, 1), library, everything, seed = 7).kind
+        }
+        assertEquals(listOf(Question.Kind.NAME_IT, Question.Kind.RECALL), kinds.take(2))
+        assertEquals(kinds.take(2) + kinds.take(2) + kinds.take(2), kinds)
     }
 
     @Test
@@ -186,6 +213,10 @@ class StatsTest {
         assertEquals(0, Stats.streak(days, day0.plusDays(3)))
         assertEquals(4, Stats.longestStreak(days))
         assertEquals(0, Stats.longestStreak(emptySet()))
+        // A note dated ahead (a wrong clock, or another phone's) can't stretch the best streak.
+        val ahead = days + (1L..6L).map { day0.plusDays(it) }
+        assertEquals(10, Stats.longestStreak(ahead))
+        assertEquals(4, Stats.longestStreak(ahead, day0))
     }
 
     @Test
@@ -231,10 +262,36 @@ class StatsTest {
     @Test
     fun `heatmap has whole weeks ending this week`() {
         val s = AppState().upsert(entry("a", "anchoring", day0)).upsert(entry("b", "anchoring", day0))
+            .upsert(entry("c", "anchoring", day0.plusDays(1)))
         val map = Stats.heatmap(s, day0, 12)
         assertEquals(12, map.size)
         assertTrue(map.all { it.size == 7 })
         assertEquals(2, map.last().first { it.first == day0 }.second)
+        assertEquals(0, map.last().first { it.first == day0.plusDays(1) }.second) // tomorrow stays empty
+    }
+
+    @Test
+    fun `on this day looks back to exact dates, and a month's last day covers the days a shorter month lacks`() {
+        var s = AppState()
+        listOf("2026-01-28", "2026-01-29", "2026-01-31", "2026-02-28", "2025-03-31").forEachIndexed { i, d ->
+            s = s.upsert(entry("n$i", "anchoring", LocalDate.parse(d)).copy(note = "x".repeat(i + 1)))
+        }
+        // 28 February: a month back is 28 January, plus the 29th to 31st that February doesn't have.
+        val feb28 = Stats.onThisDay(s, LocalDate.parse("2026-02-28"))
+        assertEquals(listOf("A month ago"), feb28.map { it.first })
+        assertEquals("2026-01-31", feb28.single().second.day.toString()) // the longest of those days' notes
+        // 31 March: February had no 31st, so nothing from a month ago (and the 28th isn't repeated).
+        assertEquals(listOf("A year ago"), Stats.onThisDay(s, LocalDate.parse("2026-03-31")).map { it.first })
+        assertEquals(listOf("A month ago"), Stats.onThisDay(s, LocalDate.parse("2026-03-28")).map { it.first })
+        assertTrue(Stats.onThisDay(s, LocalDate.parse("2026-03-29")).isEmpty())
+    }
+
+    @Test
+    fun `discovered counts only concepts still in the library, and percentages round`() {
+        val s = AppState(assignments = mapOf(day0 to Assignment("anchoring", 1), day0.plusDays(1) to Assignment("gone-now", 2)))
+        assertEquals(1, Stats.discovered(s, library))
+        assertEquals(67, Stats.Predictions(3, 2).percent)
+        assertEquals(0, Stats.Predictions(0, 0).percent)
     }
 }
 
@@ -242,7 +299,7 @@ class SyncTest {
     private fun randomState(rnd: Random, tag: String): AppState {
         var s = AppState(settings = Settings(morningMinute = rnd.nextInt(0, 1440)))
         val ids = library.all.shuffled(rnd).take(rnd.nextInt(0, 25)).map { it.id }
-        ids.forEachIndexed { i, id -> s = s.copy(assignments = s.assignments + (day0.plusDays(rnd.nextLong(0, 30)) to Assignment(id, rnd.nextLong(0, 5)))) }
+        ids.forEachIndexed { i, id -> s = s.copy(assignments = s.assignments + (day0.plusDays(rnd.nextLong(0, 30)) to Assignment(id, rnd.nextLong(0, 5), rnd.nextInt(3) == 0))) }
         repeat(rnd.nextInt(0, 15)) { i ->
             // Shared ids between copies, so merges really have conflicts to resolve.
             val id = "e${rnd.nextInt(0, 12)}"
@@ -310,6 +367,55 @@ class SyncTest {
         val used = fresh.upsert(entry("b", "anchoring", day0))
         assertEquals(8 * 60, Sync.merge(used, backup).settings.morningMinute)
         assertEquals(1, Sync.restoredEntries(used, Sync.merge(used, backup)))
+        // Linking on the last welcome step brings the backup in without skipping that step.
+        val welcome = AppState()
+        assertFalse(Sync.merge(welcome, backup.copy(settings = Settings(onboarded = true))).settings.onboarded)
+    }
+
+    @Test
+    fun `the concept you worked on keeps its day when two phones picked different ones`() {
+        val here = AppState(assignments = mapOf(day0 to Assignment("anchoring", 9))).engaged(day0, "anchoring")
+        val there = AppState(assignments = mapOf(day0 to Assignment("reciprocity", 3)))
+        assertEquals("anchoring", Sync.merge(here, there).assignments.getValue(day0).conceptId)
+        assertEquals("anchoring", Sync.merge(there, here).assignments.getValue(day0).conceptId)
+        // Only that day's own concept is marked, and a mark survives the backup file.
+        assertTrue(here.engaged(day0, "reciprocity") === here)
+        assertFalse(AppState(assignments = mapOf(day0 to Assignment("x", 1))).engaged(day0, "y").assignments.getValue(day0).engaged)
+        assertTrue(Codec.decode(Codec.encode(here, 0)).assignments.getValue(day0).engaged)
+        assertFalse(Codec.encode(there, 0).contains("engaged"))
+    }
+
+    @Test
+    fun `a new phone restoring a backup takes the backup's days, not its own first concept`() {
+        val today = day0.plusDays(30)
+        // The new phone was set up this morning and shown concept one; the other phone is on day 30.
+        val newPhone = AppState(assignments = mapOf(today to Assignment(Curriculum.FIRST, 500)), settings = Settings(onboarded = true))
+        var other = AppState(settings = Settings(morningMinute = 7 * 60, weeklyGoal = 3, onboarded = true))
+        for (d in 0L until 30L) other = Curriculum.assign(day0.plusDays(d), library, other, 1000 + d)
+        other = other.upsert(entry("a", Curriculum.FIRST, day0)).copy(guesses = mapOf(Curriculum.FIRST to Guess(0, 1)))
+        val restored = Sync.adopt(newPhone, other)
+        assertEquals(null, restored.assignments[today]) // chosen afresh from the restored history
+        assertEquals(other.assignments, restored.assignments)
+        assertEquals(7 * 60, restored.settings.morningMinute)
+        assertEquals(3, restored.settings.weeklyGoal)
+        assertTrue(restored.settings.onboarded)
+        assertTrue(library.contains(Curriculum.pick(today, library, restored)))
+        assertFalse(Curriculum.pick(today, library, restored) == Curriculum.FIRST)
+        // A phone with its own notes is never treated as fresh: an ordinary merge.
+        val used = newPhone.upsert(entry("b", Curriculum.FIRST, today))
+        assertEquals(Sync.merge(used, other), Sync.adopt(used, other))
+        // And a fresh backup changes nothing special.
+        assertEquals(Sync.merge(newPhone, AppState()), Sync.adopt(newPhone, AppState()))
+    }
+
+    @Test
+    fun `an edit always beats the copy it replaces, even with the clock set back`() {
+        assertEquals(1_000L, Versions.next(null, 1_000))
+        assertEquals(5_000L, Versions.next(4_000, 5_000))
+        assertEquals(4_001L, Versions.next(4_000, 1_000))
+        val old = entry("x", "anchoring", day0, updated = 4_000)
+        val edited = old.copy(note = "later edit", updatedAt = Versions.next(old.updatedAt, 1_000))
+        assertEquals("later edit", Sync.merge(AppState(entries = listOf(old)), AppState(entries = listOf(edited))).entries.single().note)
     }
 
     @Test
@@ -347,6 +453,14 @@ class SyncTest {
         assertEquals(ThemeMode.SYSTEM, s.settings.theme)
         assertEquals(Spacing.MAX_BOX, s.cards.getValue("anchoring").box)
         assertEquals(null, s.cards.getValue("anchoring").lastReviewed)
+    }
+
+    @Test
+    fun `the saved file is compact and a backup file for people is laid out`() {
+        val s = AppState(entries = listOf(entry("a", "anchoring", day0)))
+        assertFalse(Codec.encode(s, 0).contains("\n"))
+        assertTrue(Codec.encode(s, 0, pretty = true).contains("\n"))
+        assertEquals(Codec.decode(Codec.encode(s, 0)), Codec.decode(Codec.encode(s, 0, pretty = true)))
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -406,6 +520,41 @@ class ScheduleTest {
         assertEquals("8:05 am", Schedule.label(8 * 60 + 5))
         assertEquals("12:30 pm", Schedule.label(12 * 60 + 30))
         assertEquals("9:00 pm", Schedule.label(21 * 60))
+        // A phone on the 24-hour clock.
+        assertEquals("00:00", Schedule.label(0, is24 = true))
+        assertEquals("08:05", Schedule.label(8 * 60 + 5, is24 = true))
+        assertEquals("21:00", Schedule.label(21 * 60, is24 = true))
+    }
+
+    @Test
+    fun `a report written in the small hours counts for the day its concept was shown`() {
+        val s = AppState(assignments = mapOf(day0 to Assignment("anchoring", 1), day0.plusDays(1) to Assignment("reciprocity", 2)))
+        fun at(day: LocalDate, hour: Int) = day.atTime(hour, 30).atZone(zone)
+        val next = day0.plusDays(1)
+        assertEquals(day0, FieldDay.of(s, "anchoring", at(next, 0)))
+        assertEquals(day0, FieldDay.of(s, "anchoring", at(next, 3)))
+        assertEquals(next, FieldDay.of(s, "anchoring", at(next, 4))) // from 4 am it's a sighting today
+        assertEquals(next, FieldDay.of(s, "reciprocity", at(next, 1))) // today's own concept
+        assertEquals(day0.plusDays(2), FieldDay.of(s, "anchoring", at(day0.plusDays(2), 1))) // two days back: today
+        assertEquals(day0, FieldDay.current(at(next, 2)))
+        assertEquals(next, FieldDay.current(at(next, 9)))
+        assertEquals(at(next, 4).withMinute(0), FieldDay.expires(at(day0, 21)))
+        assertEquals(at(next, 4).withMinute(0), FieldDay.expires(at(next, 1)))
+    }
+
+    @Test
+    fun `the app's clock follows the phone into a new time zone`() {
+        val saved = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Europe/London"))
+            assertEquals(java.time.ZoneId.of("Europe/London"), SystemZoneClock.zone)
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Los_Angeles"))
+            assertEquals(java.time.ZoneId.of("America/Los_Angeles"), SystemZoneClock.zone)
+            assertEquals(java.time.ZoneId.of("America/Los_Angeles"), java.time.ZonedDateTime.now(SystemZoneClock).zone)
+            assertTrue(Math.abs(SystemZoneClock.millis() - System.currentTimeMillis()) < 5_000)
+        } finally {
+            java.util.TimeZone.setDefault(saved)
+        }
     }
 }
 
@@ -441,7 +590,21 @@ class TextsTest {
         assertTrue(Delivery.looksBlocked(true, day0.minusDays(5), day0, 6 * 60, m))
         assertFalse(Delivery.looksBlocked(false, day0.minusDays(5), day0, 9 * 60, m))
         assertFalse(Delivery.looksBlocked(true, null, day0, 9 * 60, m))
-        // Half an hour's slack on the day itself.
+        // An hour's slack on the day itself: Android may deliver an inexact alarm that late.
         assertFalse(Delivery.looksBlocked(true, day0.minusDays(2), day0, 8 * 60 + 20, m))
+        assertFalse(Delivery.looksBlocked(true, day0.minusDays(2), day0, 8 * 60 + 50, m))
+    }
+
+    @Test
+    fun `text limits never split an emoji and never cut a note that was already long`() {
+        assertEquals("ab", Texts.clip("abc", 2))
+        assertEquals("a", Texts.clip("a😀b", 2)) // the emoji's two halves stay together
+        assertEquals("a😀", Texts.clip("a😀b", 3))
+        assertEquals("", Texts.clip("😀", 1))
+        val long = "x".repeat(2500)
+        assertEquals(long, Texts.cap(long, long + "y", 2000)) // can't grow past the limit...
+        assertEquals(long.dropLast(1), Texts.cap(long, long.dropLast(1), 2000)) // ...but can shrink
+        assertEquals("x".repeat(2000), Texts.cap("", long, 2000)) // a paste is cut to fit
+        assertEquals("hello", Texts.cap("hell", "hello", 2000))
     }
 }

@@ -430,4 +430,45 @@ class ScreensTest {
         tab("You")
         shot("45-you-3000")
     }
+
+    @Test
+    fun `a field report being written survives turning the phone, and Back asks before throwing it away`() {
+        Seed.weeks(5)
+        launch()
+        val c = Store.todayConcept()
+        val note = "Saw it twice on the bus."
+        compose.onAllNodesWithText(Mode.SPOTTED.label).onFirst().performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onAllNodes(hasSetTextAction()).onLast().performTextInput(note)
+        scenario!!.recreate()
+        compose.waitForIdle()
+        compose.onNodeWithText("Field report").assertExists()
+        compose.onNode(hasSetTextAction() and hasText(note)).assertExists()
+        back()
+        compose.onNodeWithText("Discard this note?").assertExists()
+        compose.onNodeWithText("Keep writing").performClick()
+        compose.waitForIdle()
+        compose.onNode(hasSetTextAction() and hasText(note)).assertExists()
+        compose.onNodeWithText("Save to journal").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(note, Store.state.value.entriesOn(Store.today()).single { it.conceptId == c.id }.note)
+    }
+
+    @Test
+    fun `a review round in progress survives a trip to another tab`() {
+        Seed.weeks(40)
+        launch()
+        tab("Review")
+        val answer = Seed.firstReviewAnswer()
+        compose.onNodeWithText("Start review").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(answer).performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("✓ Right").assertExists()
+        tab("Journal")
+        compose.onNodeWithText("Field journal").assertExists()
+        tab("Review")
+        compose.onNodeWithText("✓ Right").assertExists()
+        compose.onAllNodesWithText("1 of ", substring = true).onFirst().assertExists()
+    }
 }

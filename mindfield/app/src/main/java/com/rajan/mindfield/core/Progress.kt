@@ -123,11 +123,31 @@ object Progress {
         return WeekGoal(goal, now, met, running)
     }
 
-    /** Months with any reports or new concepts, newest first, never past this month. */
-    fun months(state: AppState, today: LocalDate): List<YearMonth> {
-        val now = YearMonth.from(today)
-        return (state.liveEntries.map { YearMonth.from(it.day) } + state.assignments.keys.map { YearMonth.from(it) })
-            .filter { it <= now }.distinct().sortedDescending()
+    /**
+     * Months with any reports or newly discovered concepts, newest first, never past today: the
+     * same rule as [month], so every month listed has a review to show.
+     */
+    fun months(state: AppState, today: LocalDate): List<YearMonth> =
+        (state.liveEntries.map { it.day } + state.unlocked.values)
+            .filter { !it.isAfter(today) }.map { YearMonth.from(it) }.distinct().sortedDescending()
+
+    /** Days of the week still open for a report: the days after today, and today itself if it has none yet. */
+    fun openDays(days: Set<LocalDate>, today: LocalDate): Int {
+        val sunday = weekOf(today).plusDays(6)
+        return ChronoUnit.DAYS.between(today, sunday).toInt() + if (today in days) 0 else 1
+    }
+
+    /**
+     * "3 of 5 days this week · 2 to go", "Goal met ✓ · 3 weeks running", or a plain count without a
+     * goal. When the days left can't reach the goal it doesn't count down to the impossible: it says
+     * every report still counts (a goal seen as out of reach tends to make people give up on the rest).
+     */
+    fun goalLine(g: WeekGoal, openDays: Int): String = when {
+        g.goal <= 0 -> if (g.daysThisWeek == 1) "1 day this week" else "${g.daysThisWeek} days this week"
+        g.met && g.weeksRunning >= 2 -> "Goal met ✓ · ${g.weeksRunning} weeks running"
+        g.met -> "Goal met ✓ · ${g.daysThisWeek} of ${g.goal} days this week"
+        g.daysThisWeek + openDays < g.goal -> "${g.daysThisWeek} of ${g.goal} days this week · every report still counts for your streak"
+        else -> "${g.daysThisWeek} of ${g.goal} days this week · ${g.daysLeft} to go"
     }
 
     /** In the first week of a month, last month's review; otherwise this month so far. */
@@ -157,11 +177,16 @@ object Progress {
         }
         val right = guesses.count { (id, g) -> library[id]?.predict?.answer == g.choice }
         val previous = state.liveEntries.count { YearMonth.from(it.day) == month.minusMonths(1) }
+        val daysLogged = inMonth.map { it.day }.toSet().size
+        // In the month you started, the days before you started don't count against you.
+        val started = listOfNotNull(state.startDay, state.liveEntries.minOfOrNull { it.day }).minOrNull()
+        val from = listOfNotNull(month.atDay(1), started).max()
+        val to = if (inProgress) today else month.atEndOfMonth()
         return MonthReview(
             month = month,
             inProgress = inProgress,
-            daysLogged = inMonth.map { it.day }.toSet().size,
-            daysSoFar = if (inProgress) today.dayOfMonth else month.lengthOfMonth(),
+            daysLogged = daysLogged,
+            daysSoFar = maxOf(ChronoUnit.DAYS.between(from, to).toInt() + 1, daysLogged, 1),
             reports = inMonth.size,
             byMode = Mode.entries.associateWith { m -> inMonth.count { it.mode == m } },
             discovered = discovered.size,
@@ -182,11 +207,16 @@ object Progress {
         return Standing(guessed.size, right, (chance * 100).roundToInt(), Stats.dayNumber(state, today), active)
     }
 
+    /** Within this many points of blind guessing counts as "about the same". */
+    const val CHANCE_MARGIN = 10
+
     /** Your predictions against blind guessing; needs a handful before it says anything. */
     fun predictionLine(s: Standing): String = when {
         s.predicted < 5 -> "Predict ${5 - s.predicted} more ${if (5 - s.predicted == 1) "study" else "studies"} to see how your intuition compares with chance."
-        s.percent > s.chancePercent ->
+        s.percent >= s.chancePercent + CHANCE_MARGIN ->
             "You've called ${s.percent}% of study results before reading them, where blind guessing would get about ${s.chancePercent}%."
+        s.percent <= s.chancePercent - CHANCE_MARGIN ->
+            "You've called ${s.percent}% of study results, below what blind guessing gets (${s.chancePercent}%): these findings run against intuition. Surprises are the point: they're what you remember."
         else ->
             "You've called ${s.percent}% of study results, about what blind guessing gets (${s.chancePercent}%). Surprises are the point: they're what you remember."
     }
@@ -208,7 +238,7 @@ object Progress {
         return buildList {
             add(PathStep(Step.PREDICT, conceptId in state.guesses))
             add(PathStep(Step.PLAN, state.plans[today]?.text?.isNotBlank() == true))
-            add(PathStep(Step.REPORT, state.entriesOn(today).isNotEmpty()))
+            add(PathStep(Step.REPORT, state.entriesOn(today).any { it.conceptId == conceptId }))
             if (due > 0 || reviewedToday) add(PathStep(Step.REVIEW, due == 0))
         }
     }

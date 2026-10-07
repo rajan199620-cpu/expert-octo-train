@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android's own backup (Android 11 and older): your journal, settings and progress. Not this
+     phone's Google link, reminder health or alarm times, which belong to the phone they were made
+     on: restored onto a new phone they would make it look linked, or its reminders look blocked. -->
+<full-backup-content>
+    <include domain="file" path="mindfield.json" />
+</full-backup-content>

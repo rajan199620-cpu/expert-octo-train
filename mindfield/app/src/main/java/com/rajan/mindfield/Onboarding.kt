@@ -1,8 +1,9 @@
 package com.rajan.mindfield
 
 import android.Manifest
-import android.app.TimePickerDialog
 import android.os.Build
+import android.text.format.DateFormat
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -37,7 +38,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,8 +62,10 @@ fun Onboarding(onDone: () -> Unit) {
     val state by Store.state.collectAsStateWithLifecycle()
     val cloud by GoogleSync.state.collectAsStateWithLifecycle()
     var step by rememberSaveable { mutableIntStateOf(0) }
-    var askedPermission by remember { mutableStateOf(false) }
+    var askedPermission by rememberSaveable { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { askedPermission = true }
+    // Back goes to the previous step, not out of the app.
+    BackHandler(enabled = step > 0) { step-- }
     val first = Store.library[Curriculum.FIRST] ?: Store.library.all.first()
     val s = state.settings
     val steps = 5
@@ -140,7 +142,11 @@ fun Onboarding(onDone: () -> Unit) {
                                 }
                             }
                             if (Build.VERSION.SDK_INT >= 33 && !Notifier.allowed(context)) {
-                                Text("Android will ask if Mindfield may send notifications.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+                                Text(
+                                    if (askedPermission) "Notifications are off. You can turn them on later in You → Notifications."
+                                    else "Android will ask if Mindfield may send notifications.",
+                                    style = MaterialTheme.typography.bodyMedium, color = p.muted,
+                                )
                             }
                         }
                         else -> {
@@ -165,8 +171,10 @@ fun Onboarding(onDone: () -> Unit) {
                 p.brand,
             ) {
                 when {
-                    step == 3 && Build.VERSION.SDK_INT >= 33 && !Notifier.allowed(context) && !askedPermission ->
+                    step == 3 && Build.VERSION.SDK_INT >= 33 && !Notifier.allowed(context) && !askedPermission -> {
+                        Notifier.markAsked(context)
                         permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
                     last -> onDone()
                     else -> step++
                 }
@@ -197,10 +205,10 @@ private fun DayStep(emoji: String, title: String, text: String) {
 @Composable
 private fun TimeChoice(label: String, minute: Int, onPick: (Int) -> Unit) {
     val context = LocalContext.current
-    Panel(onClick = { TimePickerDialog(context, { _, h, m -> onPick(h * 60 + m) }, minute / 60, minute % 60, false).show() }) {
+    Panel(onClick = { pickTime(context, minute, onPick) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            Text(Schedule.label(minute), style = MaterialTheme.typography.headlineSmall, color = palette.brand)
+            Text(Schedule.label(minute, DateFormat.is24HourFormat(context)), style = MaterialTheme.typography.headlineSmall, color = palette.brand)
         }
         Text("Tap to change", style = MaterialTheme.typography.bodySmall, color = palette.faint)
     }

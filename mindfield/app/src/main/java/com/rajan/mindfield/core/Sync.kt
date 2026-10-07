@@ -10,6 +10,8 @@ import java.time.LocalDate
  * Every data merge is order-free: merging A into B gives the same as B into A, and merging
  * twice changes nothing, so phones that sync at different times always end up agreeing.
  * Settings are the exception: they stay this phone's, unless this phone has no data yet.
+ * Whether this phone has finished setting up stays this phone's either way, so restoring in the
+ * middle of the welcome steps doesn't skip the rest of them.
  */
 object Sync {
     fun merge(local: AppState, other: AppState): AppState {
@@ -17,8 +19,9 @@ object Sync {
             copies.maxWith(compareBy<Entry>({ it.updatedAt }, { it.deleted }, { it.toString() }))
         }.sortedWith(compareBy({ it.day }, { it.createdAt }, { it.id }))
 
+        // Two phones that picked different concepts for one day keep the one you worked on, then the earlier.
         val assignments = pickEach(local.assignments, other.assignments) { a, b ->
-            minOf(a, b, compareBy<Assignment>({ it.assignedAt }, { it.conceptId }))
+            minOf(a, b, compareBy<Assignment>({ !it.engaged }, { it.assignedAt }, { it.conceptId }))
         }
         val cards = pickEach(local.cards, other.cards) { a, b ->
             maxOf(a, b, compareBy<Card>({ it.lastReviewed ?: LocalDate.MIN }, { it.right + it.wrong }, { it.box }, { it.due }, { it.right }))
@@ -30,11 +33,23 @@ object Sync {
             maxOf(a, b, compareBy<Plan>({ it.updatedAt }, { it.text }))
         }
         val settings = if (local.isEmpty && !other.isEmpty) {
-            other.settings.copy(onboarded = local.settings.onboarded || other.settings.onboarded)
+            other.settings.copy(onboarded = local.settings.onboarded)
         } else {
             local.settings
         }
         return AppState(assignments, entries, cards, guesses, plans, settings)
+    }
+
+    /**
+     * Brings a backup into this phone (a Google sync or a backup file). The same as [merge], except
+     * when this phone is fresh (see [AppState.isFresh]) and the backup isn't: the days this phone
+     * was only shown a concept are placeholders, so they give way to the backup's (a new phone's
+     * first concept must not become today's concept on every phone) and the backup's settings
+     * come with it.
+     */
+    fun adopt(local: AppState, other: AppState): AppState {
+        if (!local.isFresh || other.isFresh) return merge(local, other)
+        return merge(local.copy(assignments = emptyMap()), other)
     }
 
     private fun <K, V> pickEach(a: Map<K, V>, b: Map<K, V>, pick: (V, V) -> V): Map<K, V> {
@@ -43,11 +58,19 @@ object Sync {
         return out
     }
 
-    /** True if [merged] holds anything [before] didn't (used to say what a restore brought back). */
+    /** How many field notes [merged] has that [before] didn't (to say what a restore brought back). */
     fun restoredEntries(before: AppState, merged: AppState): Int {
         val had = before.entries.mapTo(HashSet()) { it.id }
         return merged.liveEntries.count { it.id !in had }
     }
+}
+
+/**
+ * Versions for last-writer-wins: a change must beat the copy it replaces even when the phone's
+ * clock is behind (or was set back), or the next sync would quietly undo it.
+ */
+object Versions {
+    fun next(previous: Long?, now: Long): Long = if (previous == null) now else maxOf(now, previous + 1)
 }
 
 /** The backup file format: plain JSON, readable by anyone, with your notes in your own words. */
@@ -55,7 +78,8 @@ object Codec {
     const val FORMAT = "mindfield-backup"
     const val VERSION = 1
 
-    fun encode(state: AppState, now: Long): String {
+    /** [pretty] lays the file out one item per line, for a backup file people may open. */
+    fun encode(state: AppState, now: Long, pretty: Boolean = false): String {
         val s = state.settings
         val root = JSONObject()
             .put("format", FORMAT)
@@ -80,6 +104,7 @@ object Codec {
             JSONArray(
                 state.assignments.entries.sortedBy { it.key }.map { (day, a) ->
                     JSONObject().put("day", day.toString()).put("concept", a.conceptId).put("at", a.assignedAt)
+                        .apply { if (a.engaged) put("engaged", true) }
                 },
             ),
         )
@@ -130,7 +155,7 @@ object Codec {
                 },
             ),
         )
-        return root.toString(1)
+        return if (pretty) root.toString(1) else root.toString()
     }
 
     /** Reads a backup. Unknown or damaged items are skipped rather than failing the whole restore. */
@@ -155,7 +180,7 @@ object Codec {
         root.optJSONArray("assignments").objects().forEach { o ->
             val day = o.day("day") ?: return@forEach
             val id = o.optString("concept").ifBlank { return@forEach }
-            assignments[day] = Assignment(id, o.optLong("at"))
+            assignments[day] = Assignment(id, o.optLong("at"), o.optBoolean("engaged"))
         }
         val entries = root.optJSONArray("entries").objects().mapNotNull { o ->
             val id = o.optString("id").ifBlank { return@mapNotNull null }

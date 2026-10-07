@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android's own backup and phone-to-phone transfer (Android 12 and later): the same as
+     backup_rules.xml, your journal only. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="mindfield.json" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="mindfield.json" />
+    </device-transfer>
+</data-extraction-rules>
