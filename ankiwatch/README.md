@@ -225,7 +225,8 @@ Never commit the keystore; this repository is public.
   offline on its twin (applied later, delivered shuffled) leave identical schedules; a whole
   offline session asks for as many answers per card as AnkiDroid does live; duplicated,
   out-of-order and unreadable grades; 200 offline grades from ten decks in one go; every
-  grade the phone is done with acknowledged to the watch, and none it isn't.
+  grade the phone is done with acknowledged to the watch before it is deleted, and none it
+  isn't; grades kept queued, and not applied twice, while the watch can't be told.
 - The downloadable APKs themselves: on a phone emulator the watch APK must be refused and
   the phone APK must install and keep running; on the Wear OS emulator the watch APK must.
   The install scripts are run against a fake adb (watch, phone, wrong address, a watch on

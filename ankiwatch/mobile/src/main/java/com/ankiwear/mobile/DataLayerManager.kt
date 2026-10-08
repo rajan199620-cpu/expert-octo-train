@@ -30,9 +30,14 @@ class DataLayerManager(context: Context) : AnswerQueue {
     private val messageClient: MessageClient = Wearable.getMessageClient(context)
     private val nodeClient: NodeClient = Wearable.getNodeClient(context)
     private val capabilityClient: CapabilityClient = Wearable.getCapabilityClient(context)
+    private val prefs = context.getSharedPreferences("data_layer", Context.MODE_PRIVATE)
 
     companion object {
         private const val TAG = "DataLayerManager"
+
+        private const val KEY_LAST_ACK_PRUNE = "last_ack_prune"
+        private const val DAY_MS = 24 * 60 * 60 * 1000L
+        private const val ACK_KEEP_MS = 14 * DAY_MS
 
         // Message paths
         const val PATH_REQUEST_DECKS = Wire.PATH_REQUEST_DECKS
@@ -206,22 +211,44 @@ class DataLayerManager(context: Context) : AnswerQueue {
     /**
      * Tells the watch which answers the phone is done with: urgent DataItems, so they go at
      * once and still arrive if the watch app isn't running. The watch deletes them once it
-     * has deleted the answers (see [Wire.PATH_ANSWER_ACK_PREFIX]). Best-effort: the
-     * deletions reach the watch eventually anyway.
+     * has deleted the answers (see [Wire.PATH_ANSWER_ACK_PREFIX]). Throws if the Data Layer
+     * refused one, so the answers stay queued until the watch can be told.
      */
     override suspend fun acknowledge(names: List<String>) {
         for (chunk in Wire.ackChunks(names)) {
-            try {
-                val request = PutDataMapRequest.create("${Wire.PATH_ANSWER_ACK_PREFIX}${UUID.randomUUID()}").apply {
-                    dataMap.putStringArray(Wire.KEY_ACKED, chunk.toTypedArray())
-                    dataMap.putLong(KEY_TIMESTAMP, System.currentTimeMillis())
-                }
-                request.setUrgent()
-                dataClient.putDataItem(request.asPutDataRequest()).await()
-                Log.d(TAG, "Acknowledged ${chunk.size} answers to the watch")
-            } catch (e: Exception) {
-                Log.w(TAG, "Couldn't acknowledge ${chunk.size} answers: ${e.message}")
+            val request = PutDataMapRequest.create("${Wire.PATH_ANSWER_ACK_PREFIX}${UUID.randomUUID()}").apply {
+                dataMap.putStringArray(Wire.KEY_ACKED, chunk.toTypedArray())
+                dataMap.putLong(KEY_TIMESTAMP, System.currentTimeMillis())
             }
+            request.setUrgent()
+            dataClient.putDataItem(request.asPutDataRequest()).await()
+            Log.d(TAG, "Acknowledged ${chunk.size} answers to the watch")
+        }
+        pruneAcks()
+    }
+
+    /**
+     * Deletes this phone's acks older than [ACK_KEEP_MS], at most once a day. The watch deletes
+     * each ack once it has used it, but its deletion may never reach the phone, and the acks
+     * would pile up here. Two weeks leaves the watch plenty of time to read one.
+     */
+    private suspend fun pruneAcks() {
+        val now = System.currentTimeMillis()
+        val last = prefs.getLong(KEY_LAST_ACK_PRUNE, 0L)
+        if (now in last until last + DAY_MS) return
+        prefs.edit().putLong(KEY_LAST_ACK_PRUNE, now).apply()
+        try {
+            val uri = Uri.Builder().scheme(PutDataRequest.WEAR_URI_SCHEME).path(Wire.PATH_ANSWER_ACK_PREFIX).build()
+            val buffer = dataClient.getDataItems(uri, DataClient.FILTER_PREFIX).await()
+            val old = try {
+                buffer.filter { DataMapItem.fromDataItem(it).dataMap.getLong(KEY_TIMESTAMP, 0L) < now - ACK_KEEP_MS }.map { it.uri }
+            } finally {
+                buffer.release()
+            }
+            for (item in old) dataClient.deleteDataItems(item).await()
+            if (old.isNotEmpty()) Log.d(TAG, "Pruned ${old.size} old acks")
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't prune old acks: ${e.message}")
         }
     }
 

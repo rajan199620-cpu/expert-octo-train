@@ -127,7 +127,9 @@ class AnswerSync(
         /** Why the run stopped early, leaving the rest queued; null when it got through. */
         val stopped: String?,
         /** The last answer, when it was given live: the watch is waiting for the next card. */
-        val replyTo: WatchAnswer?
+        val replyTo: WatchAnswer?,
+        /** Put into AnkiDroid but left queued, as the watch couldn't be told: acked next run. */
+        val unconfirmed: Int = 0
     ) {
         val outcome: String
             get() = buildList {
@@ -135,6 +137,7 @@ class AnswerSync(
                 if (duplicates > 0) add("$duplicates already in")
                 if (notApplied > 0) add("$notApplied not accepted (card gone?)")
                 if (malformed > 0) add("$malformed unreadable")
+                if (unconfirmed > 0) add("$unconfirmed not yet confirmed to the watch")
                 stopped?.let { add("stopped: $it; ${total - applied - duplicates - notApplied - malformed} still queued") }
             }.joinToString(", ")
     }
@@ -174,33 +177,43 @@ class AnswerSync(
         var malformed = 0
         var stopped: String? = null
         var done = 0
-        val handled = ArrayList<String>()
-        for ((uri, answer) in ordered) {
-            val result = try {
-                applier.apply(answer)
-            } catch (e: Exception) {
-                Log.e(TAG, "Stopped applying answers", e)
-                stopped = e.message ?: e.javaClass.simpleName
-                break
+        var unconfirmed = 0
+        // In batches, each acknowledged to the watch before its items are deleted here. The
+        // watch may hear of a deletion late or never, and would then show the grade as
+        // waiting for good: so no item goes before the watch has been told.
+        for (batch in ordered.chunked(BATCH)) {
+            val handled = ArrayList<Uri>()
+            for ((uri, answer) in batch) {
+                val result = try {
+                    applier.apply(answer)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Stopped applying answers", e)
+                    stopped = e.message ?: e.javaClass.simpleName
+                    break
+                }
+                when (result) {
+                    AnswerApplier.Result.APPLIED -> applied++
+                    AnswerApplier.Result.DUPLICATE -> duplicates++
+                    AnswerApplier.Result.NOT_APPLIED -> notApplied++
+                    AnswerApplier.Result.MALFORMED -> malformed++
+                }
+                handled += uri
             }
-            when (result) {
-                AnswerApplier.Result.APPLIED -> applied++
-                AnswerApplier.Result.DUPLICATE -> duplicates++
-                AnswerApplier.Result.NOT_APPLIED -> notApplied++
-                AnswerApplier.Result.MALFORMED -> malformed++
+            if (handled.isNotEmpty()) {
+                try {
+                    dataLayer.acknowledge(handled.mapNotNull { Wire.answerName(it.path) })
+                } catch (e: Exception) {
+                    // Leave the batch queued and stop: the next run finds these answers already
+                    // in (no later batch has pushed them out of the dedupe store), and acks and
+                    // deletes them then.
+                    Log.w(TAG, "Couldn't acknowledge ${handled.size} answers; left queued", e)
+                    unconfirmed = handled.size
+                    break
+                }
+                for (uri in handled) dataLayer.deleteAnswerItem(uri)
+                done += handled.size
             }
-            dataLayer.deleteAnswerItem(uri)
-            Wire.answerName(uri.path)?.let { handled.add(it) }
-            done++
-        }
-        // The watch hears of those deletions only when Android next syncs, which can take half
-        // an hour; until then it would show the grades as waiting. The ack tells it now.
-        if (handled.isNotEmpty()) {
-            try {
-                dataLayer.acknowledge(handled)
-            } catch (e: Exception) {
-                Log.w(TAG, "Couldn't acknowledge ${handled.size} answers", e)
-            }
+            if (stopped != null) break
         }
         val last = answers.lastOrNull()
         val report = Report(
@@ -211,7 +224,8 @@ class AnswerSync(
             notApplied = notApplied,
             malformed = malformed,
             stopped = stopped,
-            replyTo = last?.takeIf { stopped == null && done == answers.size && !it.offline && Wire.isAnswerEase(it.ease) }
+            replyTo = last?.takeIf { stopped == null && done == answers.size && !it.offline && Wire.isAnswerEase(it.ease) },
+            unconfirmed = unconfirmed
         )
         if (log) exchangeLog.outcome(report.outcome)
         Log.d(TAG, "Applied ${answers.size} queued answers: ${report.outcome}")
@@ -237,6 +251,9 @@ class AnswerSync(
     companion object {
         private const val TAG = "AnswerSync"
         private val LOCK = Mutex()
+
+        /** Answers applied per ack: well inside the dedupe store, should the app die mid-batch. */
+        private const val BATCH = 100
     }
 }
 
@@ -248,6 +265,9 @@ interface AnswerQueue {
     suspend fun pendingAnswers(): List<QueuedAnswer>
     suspend fun deleteAnswerItem(uri: Uri)
 
-    /** Tells the watch the phone is done with the answers [names] ([Wire.answerName]). */
+    /**
+     * Tells the watch the phone is done with the answers [names] ([Wire.answerName]), before
+     * their items are deleted.
+     */
     suspend fun acknowledge(names: List<String>)
 }

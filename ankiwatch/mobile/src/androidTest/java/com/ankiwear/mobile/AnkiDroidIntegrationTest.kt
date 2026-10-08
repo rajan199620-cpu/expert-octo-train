@@ -423,11 +423,17 @@ class AnkiDroidIntegrationTest {
         val items = items.toMutableList()
         /** Each ack sent to the watch: the names of the answers it covers. */
         val acks = ArrayList<List<String>>()
+        /** The watch can't be told: acknowledge throws, as the Data Layer would. */
+        var failAcks = false
         override suspend fun pendingAnswers(): List<QueuedAnswer> = items.toList()
         override suspend fun deleteAnswerItem(uri: Uri) {
+            // The watch may never hear of a deletion: it must have been told first.
+            val name = Wire.answerName(uri.path)!!
+            check(acks.any { name in it }) { "deleted $name before acknowledging it" }
             items.removeAll { it.first == uri }
         }
         override suspend fun acknowledge(names: List<String>) {
+            if (failAcks) throw IllegalStateException("Wearable API unavailable")
             acks += names.toList()
         }
     }
@@ -637,6 +643,7 @@ class AnkiDroidIntegrationTest {
             val acked = ArrayList<String>()
             override suspend fun pendingAnswers(): List<QueuedAnswer> = throw IllegalStateException("Wearable API unavailable")
             override suspend fun deleteAnswerItem(uri: Uri) {
+                check(Wire.answerName(uri.path)!! in acked) { "deleted $uri before acknowledging it" }
                 deleted += uri
             }
             override suspend fun acknowledge(names: List<String>) {
@@ -675,8 +682,34 @@ class AnkiDroidIntegrationTest {
         assertEquals(200, report.applied)
         assertTrue("${perAnswer}ms per grade", perAnswer < 500)
         for (deck in decks) assertEquals(0, counts(deck).first)
-        // All 200 acknowledged together, each once.
-        assertEquals(200, queue.acks.flatten().size)
+        // All 200 acknowledged, each once, a hundred at a time (each batch before its deletes).
+        assertEquals(listOf(100, 100), queue.acks.map { it.size })
         assertEquals(names(recorded), queue.acks.flatten().toSet())
+    }
+
+    @Test
+    fun gradesStayQueuedUntilTheWatchCanBeTold() {
+        val deck = deckWith("AnkiWatch unconfirmed ${System.nanoTime()}", listOf("u {{c1::one}}", "v {{c1::two}}"))
+        helper.setSelectedDeck(deck.id)
+        val (a, b) = helper.getScheduledCards(deck.id, limit = 10)
+        val items = listOf(queued(a.noteId, 0, 4, deck.id, seq = 1), queued(b.noteId, 0, 4, deck.id, seq = 2, offline = false))
+        val queue = FakeQueue(items)
+        queue.failAcks = true
+        val first = sync(queue)
+        // In AnkiDroid, but kept queued (and no next card sent) while the watch can't be told.
+        assertEquals(2, first.applied)
+        assertEquals(2, first.unconfirmed)
+        assertEquals(null, first.replyTo)
+        assertEquals(2, queue.items.size)
+        assertEquals(Triple(0, 0, 0), counts(deck))
+
+        queue.failAcks = false
+        val second = sync(queue)
+        assertEquals(0, second.applied) // not twice
+        assertEquals(2, second.duplicates)
+        assertEquals(0, second.unconfirmed)
+        assertEquals(b.noteId, second.replyTo?.noteId)
+        assertTrue(queue.items.isEmpty())
+        assertEquals(names(items), queue.acks.flatten().toSet())
     }
 }
