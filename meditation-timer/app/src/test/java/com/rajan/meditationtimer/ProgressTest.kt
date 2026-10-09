@@ -42,7 +42,7 @@ class ProgressTest {
         assertEquals("your average over the 14 days since you started  ·  this week 16 min a day", Progress.windowLine(r))
         assertEquals(
             "2 weeks in, at 16 min a day: above the 13 a day of a trial in which beginners' attention, memory and " +
-                "mood improved after 8 weeks, though not yet at 4. 6 weeks to go to match it.",
+                "mood improved after 8 weeks, though not yet at 4. 6 more weeks would match it.",
             Progress.runLine(r),
         )
         assertEquals(
@@ -95,7 +95,7 @@ class ProgressTest {
         val eight = report(daily(60, 20))
         assertEquals(20.0, eight.runPerDay, 1e-9)
         assertTrue(Progress.runLine(eight).startsWith("8 weeks in, at 20 min a day: past the 8 weeks of 13 a day"))
-        assertTrue(Progress.runLine(report(daily(50, 14))).endsWith("1 week to go to match it."))
+        assertTrue(Progress.runLine(report(daily(50, 14))).endsWith("1 more week would match it."))
         assertTrue(Progress.runLine(report(daily(3, 15))).startsWith("3 days in, at 15 min a day"))
     }
 

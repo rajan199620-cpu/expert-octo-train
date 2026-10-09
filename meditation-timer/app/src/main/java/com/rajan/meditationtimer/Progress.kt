@@ -175,7 +175,7 @@ object Progress {
             weeks >= TRIAL_WEEKS -> "$pace: past the 8 weeks of 13 a day $trial."
             else -> {
                 val left = TRIAL_WEEKS - weeks
-                "$pace: above the 13 a day $trial. ${if (left == 1) "1 week" else "$left weeks"} to go to match it."
+                "$pace: above the 13 a day $trial. ${if (left == 1) "1 more week" else "$left more weeks"} would match it."
             }
         }
     }

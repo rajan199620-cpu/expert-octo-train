@@ -471,7 +471,7 @@ class ScreensTest {
         compose.onNodeWithText("this week 16 min a day", substring = true).assertExists()
         // 41 days unbroken by a full week off, 665 minutes in all.
         compose.onNodeWithText("5 weeks in, at 16 min a day: above the 13 a day", substring = true).assertExists()
-        compose.onNodeWithText("3 weeks to go to match it", substring = true).assertExists()
+        compose.onNodeWithText("3 more weeks would match it", substring = true).assertExists()
         compose.onNodeWithText("11 hours in all. Next: 22.6 hours", substring = true).assertExists()
         compose.onNodeWithText("You sat on 24 of the last 28 days", substring = true).assertExists()
         compose.onNodeWithContentDescription("Your 4-week level over the last", substring = true).assertExists()
