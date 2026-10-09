@@ -68,7 +68,11 @@ import kotlin.random.Random
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w411dp-h891dp-xxhdpi")
 class ScreensTest {
-    @get:Rule
+    // Outermost, so a hang anywhere in a test (setup and teardown too) is caught.
+    @get:Rule(order = 0)
+    val hang = HangDump()
+
+    @get:Rule(order = 1)
     val compose = createEmptyComposeRule()
 
     private val app: Application = ApplicationProvider.getApplicationContext()

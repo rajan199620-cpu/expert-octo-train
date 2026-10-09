@@ -19,6 +19,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -42,6 +43,9 @@ import kotlin.random.Random
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ServiceStressTest {
+    @get:Rule
+    val hang = HangDump()
+
     private val app: Application = ApplicationProvider.getApplicationContext()
     private var startId = 0
 
