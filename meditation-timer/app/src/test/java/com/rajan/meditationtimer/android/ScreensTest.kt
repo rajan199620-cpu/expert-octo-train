@@ -791,8 +791,11 @@ class ScreensTest {
         assertEquals(BreathService::class.java.name, shadowOf(app).nextStoppedService?.component?.className)
         compose.onNodeWithText("Start").assertExists()
 
-        // Stopped from the notification: the screen closes the exercise too.
+        // Stopped from the notification: the screen closes the exercise too. Scrolling to Start
+        // animates, and performScrollTo waits for it forever if the clock isn't running.
+        compose.mainClock.autoAdvance = true
         compose.onNodeWithText("Start").performScrollTo().performClick()
+        compose.mainClock.autoAdvance = false
         compose.mainClock.advanceTimeBy(500)
         val intent = shadowOf(app).nextStartedService!!
         val service = Robolectric.buildService(BreathService::class.java, intent).create().startCommand(0, 1)
