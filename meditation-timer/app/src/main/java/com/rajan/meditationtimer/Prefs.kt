@@ -1,0 +1,294 @@
+package com.rajan.meditationtimer
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.core.content.edit
+
+/** Remembers the last-used settings so the next sit is one tap away. */
+class Prefs(context: Context) {
+    private val app = context.applicationContext
+    private val sp = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
+    val timerConfig: SessionConfig
+        get() = SessionConfig(
+            durationSec = sp.getInt(KEY_DURATION, 20) * 60,
+            openingBellSec = sp.getInt(KEY_OPENING, 5),
+            closingBellSec = sp.getInt(KEY_CLOSING, 10),
+            bellAtEnd = sp.getBoolean(KEY_END, false),
+            intervalMin = sp.getInt(KEY_INTERVAL, 0),
+            settleSec = sp.getInt(KEY_SETTLE, Settle.DEFAULT_SEC),
+        )
+    val volume: Float get() = sp.getFloat(KEY_VOLUME, 0.6f)
+    val alertMode: AlertMode get() = enumOrDefault(sp.getString(KEY_ALERT, null), AlertMode.BELL)
+    val autoDnd: Boolean get() = sp.getBoolean(KEY_DND, false)
+
+    fun saveTimer(config: SessionConfig, volume: Float, alertMode: AlertMode, autoDnd: Boolean) {
+        sp.edit {
+            putInt(KEY_DURATION, config.durationSec / 60)
+            putInt(KEY_OPENING, config.openingBellSec)
+            putInt(KEY_CLOSING, config.closingBellSec)
+            putBoolean(KEY_END, config.bellAtEnd)
+            putInt(KEY_INTERVAL, config.intervalMin)
+            putInt(KEY_SETTLE, config.settleSec)
+            putFloat(KEY_VOLUME, volume)
+            putString(KEY_ALERT, alertMode.name)
+            putBoolean(KEY_DND, autoDnd)
+        }
+    }
+
+    /** Background sound during a sit, its own volume, and the user's recording if they chose one. */
+    var ambience: Ambience
+        get() = enumOrDefault(sp.getString(KEY_AMBIENCE, null), Ambience.OFF)
+        set(value) = sp.edit { putString(KEY_AMBIENCE, value.name) }
+    var ambienceVolume: Float
+        get() = sp.getFloat(KEY_AMBIENCE_VOLUME, 0.5f)
+        set(value) = sp.edit { putFloat(KEY_AMBIENCE_VOLUME, value.coerceIn(0f, 1f)) }
+    /** Content URI of "My recording", with a persisted read grant; stays on this phone only. */
+    var ambienceUri: String?
+        get() = sp.getString(KEY_AMBIENCE_URI, null)
+        set(value) = sp.edit { putString(KEY_AMBIENCE_URI, value) }
+    var ambienceName: String?
+        get() = sp.getString(KEY_AMBIENCE_NAME, null)
+        set(value) = sp.edit { putString(KEY_AMBIENCE_NAME, value) }
+
+    /** Everything that shapes your usual sit, for the backup file. */
+    fun exportSettings(): Map<String, String> = buildMap {
+        for (key in listOf(KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET, KEY_WEEKLY_GOAL, KEY_SETTLE)) {
+            if (sp.contains(key)) put(key, sp.getInt(key, 0).toString())
+        }
+        for (key in listOf(KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON, KEY_DAILY_READING)) {
+            if (sp.contains(key)) put(key, sp.getBoolean(key, false).toString())
+        }
+        if (sp.contains(KEY_REMINDER_TIME)) put(KEY_REMINDER_TIME, sp.getInt(KEY_REMINDER_TIME, 0).toString())
+        // The settings line is "key=value;..." so free text is URL-encoded.
+        sp.getString(KEY_REMINDER_CUE, null)?.let { put(KEY_REMINDER_CUE, java.net.URLEncoder.encode(it, "UTF-8")) }
+        if (sp.contains(KEY_VOLUME)) put(KEY_VOLUME, sp.getFloat(KEY_VOLUME, 0.6f).toString())
+        if (sp.contains(KEY_AMBIENCE_VOLUME)) put(KEY_AMBIENCE_VOLUME, sp.getFloat(KEY_AMBIENCE_VOLUME, 0.5f).toString())
+        // A recording lives on one phone, so a backup carries the built-in sounds only.
+        ambience.takeIf { it != Ambience.CUSTOM && sp.contains(KEY_AMBIENCE) }?.let { put(KEY_AMBIENCE, it.name) }
+        for (key in listOf(KEY_ALERT, KEY_BREATH_PATTERN, KEY_BREATH_CUE)) sp.getString(key, null)?.let { put(key, it) }
+        // Attention-check scores are history, not settings, but they live here: without this line a
+        // reinstall or a new phone would lose the weeks of scores the check exists to compare.
+        sp.getString(KEY_BREATH_CHECKS, null)?.takeIf { it.isNotBlank() }?.let { put(KEY_BREATH_CHECKS, java.net.URLEncoder.encode(it, "UTF-8")) }
+    }
+
+    /**
+     * Restores settings from a backup; unknown, malformed or out-of-range values are ignored, so
+     * a damaged file can't set a 0-minute sit or a 0-bead mala. A restored reminder is armed.
+     */
+    fun importSettings(settings: Map<String, String>) {
+        sp.edit {
+            for ((key, value) in settings) {
+                when (key) {
+                    KEY_DURATION, KEY_OPENING, KEY_CLOSING, KEY_INTERVAL, KEY_BREATH_MINUTES, KEY_MALA_TARGET ->
+                        value.toIntOrNull()?.takeIf { it in IMPORT_RANGES.getValue(key) }?.let { putInt(key, it) }
+                    KEY_WEEKLY_GOAL -> value.toIntOrNull()?.takeIf { it in 0..7 }?.let { putInt(key, it) }
+                    KEY_SETTLE -> value.toIntOrNull()?.takeIf { it in Settle.CHOICES_SEC }?.let { putInt(key, it) }
+                    KEY_END, KEY_DND, KEY_COUNT, KEY_CHECK_INS, KEY_REMINDER_ON, KEY_DAILY_READING ->
+                        value.toBooleanStrictOrNull()?.let { putBoolean(key, it) }
+                    KEY_REMINDER_TIME -> value.toIntOrNull()?.takeIf { it in 0 until 24 * 60 }?.let { putInt(key, it) }
+                    KEY_REMINDER_CUE -> runCatching { java.net.URLDecoder.decode(value, "UTF-8") }.getOrNull()?.let { putString(key, it.limitText(60)) }
+                    KEY_VOLUME, KEY_AMBIENCE_VOLUME -> value.toFloatOrNull()?.takeIf { !it.isNaN() }?.let { putFloat(key, it.coerceIn(0f, 1f)) }
+                    KEY_AMBIENCE -> Ambience.entries.firstOrNull { it.name == value && it != Ambience.CUSTOM }?.let { putString(key, it.name) }
+                    KEY_ALERT -> AlertMode.entries.firstOrNull { it.name == value }?.let { putString(key, it.name) }
+                    KEY_BREATH_PATTERN -> BreathPattern.ALL.firstOrNull { it.name == value }?.let { putString(key, it.name) }
+                    KEY_BREATH_CUE -> BreathCue.entries.firstOrNull { it.name == value }?.let { putString(key, it.name) }
+                    // Added to the scores already here (the same check twice counts once), never replacing them.
+                    KEY_BREATH_CHECKS -> putMergedChecks(value)
+                }
+            }
+        }
+        version.value++
+        // The reminder only fires once its alarm is set, and the widget shows the usual length.
+        ReminderScheduler.schedule(app)
+        SitWidget.refresh(app)
+    }
+
+    var breathPattern: String
+        get() = sp.getString(KEY_BREATH_PATTERN, BreathPattern.ALL.first().name)!!
+        set(value) = sp.edit { putString(KEY_BREATH_PATTERN, value) }
+
+    var breathMinutes: Int
+        get() = sp.getInt(KEY_BREATH_MINUTES, 3)
+        set(value) = sp.edit { putInt(KEY_BREATH_MINUTES, value) }
+
+    /** How paced breaths reach you, in the Breathe tab and the settle-in breaths of a sit. */
+    var breathCue: BreathCue
+        get() = enumOrDefault(sp.getString(KEY_BREATH_CUE, null), BreathCue.SOUND)
+        set(value) = sp.edit { putString(KEY_BREATH_CUE, value.name) }
+
+    /** Breath-count attention checks, oldest first. */
+    val breathChecks: List<BreathCheck>
+        get() = sp.getString(KEY_BREATH_CHECKS, "")!!.lines().mapNotNull(BreathCheck::decode)
+
+    fun addBreathCheck(check: BreathCheck) {
+        sp.edit { putString(KEY_BREATH_CHECKS, encodeChecks(breathChecks + check)) }
+    }
+
+    /**
+     * Adds the attention-check scores in a backup's settings line to those here, without touching
+     * any setting: the Drive sync does this every time, so two phones keep each other's scores.
+     */
+    fun mergeBreathChecks(settings: Map<String, String>) {
+        val value = settings[KEY_BREATH_CHECKS] ?: return
+        sp.edit { putMergedChecks(value) }
+    }
+
+    private fun SharedPreferences.Editor.putMergedChecks(encoded: String) {
+        val text = runCatching { java.net.URLDecoder.decode(encoded, "UTF-8") }.getOrNull() ?: return
+        val restored = text.lines().mapNotNull(BreathCheck::decode)
+            .filter { it.atMs > 0 && it.result.total in 1..MAX_CHECK_ROUNDS && it.result.correct in 0..it.result.total }
+        if (restored.isEmpty()) return
+        putString(KEY_BREATH_CHECKS, encodeChecks((breathChecks + restored).distinctBy { it.atMs }.sortedBy { it.atMs }))
+    }
+
+    private fun encodeChecks(checks: List<BreathCheck>) = checks.joinToString("\n") { it.encode() }
+
+    /**
+     * Tap or press a volume key during a sit each time you notice the mind has wandered. Off
+     * unless you turn it on: it keeps the screen awake for the whole sit, and many people would
+     * rather just notice and return than also tap.
+     */
+    var countDistractions: Boolean
+        get() = sp.getBoolean(KEY_COUNT, false)
+        set(value) = sp.edit { putBoolean(KEY_COUNT, value) }
+
+    /** Days a week you mean to sit (Monday–Sunday); 0 = no goal. 5 leaves room for a busy week. */
+    var weeklyGoal: Int
+        get() = sp.getInt(KEY_WEEKLY_GOAL, 5).coerceIn(0, 7)
+        set(value) = sp.edit { putInt(KEY_WEEKLY_GOAL, value.coerceIn(0, 7)) }
+
+    /** One-tap "how do you feel?" just before and just after each sit. */
+    var checkIns: Boolean
+        get() = sp.getBoolean(KEY_CHECK_INS, true)
+        set(value) = sp.edit { putBoolean(KEY_CHECK_INS, value) }
+
+    /** Daily reminder, anchored to a habit you already have ("After morning tea"). */
+    var reminder: Reminder
+        get() = Reminder(
+            enabled = sp.getBoolean(KEY_REMINDER_ON, false),
+            minuteOfDay = sp.getInt(KEY_REMINDER_TIME, 7 * 60),
+            cue = sp.getString(KEY_REMINDER_CUE, "") ?: "",
+        )
+        set(value) = sp.edit {
+            putBoolean(KEY_REMINDER_ON, value.enabled)
+            putInt(KEY_REMINDER_TIME, value.minuteOfDay)
+            putString(KEY_REMINDER_CUE, value.cue)
+        }
+
+    /** "No thanks" on the restore-history card: someone new to the app has nothing to restore. */
+    var restoreHintHidden: Boolean
+        get() = sp.getBoolean(KEY_RESTORE_HINT_HIDDEN, false)
+        set(value) = sp.edit { putBoolean(KEY_RESTORE_HINT_HIDDEN, value) }
+
+    /** Set once the notification question has been asked on the way into a sit, so it's asked once. */
+    var sitNotificationsAsked: Boolean
+        get() = sp.getBoolean(KEY_SIT_NOTIFICATIONS_ASKED, false)
+        set(value) = sp.edit { putBoolean(KEY_SIT_NOTIFICATIONS_ASKED, value) }
+
+    /** Set once the first-run welcome is finished or skipped; it never shows by itself again. */
+    var welcomeDone: Boolean
+        get() = sp.getBoolean(KEY_WELCOME_DONE, false)
+        set(value) = sp.edit { putBoolean(KEY_WELCOME_DONE, value) }
+
+    /** Every Begin saves the sit's settings, so this is true for anyone who has used the app. */
+    val everSaved: Boolean get() = sp.contains(KEY_DURATION)
+
+    /** The welcome's first answer: a length to start at and a weekly goal to match. */
+    fun applyExperience(experience: Experience) {
+        saveTimer(timerConfig.copy(durationSec = experience.minutes * 60), volume, alertMode, autoDnd)
+        weeklyGoal = experience.weeklyGoal
+    }
+
+    /** Today's lesson and one common problem, first thing when the app opens each day. */
+    var dailyReading: Boolean
+        get() = sp.getBoolean(KEY_DAILY_READING, true)
+        set(value) = sp.edit { putBoolean(KEY_DAILY_READING, value) }
+
+    /** The last day the reading was read through or skipped. */
+    var readingSeenOn: String?
+        get() = sp.getString(KEY_READING_SEEN, null)
+        set(value) = sp.edit { putString(KEY_READING_SEEN, value) }
+
+    /** The common problem the reading showed last, and on which day, so each new day brings the next. */
+    var readingProblem: Int
+        get() = sp.getInt(KEY_READING_PROBLEM, -1)
+        set(value) = sp.edit { putInt(KEY_READING_PROBLEM, value) }
+    var readingProblemDay: String?
+        get() = sp.getString(KEY_READING_PROBLEM_DAY, null)
+        set(value) = sp.edit { putString(KEY_READING_PROBLEM_DAY, value) }
+
+    /** The day the "on this day" note was put away: it stays hidden until tomorrow. */
+    var memoryHiddenOn: String?
+        get() = sp.getString(KEY_MEMORY_HIDDEN, null)
+        set(value) = sp.edit { putString(KEY_MEMORY_HIDDEN, value) }
+
+    /** The last month whose "your month in review is ready" nudge was opened or put away. */
+    var recapSeen: String?
+        get() = sp.getString(KEY_RECAP_SEEN, null)
+        set(value) = sp.edit { putString(KEY_RECAP_SEEN, value) }
+
+    var mala: MalaCount
+        get() = MalaCount(sp.getInt(KEY_MALA_BEADS, 0), sp.getInt(KEY_MALA_ROUNDS, 0), sp.getInt(KEY_MALA_TARGET, 108))
+        set(value) = sp.edit {
+            putInt(KEY_MALA_BEADS, value.beads)
+            putInt(KEY_MALA_ROUNDS, value.rounds)
+            putInt(KEY_MALA_TARGET, value.target)
+        }
+
+    private inline fun <reified T : Enum<T>> enumOrDefault(name: String?, default: T): T =
+        enumValues<T>().firstOrNull { it.name == name } ?: default
+
+    companion object {
+        /** Bumped when settings are restored, so open screens reload them. */
+        val version = kotlinx.coroutines.flow.MutableStateFlow(0)
+
+        /** What a restored number may be: the app's own choices, with room to spare, never 0 minutes. */
+        private val IMPORT_RANGES = mapOf(
+            KEY_DURATION to 1..180,
+            KEY_OPENING to 0..300,
+            KEY_CLOSING to 0..600,
+            KEY_INTERVAL to 0..60,
+            KEY_BREATH_MINUTES to 1..60,
+            KEY_MALA_TARGET to 1..1008,
+        )
+
+        private const val KEY_WEEKLY_GOAL = "weekly_goal"
+        private const val KEY_SIT_NOTIFICATIONS_ASKED = "sit_notifications_asked"
+        private const val KEY_RESTORE_HINT_HIDDEN = "restore_hint_hidden"
+        private const val KEY_WELCOME_DONE = "welcome_done"
+        private const val KEY_SETTLE = "settle_sec"
+        private const val KEY_DAILY_READING = "daily_reading"
+        private const val KEY_READING_SEEN = "reading_seen_on"
+        private const val KEY_READING_PROBLEM = "reading_problem"
+        private const val KEY_READING_PROBLEM_DAY = "reading_problem_day"
+        private const val KEY_AMBIENCE = "ambience"
+        private const val KEY_AMBIENCE_VOLUME = "ambience_volume"
+        private const val KEY_AMBIENCE_URI = "ambience_uri"
+        private const val KEY_AMBIENCE_NAME = "ambience_name"
+        private const val KEY_MEMORY_HIDDEN = "memory_hidden_on"
+        private const val KEY_RECAP_SEEN = "recap_seen"
+        private const val KEY_DURATION = "duration_min"
+        private const val KEY_OPENING = "opening_bell_sec"
+        private const val KEY_CLOSING = "closing_bell_sec"
+        private const val KEY_END = "bell_at_end"
+        private const val KEY_INTERVAL = "interval_min"
+        private const val KEY_VOLUME = "volume"
+        private const val KEY_ALERT = "alert_mode"
+        private const val KEY_DND = "auto_dnd"
+        private const val KEY_BREATH_PATTERN = "breath_pattern"
+        private const val KEY_BREATH_MINUTES = "breath_minutes"
+        private const val KEY_BREATH_CUE = "breath_cue"
+        private const val KEY_MALA_BEADS = "mala_beads"
+        private const val KEY_MALA_ROUNDS = "mala_rounds"
+        private const val KEY_MALA_TARGET = "mala_target"
+        private const val KEY_BREATH_CHECKS = "breath_checks"
+        /** Far more rounds of nine than five minutes of breathing allows: anything above is a damaged file. */
+        private const val MAX_CHECK_ROUNDS = 1_000
+        private const val KEY_COUNT = "count_distractions"
+        private const val KEY_CHECK_INS = "check_ins"
+        private const val KEY_REMINDER_ON = "reminder_on"
+        private const val KEY_REMINDER_TIME = "reminder_minute"
+        private const val KEY_REMINDER_CUE = "reminder_cue"
+    }
+}
