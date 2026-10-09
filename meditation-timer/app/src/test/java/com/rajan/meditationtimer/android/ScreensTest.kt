@@ -648,11 +648,14 @@ class ScreensTest {
         launch()
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.waitForIdle()
-        // Overview: the week against the goal, the month, and two headline numbers.
+        // Overview: the week against the goal and where you stand, then further down the month and
+        // two headline numbers.
         compose.onNodeWithText("of 5 days this week", substring = true).assertExists()
-        compose.onNodeWithText("in review", substring = true).assertExists()
+        compose.onNodeWithText("Where you stand").assertExists()
         compose.onNodeWithText("What a sit changes").assertDoesNotExist() // that's in Trends
         shot("07-history-overview")
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("in review", substring = true))
+        compose.onNodeWithText("in review", substring = true).assertExists()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("calmer after a sit", substring = true))
         shot("08-history-overview-bottom")
         // A highlight opens Trends, at the top even though Overview was scrolled down to reach it.
