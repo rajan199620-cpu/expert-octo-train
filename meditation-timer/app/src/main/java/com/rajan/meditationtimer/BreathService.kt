@@ -20,14 +20,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Paces a Breathe-tab exercise: one tap in, two taps out, a long buzz to hold. It runs as a
- * foreground service with a partial wake lock, like a sit, so the taps carry on with the phone
- * locked and your eyes closed; a screen-bound timer froze the moment the screen went off. The
- * closing bell rings from here too, on time, rather than from the screen whenever it is next unlocked.
+ * Paces a Breathe-tab exercise with your eyes closed: a breath you can hear (see [BreathVoice]),
+ * or one tap in, two taps out and a long buzz to hold, or both. It runs as a foreground service
+ * with a partial wake lock, like a sit, so the pacing carries on with the phone locked; a
+ * screen-bound timer froze the moment the screen went off. The closing bell rings from here too,
+ * on time, rather than from the screen whenever it is next unlocked.
  */
 class BreathService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var buzzer: BreathBuzzer
+    private lateinit var sound: BreathSoundPlayer
     private lateinit var chime: Chime
     private var wakeLock: PowerManager.WakeLock? = null
     /** SystemClock.elapsedRealtime() when the exercise being paced began; 0 when none. */
@@ -36,6 +38,7 @@ class BreathService : Service() {
     override fun onCreate() {
         super.onCreate()
         buzzer = BreathBuzzer(this)
+        sound = BreathSoundPlayer(this)
         chime = Chime(this)
     }
 
@@ -47,6 +50,7 @@ class BreathService : Service() {
                 intent.getStringExtra(EXTRA_PATTERN).orEmpty(),
                 intent.getIntExtra(EXTRA_MINUTES, 3),
                 intent.getLongExtra(EXTRA_STARTED_AT, SystemClock.elapsedRealtime()),
+                BreathCue.entries.firstOrNull { it.name == intent.getStringExtra(EXTRA_CUE) } ?: BreathCue.VIBRATION,
             )
             ACTION_STOP -> {
                 _cancelled.value = startedAt
@@ -58,12 +62,12 @@ class BreathService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun begin(patternName: String, minutes: Int, at: Long) {
+    private fun begin(patternName: String, minutes: Int, at: Long, cue: BreathCue) {
         val pattern = BreathPattern.ALL.firstOrNull { it.name == patternName } ?: BreathPattern.ALL.first()
         val totalMs = pattern.breathsFor(minutes) * pattern.cycleMs
         val elapsed = SystemClock.elapsedRealtime() - at
         // Every startForegroundService call must be answered with startForeground, even a repeat.
-        val notification = buildNotification(pattern, totalMs - elapsed)
+        val notification = buildNotification(pattern, totalMs - elapsed, cue)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
@@ -78,9 +82,14 @@ class BreathService : Service() {
         pacing = at
         if (elapsed >= totalMs) return shutdown()
         acquireWakeLock(totalMs - elapsed + WAKE_LOCK_SLACK_MS)
-        // The service starts a moment after Start is tapped, so the first cue is allowed a little grace.
-        for ((cueAt, kind) in BreathBuzz.cues(pattern, totalMs)) {
-            if (cueAt + START_GRACE_MS >= elapsed) handler.postDelayed({ buzzer.play(kind) }, (cueAt - elapsed).coerceAtLeast(0))
+        val voiced = cue.sound && sound.start(pattern, at, totalMs, takeFocus = true)
+        // Taps when asked for, and whenever the breath can't be heard: no sound possible (a call),
+        // or the media volume all the way down. Never a breath with no cue at all.
+        if (cue.vibration || !voiced || sound.silenced) {
+            // The service starts a moment after Start is tapped, so the first cue is allowed a little grace.
+            for ((cueAt, kind) in BreathBuzz.cues(pattern, totalMs)) {
+                if (cueAt + START_GRACE_MS >= elapsed) handler.postDelayed({ buzzer.play(kind) }, (cueAt - elapsed).coerceAtLeast(0))
+            }
         }
         handler.postDelayed({ finish() }, totalMs - elapsed)
     }
@@ -89,6 +98,7 @@ class BreathService : Service() {
     private fun finish() {
         val at = startedAt
         handler.removeCallbacksAndMessages(null)
+        sound.stop()
         chime.ring(Prefs(this).volume, AlertMode.BELL)
         _ended.value = at
         startedAt = 0L
@@ -102,6 +112,7 @@ class BreathService : Service() {
 
     private fun shutdown() {
         handler.removeCallbacksAndMessages(null)
+        sound.stop()
         startedAt = 0L
         pacing = 0L
         releaseWakeLock()
@@ -112,6 +123,7 @@ class BreathService : Service() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         if (pacing == startedAt) pacing = 0L
+        sound.stopNow()
         chime.release()
         releaseWakeLock()
         super.onDestroy()
@@ -129,7 +141,7 @@ class BreathService : Service() {
         wakeLock = null
     }
 
-    private fun buildNotification(pattern: BreathPattern, remainingMs: Long): Notification {
+    private fun buildNotification(pattern: BreathPattern, remainingMs: Long, cue: BreathCue): Notification {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, getString(R.string.breath_channel_name), NotificationManager.IMPORTANCE_LOW).apply {
@@ -150,7 +162,7 @@ class BreathService : Service() {
         val builder = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_meditation)
             .setContentTitle(getString(R.string.breath_notification_title, pattern.name))
-            .setContentText(getString(R.string.breath_notification_text))
+            .setContentText(getString(if (cue == BreathCue.VIBRATION) R.string.breath_notification_text else R.string.breath_notification_sound_text))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(open)
@@ -171,6 +183,7 @@ class BreathService : Service() {
         private const val EXTRA_PATTERN = "pattern"
         private const val EXTRA_MINUTES = "minutes"
         private const val EXTRA_STARTED_AT = "started_at"
+        private const val EXTRA_CUE = "cue"
         private const val CHANNEL_ID = "breathe"
         /** Not 2: that is the daily reminder's, which would replace this one or be cleared by it. */
         private const val NOTIFICATION_ID = 3
@@ -200,7 +213,7 @@ class BreathService : Service() {
          */
         fun ringsEnd(startedAt: Long): Boolean = pacing == startedAt || _ended.value == startedAt
 
-        fun start(context: Context, pattern: BreathPattern, minutes: Int, startedAt: Long) {
+        fun start(context: Context, pattern: BreathPattern, minutes: Int, startedAt: Long, cue: BreathCue) {
             // Already pacing it: the screen was only rebuilt (rotation, dark mode at night).
             if (pacing == startedAt) return
             _cancelled.value = 0L
@@ -211,7 +224,8 @@ class BreathService : Service() {
                         .setAction(ACTION_START)
                         .putExtra(EXTRA_PATTERN, pattern.name)
                         .putExtra(EXTRA_MINUTES, minutes)
-                        .putExtra(EXTRA_STARTED_AT, startedAt),
+                        .putExtra(EXTRA_STARTED_AT, startedAt)
+                        .putExtra(EXTRA_CUE, cue.name),
                 )
             } catch (e: IllegalStateException) {
                 // Android 12+ refuses a start from the background; the screen still paces by sight.

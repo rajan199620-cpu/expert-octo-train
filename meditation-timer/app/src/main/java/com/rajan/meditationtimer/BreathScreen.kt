@@ -3,6 +3,7 @@ package com.rajan.meditationtimer
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.media.AudioManager
 import android.os.Build
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
@@ -60,6 +61,7 @@ import kotlinx.coroutines.flow.first
 fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
     var patternName by rememberSaveable { mutableStateOf(prefs.breathPattern) }
     var minutes by rememberSaveable { mutableIntStateOf(prefs.breathMinutes) }
+    var cue by rememberSaveable { mutableStateOf(prefs.breathCue) }
     // SystemClock.elapsedRealtime() when started; 0 while on the setup screen.
     var startedAt by rememberSaveable { mutableLongStateOf(0L) }
     var justFinished by rememberSaveable { mutableStateOf(false) }
@@ -92,6 +94,7 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
         BreathingSession(
             pattern = pattern,
             minutes = minutes,
+            cue = cue,
             startedAt = startedAt,
             onStop = { startedAt = 0L },
             onFinished = {
@@ -114,7 +117,11 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
         Text("Breathe", Modifier.fillMaxWidth(), style = MaterialTheme.typography.headlineMedium)
         Text(
             "A few minutes of paced breathing settles the body before a sit. You can follow it with " +
-                "your eyes closed: one tap means breathe in, two taps breathe out, a long buzz hold.",
+                "your eyes closed: " + when (cue) {
+                    BreathCue.SOUND -> "breathe in with the sound of the in-breath, out with the out-breath; silence means hold."
+                    BreathCue.VIBRATION -> "one tap means breathe in, two taps breathe out, a long buzz hold."
+                    BreathCue.BOTH -> "the sound of the breath, with one tap in, two taps out and a long buzz to hold."
+                },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -129,6 +136,8 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
             }
             SectionLabel("Length", if (pattern.breathsPerRound > 1) "Rounded up to finish on a full round" else "Rounded up to finish on a full breath")
             ChipRow(listOf(1, 3, 5, 10), minutes, { "$it min" }) { minutes = it }
+            SectionLabel("Cue", cueSubtitle(cue))
+            ChipRow(BreathCue.entries, cue, { it.label }) { cue = it }
         }
         if (justFinished) {
             Pill("✦ Nicely done. Ready to sit?")
@@ -136,6 +145,7 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
         GradientButton("Start", onClick = {
             prefs.breathPattern = pattern.name
             prefs.breathMinutes = minutes
+            prefs.breathCue = cue
             justFinished = false
             startedAt = SystemClock.elapsedRealtime()
         })
@@ -145,6 +155,13 @@ fun BreathTab(prefs: Prefs, onDone: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
     }
+}
+
+/** What each cue is, said where it's chosen (here and with the settle-in breaths). */
+fun cueSubtitle(cue: BreathCue): String = when (cue) {
+    BreathCue.SOUND -> "A soft breath in and out, from the speaker or earphones; volume keys set the level"
+    BreathCue.VIBRATION -> "One tap in, two taps out, a long buzz to hold: silent, for a shared room"
+    BreathCue.BOTH -> "The sound of the breath and the taps together"
 }
 
 private const val CHECK_MINUTES = 5
@@ -287,6 +304,7 @@ private fun CheckKey(label: String, modifier: Modifier, onPress: () -> Unit) {
 private fun BreathingSession(
     pattern: BreathPattern,
     minutes: Int,
+    cue: BreathCue,
     startedAt: Long,
     onStop: () -> Unit,
     onFinished: () -> Unit,
@@ -310,13 +328,13 @@ private fun BreathingSession(
     val done = elapsed >= totalMs
     LaunchedEffect(done) { if (done) onFinished() }
 
-    // One tap to breathe in, two to breathe out, a long buzz to hold, so each phase can be told
-    // apart with eyes closed. The taps come from a service so they carry on with the phone locked;
-    // it stops when this screen goes (Stop, Back), but not when it is only rebuilt, nor at the end,
-    // where it rings the closing bell and stops itself.
+    // The breath sound, or one tap to breathe in, two to breathe out and a long buzz to hold, so each
+    // phase can be told apart with eyes closed. They come from a service so they carry on with the
+    // phone locked; it stops when this screen goes (Stop, Back), but not when it is only rebuilt,
+    // nor at the end, where it rings the closing bell and stops itself.
     val context = LocalContext.current
     LaunchedEffect(startedAt) {
-        BreathService.start(context, pattern, minutes, startedAt)
+        BreathService.start(context, pattern, minutes, startedAt, cue)
         // Stopped from the notification: close the exercise here too.
         BreathService.cancelled.first { it == startedAt }
         onStop()
@@ -325,6 +343,24 @@ private fun BreathingSession(
         onDispose {
             val over = SystemClock.elapsedRealtime() - startedAt >= totalMs
             if (!over && context.findActivity()?.isChangingConfigurations != true) BreathService.stop(context)
+        }
+    }
+
+    // The breath plays as media: while it does, the volume keys set its level rather than the bell's.
+    var silenced by remember { mutableStateOf(false) }
+    if (cue.sound) {
+        DisposableEffect(Unit) {
+            val activity = context.findActivity()
+            val before = activity?.volumeControlStream
+            activity?.volumeControlStream = AudioManager.STREAM_MUSIC
+            onDispose { if (activity != null && before != null) activity.volumeControlStream = before }
+        }
+        LaunchedEffect(Unit) {
+            val audio = context.getSystemService(AudioManager::class.java)
+            while (true) {
+                silenced = runCatching { audio?.getStreamVolume(AudioManager.STREAM_MUSIC) == 0 }.getOrDefault(false)
+                kotlinx.coroutines.delay(1_000)
+            }
         }
     }
 
@@ -348,6 +384,13 @@ private fun BreathingSession(
             "${pattern.name}  ·  ${formatClock(totalMs - elapsed)} left",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (silenced) {
+            Text(
+                "Media volume is off: press volume up to hear the breath.",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
         TextButton(onClick = onStop) { Text("Stop", color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
@@ -375,7 +418,7 @@ private fun BreathOrb(expansion: Float, modifier: Modifier = Modifier) {
     }
 }
 
-private tailrec fun Context.findActivity(): Activity? = when (this) {
+internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null

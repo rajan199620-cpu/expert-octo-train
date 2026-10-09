@@ -59,8 +59,10 @@ always serves the newest build (CI republishes it on every push).
 
 **Settle-in breaths and standing up**
 - **Settle-in breaths** (Bells & breaths; on by default, 1 minute; Off/30 s/1/2/5 min): slow
-  breathing, 4 s in and 6 s out: **one tap to breathe in, two taps to breathe out**. The
-  opening bell rings as it ends and the sit uses the natural breath.
+  breathing, 4 s in and 6 s out, paced by **the sound of a breath** or **one tap to breathe in,
+  two taps to breathe out**, or both (the same *Breath cue* as the Breathe tab). A
+  vibrate-only sit always gets taps, never sound. The opening bell rings as it ends and the sit
+  uses the natural breath.
 - **Why taps you count, not soft and strong buzzes:**
   - People recognise vibrations by rhythm 93% of the time, far better than by strength
     (Brown, Brewster & Purchase 2005–06). Apple Watch's Breathe app also uses one tap to breathe
@@ -78,12 +80,33 @@ always serves the newest build (CI republishes it on every push).
   reduces it (Sheikh et al. 2022). Long cross-legged sits can press a nerve (Afacan et al.
   2025). So the finish screen says how to stand.
 
-**How you compare** (History → Overview)
-- **The headline:** how often you sat in the last 4 weeks against 1,120 experienced
-  meditators (Vieten et al. 2018: 41% daily, 30% more than weekly, 11% weekly, 18% less), as
-  a percentile. In the top band it shows "Top 41%", since no survey can rank people within it.
-- **A tap shows:** Indian adults (Pew Research Center 2021: 32% daily, 48% weekly) and new
-  meditation-app users (Adams et al. 2026: half do 16 minutes or less in their first month).
+**Where you stand** (History → Overview): worked out afresh from your sits every day, so it
+rises when you sit more or longer and eases when you sit less. (The old headline, a frequency
+percentile, stopped moving once you sat daily: two weeks of 16 minutes and ten years of an hour
+both read "Top 41%".) No made-up score; every number is your own timed minutes:
+- **Your level:** minutes a day over the last 4 weeks, days off counted as 0, with a line of how
+  it has moved over up to 12 weeks, and this week against it: *Building*, *Steady* or *Easing
+  off* (more than about 15% either way).
+- **Your run:** how long you've kept going, against a trial in which beginners doing 13 minutes a
+  day had better attention, memory and mood after 8 weeks, not yet at 4 (Basso et al. 2019). A
+  missed day or two doesn't end a run (a missed day didn't slow habit-forming either: Lally et al.
+  2010); a full week without a sit does.
+- **Your hours:** lifetime practice, the next marker and roughly when you'd reach it at this
+  pace: 22.6 h (an 8-week MBSR course's practice: Hölzel et al. 2011), 160 h (lifetime practice
+  that went with clearly lower distress and higher life satisfaction among 1,668 meditators:
+  Bowles et al. 2022, corrected 2023), 1,095 h (their average), 12,000 h (where the yogis studied
+  by Davidson's lab began: Goleman & Davidson 2017).
+- **How often you sit** against 1,120 experienced meditators (Vieten et al. 2018: 41% daily,
+  30% more than weekly, 11% weekly, 18% less).
+- **A tap shows** the research behind each landmark: 27 min a day (MBSR participants' average),
+  about 30 min 6 days a week (typical course homework, two-thirds of what's asked: Parsons et al.
+  2017), 35–65 min a day (what experienced meditators needed for clear gains over two months,
+  and frequency mattered more than length: Bowles & Van Dam 2025), weeks 2 and 4 of MBSR
+  (Baer et al. 2012), day 66 of a habit (Lally et al. 2010); plus Indian adults (Pew 2021) and
+  new app users (Adams et al. 2026).
+- **Why landmarks, not promises:** dose findings are mixed. Across 203 trials longer programmes
+  weren't clearly better for distress (Strohmaier 2020), and in one app trial whether more
+  minutes meant less distress depended on how it was measured (Goldberg et al. 2024).
 
 **Sit** (the core)
 - **Opening bell** a few seconds after you tap Begin (default 5 s), so you know it is running
@@ -94,10 +117,22 @@ always serves the newest build (CI republishes it on every push).
 - Optional **auto Do Not Disturb** for the sit (Priority mode, restored afterwards).
 - Optional one-tap **reflection** afterwards (Restless … Deep, plus a line of notes).
 
-**Breathe**: paced breathing (Coherent 5.5/5.5, Box 4-4-4-4, 4-7-8) with an expanding circle
-and a vibration at each phase change (one tap in, two taps out, a long buzz to hold), so you can
-follow it eyes-closed. The taps come from a small foreground service, so they carry on with the
-phone locked; its notification has a *Stop* button. The closing bell rings from the service too,
+**Breathe**: paced breathing (Coherent 5.5/5.5, Box 4-4-4-4, 4-7-8) with an expanding circle,
+paced so you can follow it eyes-closed by the **cue** you choose:
+- **Breath sound** (the default): a soft in-breath and out-breath, made for each rhythm so every
+  breath lasts exactly its phase. The in-breath is a brighter hiss that rises as it fills, the
+  out-breath lower and fading; holds are silent. Bhramari's out-breath is a hum to hum along
+  with; Nadi Shodhana's breaths come from the nostril's side in earphones. A synthetic
+  breath-like sound helped people keep to a target breathing pace, better than a musical cue
+  at faster rates (Marentakis et al., CHI 2021). It plays as media: the volume keys set its
+  level, earphones keep it private, and music in other apps pauses for it.
+- **Vibration**: one tap in, two taps out, a long buzz to hold. Silent, for a shared room, and
+  for anyone bothered by breathing sounds (a recognised misophonia trigger).
+- **Both.** And when the sound can't be heard (a call on, or media volume all the way down at
+  the start), the taps come anyway: never a breath with no cue.
+
+The pacing comes from a small foreground service, so it carries on with the phone locked; its
+notification has a *Stop* button. The closing bell rings from the service too,
 on time, even with the phone locked (it used to wait for the screen and ring late, on unlock), and
 the daily reminder holds off until the exercise is over.
 
@@ -248,8 +283,11 @@ since 31 August 2026. Build locally with the Android SDK installed: `./gradlew a
 
 - **Screen off / locked:** the session runs in a foreground service holding a partial
   wake lock, so bells stay on time for long sits. A notification shows a live countdown with
-  *Pause* and *End* actions. Breathe-tab exercises get the same treatment, so their taps keep
-  time with the screen off.
+  *Pause* and *End* actions. Breathe-tab exercises get the same treatment, so their breath sound
+  and taps keep time with the screen off.
+- **Breath sound in step:** `BreathVoice` (pure Kotlin) draws each breath in filtered noise from
+  the exercise clock, and `BreathSoundPlayer` streams it, checking the speaker's own timestamp
+  every half second so the sound stays with the breath on screen, Bluetooth delay included.
 - **Pause and a safe End**: Pause freezes the clock and holds the bells (Do Not Disturb lifts
   while paused, so calls get through). End doesn't quit at once: the sit pauses and shows
   "Ending in 5…" with *Keep sitting*, so a stray tap costs nothing. Early ends of a minute or

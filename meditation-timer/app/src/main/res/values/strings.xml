@@ -23,5 +23,6 @@
     <string name="breath_channel_name">Paced breathing</string>
     <string name="breath_notification_title">Breathing · %1$s</string>
     <string name="breath_notification_text">One tap in, two taps out, a long buzz to hold</string>
+    <string name="breath_notification_sound_text">Follow the sound of the breath; silence means hold</string>
     <string name="breath_stop">Stop</string>
 </resources>

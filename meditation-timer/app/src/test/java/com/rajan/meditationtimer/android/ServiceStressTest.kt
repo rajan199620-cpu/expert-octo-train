@@ -82,7 +82,7 @@ class ServiceStressTest {
         val box = BreathPattern.ALL.first { it.name == "Box" }
         val played = BreathBuzz.played.get()
         val first = SystemClock.elapsedRealtime()
-        BreathService.start(app, box, 1, first)
+        BreathService.start(app, box, 1, first, BreathCue.VIBRATION)
         val s = Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
         // No screen here at all: everything comes from the service.
         val seen = mutableListOf<BreathBuzz.Kind?>()
@@ -95,7 +95,7 @@ class ServiceStressTest {
         assertEquals("one cue per phase, none doubled", 8, BreathBuzz.played.get() - played)
         assertTrue("holds the CPU so taps stay on time", ShadowPowerManager.getLatestWakeLock().isHeld)
         // The screen rebuilt (rotation) asks again with the same start: no restart, no extra tap.
-        BreathService.start(app, box, 1, first)
+        BreathService.start(app, box, 1, first, BreathCue.VIBRATION)
         assertNull(shadowOf(app).nextStartedService)
         // 1 minute of box rounds up to 4 whole breaths (64 s) = 16 phases.
         idle(60)
@@ -111,7 +111,7 @@ class ServiceStressTest {
 
         // Stop in the notification: quiet at once, and the screen is told.
         val started = SystemClock.elapsedRealtime()
-        BreathService.start(app, box, 5, started)
+        BreathService.start(app, box, 5, started, BreathCue.VIBRATION)
         val t = Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
         idle(10)
         val before = BreathBuzz.played.get()
@@ -135,7 +135,7 @@ class ServiceStressTest {
 
         // Both showing at once: the exercise's notification has an id of its own.
         val started = SystemClock.elapsedRealtime()
-        BreathService.start(app, box, 3, started)
+        BreathService.start(app, box, 3, started, BreathCue.VIBRATION)
         val s = Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
         idle(5)
         assertTrue(BreathService.busy)
@@ -154,6 +154,110 @@ class ServiceStressTest {
         assertEquals(started, BreathService.ended.value)
         ReminderScheduler.fire(app)
         assertEquals("reminders", notifications.allNotifications.single().channelId)
+    }
+
+    /** Waits (in real time: the sound runs on its own thread) for every breath-sound thread to end. */
+    private fun breathSoundEnds() {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (BreathSoundPlayer.live.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        assertEquals("breath sound left playing", 0, BreathSoundPlayer.live.get())
+    }
+
+    @Test
+    fun `the breath sound paces a Breathe exercise instead of taps, and goes quiet at the end`() {
+        val audio = app.getSystemService(AudioManager::class.java)
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, 7, 0)
+        val box = BreathPattern.ALL.first { it.name == "Box" }
+        val played = BreathBuzz.played.get()
+        val starts = BreathSoundPlayer.starts.get()
+        val first = SystemClock.elapsedRealtime()
+        BreathService.start(app, box, 1, first, BreathCue.SOUND)
+        val s = Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        idle(10)
+        assertEquals("heard, not felt", played, BreathBuzz.played.get())
+        assertEquals(starts + 1, BreathSoundPlayer.starts.get())
+        val deadline = System.currentTimeMillis() + 2_000
+        while (BreathSoundPlayer.live.get() == 0 && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        assertEquals("one sound thread, playing", 1, BreathSoundPlayer.live.get())
+        // Music in other apps pauses for it, as for any guided audio.
+        assertEquals(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT, shadowOf(audio).lastAudioFocusRequest.durationHint)
+        val notification = shadowOf(app.getSystemService(NotificationManager::class.java)).allNotifications.last { it.channelId == "breathe" }
+        assertEquals(app.getString(R.string.breath_notification_sound_text), notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT).toString())
+        // Rotation: the same exercise asked for again starts nothing new.
+        BreathService.start(app, box, 1, first, BreathCue.SOUND)
+        assertNull(shadowOf(app).nextStartedService)
+        idle(60)
+        assertTrue("stops itself at the end", shadowOf(s.get()).isStoppedBySelf)
+        assertEquals(first, BreathService.ended.value)
+        breathSoundEnds()
+        assertEquals(played, BreathBuzz.played.get())
+
+        // Both: the sound and the taps together.
+        val both = SystemClock.elapsedRealtime()
+        BreathService.start(app, box, 1, both, BreathCue.BOTH)
+        Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        idle(70)
+        assertEquals(16, BreathBuzz.played.get() - played)
+        assertEquals(starts + 2, BreathSoundPlayer.starts.get())
+        breathSoundEnds()
+    }
+
+    @Test
+    fun `when the breath can't be heard, taps pace it instead - never no cue at all`() {
+        val audio = app.getSystemService(AudioManager::class.java)
+        val box = BreathPattern.ALL.first { it.name == "Box" }
+        // A call is on: no audio focus, so no sound, and taps instead.
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, 7, 0)
+        shadowOf(audio).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+        var played = BreathBuzz.played.get()
+        val starts = BreathSoundPlayer.starts.get()
+        BreathService.start(app, box, 1, SystemClock.elapsedRealtime(), BreathCue.SOUND)
+        Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        idle(70)
+        assertEquals(starts, BreathSoundPlayer.starts.get())
+        assertEquals(16, BreathBuzz.played.get() - played)
+        // Media volume all the way down: the sound is still started (turn it up and it's there),
+        // and the taps come too.
+        shadowOf(audio).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+        played = BreathBuzz.played.get()
+        BreathService.start(app, box, 1, SystemClock.elapsedRealtime(), BreathCue.SOUND)
+        Robolectric.buildService(BreathService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        idle(70)
+        assertEquals(starts + 1, BreathSoundPlayer.starts.get())
+        assertEquals(16, BreathBuzz.played.get() - played)
+        breathSoundEnds()
+    }
+
+    @Test
+    fun `settle-in breaths are heard in a sit with bells, stop while paused, and are taps in a vibrate-only sit`() {
+        app.getSystemService(AudioManager::class.java).setStreamVolume(AudioManager.STREAM_MUSIC, 7, 0)
+        Prefs(app).breathCue = BreathCue.SOUND
+        val starts = BreathSoundPlayer.starts.get()
+        Chime.breathTicks.set(0)
+        MeditationService.start(app, SessionConfig(10 * 60, 5, 10, true, 0, settleSec = 60), 0.5f, AlertMode.BELL, false)
+        val s = Robolectric.buildService(MeditationService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        idle(20)
+        assertEquals("heard, not tapped", 0, Chime.breathTicks.get())
+        assertEquals(starts + 1, BreathSoundPlayer.starts.get())
+        s.deliver(MeditationService::pause)
+        breathSoundEnds()
+        s.deliver(MeditationService::resume)
+        idle(1)
+        assertEquals("picks up mid-breath on resume", starts + 2, BreathSoundPlayer.starts.get())
+        idle(45)
+        breathSoundEnds()
+        idle(600)
+        assertEquals(0, Chime.breathTicks.get())
+        assertEquals(600, records.single().actualSec)
+
+        // Vibrate-only means silent: the same settings give taps and no sound.
+        SessionRepository.reset()
+        MeditationService.start(app, SessionConfig(5 * 60, 5, 10, true, 0, settleSec = 60), 0.5f, AlertMode.VIBRATE, false)
+        Robolectric.buildService(MeditationService::class.java, shadowOf(app).nextStartedService).create().startCommand(0, ++startId)
+        idle(70)
+        assertEquals(12, Chime.breathTicks.get())
+        assertEquals(starts + 2, BreathSoundPlayer.starts.get())
     }
 
     @Test
@@ -490,6 +594,7 @@ class ServiceStressTest {
         prefs.reminder = Reminder(true, 6 * 60 + 45, "After tea; brush=teeth & 🧘 50% done")
         prefs.countDistractions = false
         prefs.checkIns = false
+        prefs.breathCue = BreathCue.BOTH
         val exported = prefs.exportSettings()
         val line = History.settingsLine(exported)
         app.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().clear().commit()
@@ -497,6 +602,7 @@ class ServiceStressTest {
         assertEquals(Reminder(true, 405, "After tea; brush=teeth & 🧘 50% done"), prefs.reminder)
         assertEquals(false, prefs.countDistractions)
         assertEquals(false, prefs.checkIns)
+        assertEquals(BreathCue.BOTH, prefs.breathCue)
         // A restored reminder is armed at once, not only after the next reboot or app update.
         val alarms = shadowOf(app.getSystemService(AlarmManager::class.java))
         assertNotNull("restored reminder armed", alarms.peekNextScheduledAlarm())
@@ -504,7 +610,7 @@ class ServiceStressTest {
         prefs.importSettings(
             mapOf(
                 "duration_min" to "0", "mala_target" to "0", "alert_mode" to "LOUD", "interval_min" to "-5",
-                "breath_pattern" to "Nope", "opening_bell_sec" to "99999", "breath_minutes" to "0",
+                "breath_pattern" to "Nope", "opening_bell_sec" to "99999", "breath_minutes" to "0", "breath_cue" to "LOUD",
             ),
         )
         assertEquals(20 * 60, prefs.timerConfig.durationSec)
@@ -514,6 +620,7 @@ class ServiceStressTest {
         assertEquals(5, prefs.timerConfig.openingBellSec)
         assertEquals(BreathPattern.ALL.first().name, prefs.breathPattern)
         assertEquals(3, prefs.breathMinutes)
+        assertEquals(BreathCue.BOTH, prefs.breathCue)
         // Good values in the same file still come through.
         prefs.importSettings(mapOf("duration_min" to "45", "mala_target" to "54", "alert_mode" to "VIBRATE"))
         assertEquals(45 * 60, prefs.timerConfig.durationSec)

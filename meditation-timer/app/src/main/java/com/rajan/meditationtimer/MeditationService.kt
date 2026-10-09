@@ -28,6 +28,8 @@ class MeditationService : Service() {
     private lateinit var chime: Chime
     private lateinit var dnd: Dnd
     private lateinit var ambient: AmbientPlayer
+    private lateinit var breathSound: BreathSoundPlayer
+    private var breathCue = BreathCue.SOUND
     private var wakeLock: PowerManager.WakeLock? = null
     private var startedAtWallMs = 0L
     private var volume = 0.6f
@@ -44,6 +46,7 @@ class MeditationService : Service() {
         chime = Chime(this)
         dnd = Dnd(this)
         ambient = AmbientPlayer(this)
+        breathSound = BreathSoundPlayer(this)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -76,6 +79,7 @@ class MeditationService : Service() {
         this.volume = volume
         this.alertMode = alertMode
         this.autoDnd = autoDnd
+        breathCue = Prefs(this).breathCue
         before = SessionRepository.pendingBefore.also { SessionRepository.pendingBefore = 0 }
         startedAtWallMs = System.currentTimeMillis()
         val session = SessionState.Running(SessionClock(SystemClock.elapsedRealtime()), config)
@@ -95,20 +99,29 @@ class MeditationService : Service() {
     /** Posts the bells still to come and the finish, measured from where the clock stands now. */
     private fun schedule(session: SessionState.Running) {
         handler.removeCallbacksAndMessages(null)
-        val elapsed = session.clock.elapsedAt(SystemClock.elapsedRealtime())
+        val now = SystemClock.elapsedRealtime()
+        val elapsed = session.clock.elapsedAt(now)
         val config = session.config
         acquireWakeLock(config.durationMs - elapsed + WAKE_LOCK_SLACK_MS)
         for (cue in BellSchedule.cues(config)) {
             if (cue.atMs > elapsed) handler.postDelayed({ ambient.duck(); chime.ring(volume, alertMode) }, cue.atMs - elapsed)
         }
-        // Settle-in breaths: one tap at each in-breath, two at each out-breath, until the opening bell.
-        // (A few ms pass between Begin and here, so the very first cue is allowed a little grace.)
+        // Settle-in breaths until the opening bell: a breath to hear, or one tap at each in-breath and
+        // two at each out-breath, or both. A vibrate-only sit is never given sound.
         val settleMs = Settle.lengthMs(config)
-        for ((at, phase) in Settle.ticks(settleMs)) {
-            if (at + TICK_GRACE_MS >= elapsed) handler.postDelayed({ chime.breathTick(phase) }, (at - elapsed).coerceAtLeast(0))
+        val voiced = elapsed < settleMs && breathCue.sound && alertMode != AlertMode.VIBRATE &&
+            // Alongside the sit's own background sound, not in place of it: no audio focus taken.
+            breathSound.start(Settle.PATTERN, now - elapsed, settleMs, takeFocus = false)
+        // It falls silent by itself as the settle-in ends; this frees it on the dot, whatever the audio clock says.
+        if (voiced) handler.postDelayed({ breathSound.stop() }, settleMs - elapsed + SETTLE_SOUND_TAIL_MS)
+        if (!voiced || breathCue.vibration || breathSound.silenced) {
+            // (A few ms pass between Begin and here, so the very first cue is allowed a little grace.)
+            for ((at, phase) in Settle.ticks(settleMs)) {
+                if (at + TICK_GRACE_MS >= elapsed) handler.postDelayed({ chime.breathTick(phase) }, (at - elapsed).coerceAtLeast(0))
+            }
+            // Resumed part-way through a breath: cue it now, rather than leave you guessing until the next.
+            Settle.rejoin(elapsed, settleMs, TICK_GRACE_MS)?.let { phase -> handler.post { chime.breathTick(phase) } }
         }
-        // Resumed part-way through a breath: cue it now, rather than leave you guessing until the next.
-        Settle.rejoin(elapsed, settleMs, TICK_GRACE_MS)?.let { phase -> handler.post { chime.breathTick(phase) } }
         // Posted after the END bell (same delay, FIFO) so that bell is already ringing here.
         handler.postDelayed({ complete(config) }, (config.durationMs - elapsed).coerceAtLeast(0))
     }
@@ -118,6 +131,7 @@ class MeditationService : Service() {
         val session = running ?: return null
         if (session.clock.isPaused) return session
         handler.removeCallbacksAndMessages(null)
+        breathSound.stop()
         releaseWakeLock()
         dnd.restore()
         ambient.pause()
@@ -156,6 +170,7 @@ class MeditationService : Service() {
         SessionRepository.finished(config, startedAtWallMs, config.durationSec, before, noticedCount())
         // The sound eases away under the final bell rather than stopping with it.
         ambient.stop(AmbientPlayer.END_FADE_MS)
+        breathSound.stop()
         dnd.restore()
         stopForeground(STOP_FOREGROUND_REMOVE)
         // Let a ringing bell fade out naturally before tearing down.
@@ -186,6 +201,7 @@ class MeditationService : Service() {
     private fun shutdown() {
         handler.removeCallbacksAndMessages(null)
         ambient.stop(1_500)
+        breathSound.stop()
         chime.release()
         dnd.restore()
         releaseWakeLock()
@@ -196,6 +212,7 @@ class MeditationService : Service() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         ambient.stop(1_500)
+        breathSound.stopNow()
         chime.release()
         dnd.restore()
         releaseWakeLock()
@@ -296,6 +313,7 @@ class MeditationService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val WAKE_LOCK_SLACK_MS = 60_000L
         private const val TICK_GRACE_MS = 250L
+        private const val SETTLE_SOUND_TAIL_MS = 300L
 
         fun start(context: Context, config: SessionConfig, volume: Float, alertMode: AlertMode, autoDnd: Boolean) {
             val intent = Intent(context, MeditationService::class.java)

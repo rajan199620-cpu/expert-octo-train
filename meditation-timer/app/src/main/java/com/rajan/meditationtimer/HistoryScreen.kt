@@ -41,6 +41,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -95,6 +106,7 @@ fun HistoryTab() {
     val weekGoal = remember(activeDays, goal) { History.weekGoal(activeDays, today, goal) }
     val streak = remember(activeDays) { History.streak(activeDays, today) }
     val standing = remember(records) { Compare.standing(records, zone, today) }
+    val progress = remember(records) { Progress.report(records, zone, today) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showBackup by rememberSaveable { mutableStateOf(false) }
 
@@ -125,7 +137,7 @@ fun HistoryTab() {
                 when (tab) {
                     0 -> {
                         item { WeekCard(week, summary, weekGoal, streak) }
-                        standing?.let { item { CompareCard(it) } }
+                        progress?.let { item { StandingCard(it, standing) } }
                         item { MonthRecapCard(records, zone, today) }
                         // Headlines from Trends, each a door to the full chart (as Apple Fitness does).
                         if (checkIns != null || noticing.isNotEmpty()) {
@@ -190,39 +202,132 @@ fun HistoryTab() {
 }
 
 /**
- * Where your practice stands among other people who meditate, from published surveys. The
- * headline is the strictest comparison (experienced meditators); tap for the others and sources.
+ * Where your practice stands now, worked out afresh from your sits every day: your level (minutes a
+ * day over 4 weeks, with this week against it), how long you've kept it up and your lifetime
+ * hours, each set against what published studies used or found. It rises when you sit more or
+ * longer and eases when you sit less. Tap for the research behind each landmark and how you
+ * compare with other meditators.
  */
 @Composable
-private fun CompareCard(standing: Standing) {
+private fun StandingCard(report: ProgressReport, standing: Standing?) {
     var open by rememberSaveable { mutableStateOf(false) }
     val primary = MaterialTheme.colorScheme.primary
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     GlassCard(Modifier.fillMaxWidth().clickable { open = !open }) {
-        Text("How you compare", style = MaterialTheme.typography.labelMedium, color = primary)
-        Text(Compare.headline(standing.experienced), style = MaterialTheme.typography.displaySmall, color = primary)
-        Text(
-            "among ${Compare.EXPERIENCED.who}, by how often you sit",
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Text(Compare.summary(standing), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Where you stand", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = primary)
+            report.trend?.let {
+                Pill(
+                    when (it) {
+                        Trend.BUILDING -> "↑ ${it.label}"
+                        Trend.STEADY -> "→ ${it.label}"
+                        Trend.EASING -> "↓ ${it.label}"
+                    },
+                )
+            }
+        }
+        Text(Progress.headline(report), style = MaterialTheme.typography.displaySmall, color = primary)
+        Text(Progress.windowLine(report), style = MaterialTheme.typography.bodySmall, color = muted)
+        if (report.curve.size >= Progress.WEEK) LevelChart(report.curve)
+        Text(Progress.runLine(report), style = MaterialTheme.typography.bodyMedium)
+        Text(Progress.hoursLine(report), style = MaterialTheme.typography.bodyMedium, color = muted)
+        standing?.let { Text(Compare.summary(it), style = MaterialTheme.typography.bodyMedium, color = muted) }
         if (open) {
             HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+            Text("What the research found", style = MaterialTheme.typography.titleSmall)
+            for (dose in Progress.DOSES) CompareLine(dose.finding, dose.source)
+            CompareLine(
+                "Weeks 2 and 4: on an 8-week MBSR course, mindfulness had risen measurably by week 2, and stress fell by week 4.",
+                "Baer et al. · Journal of Clinical Psychology · 2012",
+            )
+            CompareLine(Progress.habitLine(report), "Lally et al. · European Journal of Social Psychology · 2010")
+            CompareLine(
+                "160 hours of lifetime practice went with clearly lower distress and higher life satisfaction among 1,668 " +
+                    "meditators, whose average was 1,095 hours. The yogis studied by Richard Davidson's lab had 12,000 to 62,000.",
+                "Bowles et al. · Mindfulness · 2022 (corrected 2023) · Goleman & Davidson · Altered Traits · 2017",
+            )
+            Text("How you compare", style = MaterialTheme.typography.titleSmall)
             CompareLine(
                 "Experienced meditators: 41% sit daily, 30% more than weekly, 11% weekly, 18% less often.",
                 "${Compare.EXPERIENCED.detail} · ${Compare.EXPERIENCED.source}",
             )
-            CompareLine(Compare.indiaLine(standing), "${Compare.INDIA.detail}; includes religious meditation · ${Compare.INDIA.source}")
-            CompareLine(Compare.appLine(standing), "Logged use by 655 new users of the Medito app · ${Compare.APP_SOURCE}")
+            standing?.let {
+                CompareLine(Compare.indiaLine(it), "${Compare.INDIA.detail}; includes religious meditation · ${Compare.INDIA.source}")
+                CompareLine(Compare.appLine(it), "Logged use by 655 new users of the Medito app · ${Compare.APP_SOURCE}")
+            }
             Text(
-                "Survey answers are people's own reports, which tend to flatter, so treat the percentiles as rough.",
+                "Studies describe groups, not you, and they don't promise a result at a dose: across 203 trials, longer " +
+                    "programmes weren't clearly better for distress (Strohmaier, Mindfulness, 2020). Your minutes are " +
+                    "timed; the studies' were mostly self-reported, which tends to flatter.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = muted,
                 fontStyle = FontStyle.Italic,
             )
         }
-        Text(if (open) "Less" else "Sources and more comparisons  ›", style = MaterialTheme.typography.labelMedium, color = primary)
+        Text(if (open) "Less" else "The research behind it  ›", style = MaterialTheme.typography.labelMedium, color = primary)
     }
 }
+
+/**
+ * Your 4-week level as it stood each day, up to 12 weeks back: one line, its area a faint wash,
+ * today's value as a dot, and the trial's 13 minutes a day as a dashed threshold.
+ */
+@Composable
+private fun LevelChart(curve: List<Double>) {
+    val line = MaterialTheme.colorScheme.primary
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val measurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = muted)
+    val trial = Progress.TRIAL.minutesPerDay
+    val top = maxOf(curve.max() * 1.15, trial * 1.4)
+    val described = "Your 4-week level over the last ${curve.size} days: from ${Progress.minutes(curve.first())} " +
+        "to ${Progress.minutes(curve.last())} a day. Dashed line: the trial's 13 minutes a day."
+    Column(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = described }) {
+        Canvas(Modifier.fillMaxWidth().height(76.dp)) {
+            val inset = 6.dp.toPx()
+            val w = size.width
+            val bottom = size.height - inset
+            fun x(i: Int) = inset + (w - 2 * inset) * i / (curve.size - 1).coerceAtLeast(1)
+            fun y(v: Double) = bottom - (bottom - inset) * (v / top).toFloat()
+            // The threshold, dashed, with its label sitting just above it at the left.
+            val ty = y(trial)
+            drawLine(
+                muted.copy(alpha = 0.6f), Offset(0f, ty), Offset(w, ty),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
+            )
+            val label = measurer.measure("13 min a day · trial", labelStyle)
+            drawText(label, topLeft = Offset(0f, (ty - label.size.height - 2.dp.toPx()).coerceAtLeast(0f)))
+            val path = Path().apply {
+                moveTo(x(0), y(curve[0]))
+                for (i in 1..curve.lastIndex) lineTo(x(i), y(curve[i]))
+            }
+            val area = Path().apply {
+                addPath(path)
+                lineTo(x(curve.lastIndex), bottom)
+                lineTo(x(0), bottom)
+                close()
+            }
+            drawPath(area, line.copy(alpha = 0.10f))
+            drawPath(path, line, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            val end = Offset(x(curve.lastIndex), y(curve.last()))
+            drawCircle(ChartRing, radius = 6.dp.toPx(), center = end)
+            drawCircle(line, radius = 4.dp.toPx(), center = end)
+        }
+        Row(Modifier.fillMaxWidth()) {
+            Text(
+                if (curve.size >= Progress.CURVE_DAYS) "12 weeks ago" else "${curve.size - 1} days ago",
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.labelSmall,
+                color = muted,
+            )
+            Text("Today", style = MaterialTheme.typography.labelSmall, color = muted)
+        }
+    }
+}
+
+/** The night sky behind the cards, so the dot's ring parts it from the line. */
+private val ChartRing = Color(0xFF1A1B36)
 
 @Composable
 private fun CompareLine(text: String, source: String) {

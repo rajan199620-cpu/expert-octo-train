@@ -459,21 +459,28 @@ class ScreensTest {
 
     @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
     @Test
-    fun `history compares your practice with published surveys, sources a tap away`() {
+    fun `history says where you stand - your level, your run and your hours against the research, sources a tap away`() {
         seed()
         launch()
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("How you compare").assertExists()
-        // 24 of the last 28 days in the seeded history: the daily band.
-        compose.onNodeWithText("Top 41%").assertExists()
+        compose.onNodeWithText("Where you stand").assertExists()
+        // The seeded history: 459 minutes over the last 28 days, 113 of them this week.
+        compose.onNodeWithText("16 min a day").assertExists()
+        compose.onNodeWithText("→ Steady").assertExists()
+        compose.onNodeWithText("this week 16 min a day", substring = true).assertExists()
+        // 41 days unbroken by a full week off, 665 minutes in all.
+        compose.onNodeWithText("5 weeks in, at 16 min a day: above the 13 a day", substring = true).assertExists()
+        compose.onNodeWithText("3 weeks to go to match it", substring = true).assertExists()
+        compose.onNodeWithText("11 hours in all. Next: 22.6 hours", substring = true).assertExists()
         compose.onNodeWithText("You sat on 24 of the last 28 days", substring = true).assertExists()
-        compose.onNodeWithText("Pew Research Center", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("Sources and more comparisons", substring = true).performClick()
-        compose.onNodeWithText("Pew Research Center", substring = true).performScrollTo().assertExists()
-        compose.onNodeWithText("Vieten et al.", substring = true).assertExists()
-        compose.onNodeWithText("Adams et al.", substring = true).assertExists()
-        captureScreenRoboImage("build/outputs/roborazzi/27-history-compare.png")
+        compose.onNodeWithContentDescription("Your 4-week level over the last", substring = true).assertExists()
+        compose.onNodeWithText("Basso et al.", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("The research behind it", substring = true).performClick()
+        for (source in listOf("Basso et al.", "Hölzel et al.", "Parsons et al.", "Bowles & Van Dam", "Baer et al.", "Lally et al.", "Vieten et al.", "Pew Research Center", "Adams et al.")) {
+            compose.onNodeWithText(source, substring = true).performScrollTo().assertExists()
+        }
+        captureScreenRoboImage("build/outputs/roborazzi/27-history-standing.png")
     }
 
     @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
@@ -725,6 +732,35 @@ class ScreensTest {
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(5_500))
         compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithText("In · right nostril").assertExists()
+    }
+
+    @Test
+    fun `the breathe tab offers the breath sound, taps or both, and remembers the choice`() {
+        launch()
+        compose.onAllNodesWithText("Breathe").onLast().performClick()
+        compose.waitForIdle()
+        // The breath sound unless chosen otherwise.
+        compose.onNodeWithText("breathe in with the sound of the in-breath", substring = true).assertExists()
+        compose.onNodeWithText("Breath sound").performScrollTo().assertIsSelected()
+        shot("29-breathe-cue")
+        compose.onNodeWithText("Vibration").performScrollTo().performClick()
+        compose.onNodeWithText("one tap means breathe in", substring = true).assertExists()
+        while (shadowOf(app).nextStartedService != null) Unit
+        compose.onNodeWithText("Start").performScrollTo().performClick()
+        compose.mainClock.autoAdvance = false
+        compose.mainClock.advanceTimeBy(500)
+        assertEquals("VIBRATION", shadowOf(app).nextStartedService?.getStringExtra("cue"))
+        assertEquals(BreathCue.VIBRATION, Prefs(app).breathCue)
+        compose.onNodeWithText("Stop").performClick()
+        compose.mainClock.advanceTimeBy(500)
+        // The same choice paces the settle-in breaths of a sit.
+        compose.mainClock.autoAdvance = true
+        compose.onAllNodesWithText("Sit").onLast().performClick()
+        compose.onNodeWithText("Bells & breaths").performScrollTo().performClick()
+        compose.onNodeWithText("Breath cue").assertExists()
+        compose.onNodeWithText("Vibration").assertIsSelected()
+        compose.onNodeWithText("Both").performClick()
+        assertEquals(BreathCue.BOTH, Prefs(app).breathCue)
     }
 
     @Test

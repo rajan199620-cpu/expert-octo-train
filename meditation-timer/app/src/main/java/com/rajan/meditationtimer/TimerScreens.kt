@@ -320,11 +320,18 @@ private fun SetupScreen(
         SHEET_BELLS -> AppSheet("Bells & breaths", onDismiss = ::closeSheet) {
             SectionLabel(
                 "Settle-in breaths",
-                "Slow breaths to start, in for 4 and out for 6: one tap means breathe in, two taps breathe out, so your eyes can close. " +
+                "Slow breaths to start, in for 4 and out for 6, paced so your eyes can close. " +
                     "Slow breathing calms the body within minutes; the sit itself then uses your natural breath",
             )
             ChipRow(Settle.CHOICES_SEC, settle, Settle::label) { settle = it }
             if (settle > 0) {
+                // The same choice as in the Breathe tab, so it's read afresh each time the sheet opens.
+                var cue by remember { mutableStateOf(prefs.breathCue) }
+                SectionLabel(
+                    "Breath cue",
+                    if (alertMode == AlertMode.VIBRATE) "Your sits are vibrate-only, so the settle-in breaths are taps" else cueSubtitle(cue),
+                )
+                ChipRow(BreathCue.entries, cue, { it.label }) { cue = it; prefs.breathCue = it }
                 SectionLabel("Opening bell", "Rings as the settle-in breaths end, to start the sit proper")
             } else {
                 SectionLabel("Opening bell", "Rings this long after you tap Begin")
@@ -593,6 +600,17 @@ private fun RunningScreen(session: SessionState.Running) {
     // Settle-in breaths: the halo swells for each in-breath and ebbs for each out-breath.
     val settleMs = remember(session.config) { Settle.lengthMs(session.config) }
     val settling = if (still) null else Settle.at(elapsed, settleMs)
+    // How the service paces them (it read the same settings at Begin): a vibrate-only sit is all taps.
+    val breathCue = remember { Prefs(context).let { if (it.alertMode == AlertMode.VIBRATE) BreathCue.VIBRATION else it.breathCue } }
+    // While the breath sound plays, the volume keys set its level rather than the bells'.
+    if (settling != null && breathCue.sound) {
+        DisposableEffect(Unit) {
+            val activity = context.findActivity()
+            val before = activity?.volumeControlStream
+            activity?.volumeControlStream = android.media.AudioManager.STREAM_MUSIC
+            onDispose { if (activity != null && before != null) activity.volumeControlStream = before }
+        }
+    }
     val breathGlow by animateFloatAsState(
         when (settling?.phase) {
             Settle.Phase.IN -> 1f
@@ -715,8 +733,11 @@ private fun RunningScreen(session: SessionState.Running) {
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            "In through the nose for 4, out slowly for 6. One tap: breathe in. Two taps: breathe out. " +
-                                "Close your eyes. The bell starts the sit; then let the breath be natural.",
+                            "In through the nose for 4, out slowly for 6. " + when (breathCue) {
+                                BreathCue.SOUND -> "Breathe with the sound. "
+                                BreathCue.VIBRATION -> "One tap: breathe in. Two taps: breathe out. "
+                                BreathCue.BOTH -> "Breathe with the sound; one tap in, two taps out. "
+                            } + "Close your eyes. The bell starts the sit; then let the breath be natural.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,

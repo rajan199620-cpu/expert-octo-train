@@ -19,6 +19,9 @@ object Settle {
     const val DEFAULT_SEC = 60
     val CHOICES_SEC = listOf(0, 30, 60, 120, 300)
 
+    /** The settle-in rhythm as a breathing pattern, for its breath sound (see [BreathVoice]). */
+    val PATTERN = BreathPattern("Settle in", "In for 4, out for 6", INHALE_MS / 1000.0, 0.0, EXHALE_MS / 1000.0, 0.0)
+
     enum class Phase(val label: String) { IN("Breathe in"), OUT("Breathe out") }
 
     data class State(val phase: Phase, val breath: Int, val breaths: Int, val msLeftInPhase: Long)

@@ -66,7 +66,7 @@ class Prefs(context: Context) {
         if (sp.contains(KEY_AMBIENCE_VOLUME)) put(KEY_AMBIENCE_VOLUME, sp.getFloat(KEY_AMBIENCE_VOLUME, 0.5f).toString())
         // A recording lives on one phone, so a backup carries the built-in sounds only.
         ambience.takeIf { it != Ambience.CUSTOM && sp.contains(KEY_AMBIENCE) }?.let { put(KEY_AMBIENCE, it.name) }
-        for (key in listOf(KEY_ALERT, KEY_BREATH_PATTERN)) sp.getString(key, null)?.let { put(key, it) }
+        for (key in listOf(KEY_ALERT, KEY_BREATH_PATTERN, KEY_BREATH_CUE)) sp.getString(key, null)?.let { put(key, it) }
         // Attention-check scores are history, not settings, but they live here: without this line a
         // reinstall or a new phone would lose the weeks of scores the check exists to compare.
         sp.getString(KEY_BREATH_CHECKS, null)?.takeIf { it.isNotBlank() }?.let { put(KEY_BREATH_CHECKS, java.net.URLEncoder.encode(it, "UTF-8")) }
@@ -92,6 +92,7 @@ class Prefs(context: Context) {
                     KEY_AMBIENCE -> Ambience.entries.firstOrNull { it.name == value && it != Ambience.CUSTOM }?.let { putString(key, it.name) }
                     KEY_ALERT -> AlertMode.entries.firstOrNull { it.name == value }?.let { putString(key, it.name) }
                     KEY_BREATH_PATTERN -> BreathPattern.ALL.firstOrNull { it.name == value }?.let { putString(key, it.name) }
+                    KEY_BREATH_CUE -> BreathCue.entries.firstOrNull { it.name == value }?.let { putString(key, it.name) }
                     // Added to the scores already here (the same check twice counts once), never replacing them.
                     KEY_BREATH_CHECKS -> putMergedChecks(value)
                 }
@@ -110,6 +111,11 @@ class Prefs(context: Context) {
     var breathMinutes: Int
         get() = sp.getInt(KEY_BREATH_MINUTES, 3)
         set(value) = sp.edit { putInt(KEY_BREATH_MINUTES, value) }
+
+    /** How paced breaths reach you, in the Breathe tab and the settle-in breaths of a sit. */
+    var breathCue: BreathCue
+        get() = enumOrDefault(sp.getString(KEY_BREATH_CUE, null), BreathCue.SOUND)
+        set(value) = sp.edit { putString(KEY_BREATH_CUE, value.name) }
 
     /** Breath-count attention checks, oldest first. */
     val breathChecks: List<BreathCheck>
@@ -272,6 +278,7 @@ class Prefs(context: Context) {
         private const val KEY_DND = "auto_dnd"
         private const val KEY_BREATH_PATTERN = "breath_pattern"
         private const val KEY_BREATH_MINUTES = "breath_minutes"
+        private const val KEY_BREATH_CUE = "breath_cue"
         private const val KEY_MALA_BEADS = "mala_beads"
         private const val KEY_MALA_ROUNDS = "mala_rounds"
         private const val KEY_MALA_TARGET = "mala_target"

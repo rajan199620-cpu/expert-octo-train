@@ -34,9 +34,9 @@ object Guide {
             listOf(
                 "Choose a length and tap Begin. If check-ins are on, note how you feel, then tap Begin " +
                     "again when you're ready. Nothing starts until you do.",
-                "Settle-in breaths come first (Bells & breaths): slow breathing, in for 4 and out for 6. One tap " +
-                    "means breathe in, two taps breathe out. Then the opening bell starts the sit and the breath " +
-                    "is left natural. Interval bells bring you back; the closing bell says the end is near.",
+                "Settle-in breaths come first (Bells & breaths): slow breathing, in for 4 and out for 6, paced " +
+                    "by the sound of a breath or by taps (one in, two out). Then the opening bell starts the sit " +
+                    "and the breath is left natural. Interval bells bring you back; the closing bell says the end is near.",
                 "Pause holds the time and the bells. End gives you ${SessionClock.END_CONFIRM_MS / 1000} " +
                     "seconds to change your mind. Sits under a minute aren't saved.",
                 "Afterwards, say how you feel and how the sit went, and add a line to your journal if you like. All optional.",
@@ -72,9 +72,9 @@ object Guide {
             "The other two tabs",
             listOf(
                 "Breathe paces your breath: Coherent to calm, Box to steady, 4-7-8 to wind down, Bhramari " +
-                    "(humming) and Nadi Shodhana (alternate nostril). One tap means breathe in, two taps " +
-                    "breathe out, a long buzz hold, so eyes can stay closed. A few minutes before a sit " +
-                    "helps you settle.",
+                    "(humming) and Nadi Shodhana (alternate nostril). Eyes can stay closed: follow the sound of " +
+                    "the breath (silence means hold), or taps (one in, two out, a long buzz to hold), or both. " +
+                    "A few minutes before a sit helps you settle.",
                 "The attention check, at the bottom of Breathe, measures how steady your attention is by counting breaths in nines.",
                 "Mala counts mantra or breath rounds of 27, 54 or 108 beads. Tap the circle or press a " +
                     "volume key; a bell rings at the end of each round.",
@@ -98,8 +98,9 @@ object Guide {
                 "Overview: this week against your goal, the month in review, and your highlights. Tap a highlight for Trends.",
                 "Trends: what a sit changes in how you feel, how often you noticed wandering, and a calendar of the last weeks.",
                 "Sessions: every sit, newest first, with your notes.",
-                "How you compare (Overview): how often you sit against published surveys of experienced " +
-                    "meditators, adults in India and new app users.",
+                "Where you stand (Overview): your minutes a day over 4 weeks, how long you've kept going and " +
+                    "your hours in all, against what studies used or found. It rises and eases with your " +
+                    "sits; tap it for the research and how you compare with other meditators.",
                 "On the Sit screen, a note you wrote a week, a month or a year ago today may come back. Hide puts it away until tomorrow.",
             ),
         ),
