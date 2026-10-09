@@ -82,4 +82,12 @@ class BreathingTest {
         assertEquals(c, BreathCheck.decode(c.encode()))
         assertEquals(null, BreathCheck.decode("x,1,2"))
     }
+
+    @Test
+    fun `a rhythm whose phases aren't whole milliseconds still has a phase at every moment`() {
+        val odd = BreathPattern("Odd", "", 1.2345, 0.6789, 2.3456, 0.0)
+        assertEquals(odd.phases.sumOf { it.second }, odd.cycleMs)
+        for (t in 0L until 3 * odd.cycleMs) odd.at(t)
+        assertEquals(BreathPhase.EXHALE, odd.at(odd.cycleMs - 1).phase)
+    }
 }

@@ -1,6 +1,7 @@
 package com.rajan.meditationtimer
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,7 +39,7 @@ class ProgressTest {
         // (22.6 h − 224 min) at 16 min a day: 70.75 days.
         assertEquals(71, r.daysToNext)
         assertEquals("16 min a day", Progress.headline(r))
-        assertEquals("your average since you started, 14 days ago  ·  this week 16 min a day", Progress.windowLine(r))
+        assertEquals("your average over the 14 days since you started  ·  this week 16 min a day", Progress.windowLine(r))
         assertEquals(
             "2 weeks in, at 16 min a day: above the 13 a day of a trial in which beginners' attention, memory and " +
                 "mood improved after 8 weeks, though not yet at 4. 6 weeks to go to match it.",
@@ -127,12 +128,55 @@ class ProgressTest {
         assertEquals("about 10 weeks", Progress.eta(71))
         assertEquals("about 19 months", Progress.eta(586))
         assertEquals("about 3 years", Progress.eta(1000))
+        assertEquals("over 50 years", Progress.eta(20_000))
         assertEquals("under 1 min", Progress.minutes(0.3))
         assertEquals("1,095 hours", Progress.hours(1095.0))
         assertEquals(Trend.STEADY, Progress.trend(17.0, 16.0))
         assertEquals(Trend.BUILDING, Progress.trend(19.0, 16.0))
         assertEquals(Trend.EASING, Progress.trend(13.0, 16.0))
         assertEquals("small numbers need a whole minute's change", Trend.STEADY, Progress.trend(0.5, 1.0))
+    }
+
+    @Test
+    fun `the first day and the second read right`() {
+        val first = report(listOf(sit(0, 10)))
+        assertEquals("your first day", Progress.windowLine(first))
+        assertNull(first.trend)
+        assertEquals(1, first.curve.size)
+        assertTrue(Progress.runLine(first).startsWith("1 day in, at 10 min a day: below the 13 a day"))
+        assertEquals("your average over the 2 days since you started", Progress.windowLine(report(listOf(sit(1, 10), sit(0, 20)))))
+    }
+
+    @Test
+    fun `a thousand random histories never break the numbers`() {
+        val rnd = kotlin.random.Random(42)
+        repeat(1_000) {
+            val records = List(rnd.nextInt(1, 300)) { sit(rnd.nextLong(-5, 2_000), rnd.nextInt(1, 240)) }
+            val r = Progress.report(records, zone, today) ?: return@repeat
+            assertTrue(r.perDay >= 0)
+            assertEquals(r.perDay, r.curve.last(), 1e-9)
+            assertTrue(r.curve.size in 1..Progress.CURVE_DAYS && r.windowDays in 1..Progress.WINDOW_DAYS)
+            assertTrue(r.runPerDay >= 0 && r.runDays >= 0)
+            assertTrue((r.trend == null) == (r.thisWeekPerDay == null))
+            for (line in listOf(Progress.headline(r), Progress.windowLine(r), Progress.runLine(r), Progress.hoursLine(r), Progress.habitLine(r))) {
+                assertFalse(line, line.contains("NaN") || line.contains("Infinity") || line.contains(Regex("(^|\\s)-\\d")))
+            }
+            // A sit today never lowers the level, always counts in full, and always continues or starts a run.
+            val more = Progress.report(records + sit(0, 20), zone, today)!!
+            assertTrue(more.perDay >= r.perDay - 1e-9)
+            assertEquals(r.lifetimeMinutes + 20, more.lifetimeMinutes)
+            assertTrue(more.runDays >= maxOf(1, r.runDays))
+        }
+    }
+
+    @Test
+    fun `days stay whole across a clock change`() {
+        val ny = ZoneId.of("America/New_York")
+        val sunday = LocalDate.of(2026, 3, 8) // clocks go forward at 2 am
+        val records = (0L..13L).map { SessionRecord(sunday.minusDays(it).atTime(1, 30).atZone(ny).toInstant().toEpochMilli(), 960, 960) }
+        val r = Progress.report(records, ny, sunday)!!
+        assertEquals(16.0, r.perDay, 1e-9)
+        assertEquals(14, r.runDays)
     }
 
     @Test

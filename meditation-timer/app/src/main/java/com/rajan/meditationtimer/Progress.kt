@@ -155,7 +155,11 @@ object Progress {
 
     /** What the headline averages over, and this week beside it. */
     fun windowLine(r: ProgressReport): String {
-        val over = if (r.windowDays >= WINDOW_DAYS) "your average over the last 4 weeks" else "your average since you started, ${dayCount(r.windowDays)} ago"
+        val over = when {
+            r.windowDays >= WINDOW_DAYS -> "your average over the last 4 weeks"
+            r.windowDays == 1 -> "your first day"
+            else -> "your average over the ${r.windowDays} days since you started"
+        }
         return over + (r.thisWeekPerDay?.let { "  ·  this week ${minutes(it)} a day" } ?: "")
     }
 
@@ -213,7 +217,8 @@ object Progress {
         days < 14 -> if (days == 1) "1 day" else "$days days"
         days < 120 -> "about ${(days / 7.0).roundToInt()} weeks"
         days < 730 -> "about ${(days / 30.44).roundToInt()} months"
-        else -> "about ${(days / 365.25).roundToInt()} years"
+        days < 50 * 365 -> "about ${(days / 365.25).roundToInt()} years"
+        else -> "over 50 years"
     }
 
     private fun dayCount(days: Int) = if (days == 1) "1 day" else "$days days"

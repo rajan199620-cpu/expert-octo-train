@@ -140,6 +140,33 @@ class BreathSoundTest {
     }
 
     @Test
+    fun `random rhythms, start times and block sizes never misbehave`() {
+        val rnd = kotlin.random.Random(5)
+        repeat(200) {
+            fun hold() = if (rnd.nextBoolean()) 0.0 else rnd.nextDouble(0.5, 12.0)
+            val p = BreathPattern(
+                "Random", "", rnd.nextDouble(0.5, 12.0), hold(), rnd.nextDouble(0.5, 12.0), hold(),
+                style = BreathStyle.entries[rnd.nextInt(BreathStyle.entries.size)],
+            )
+            // Anywhere from just before the start to four hours in.
+            val from = rnd.nextDouble(-5_000.0, 4 * 3_600_000.0)
+            val x = render(p, 3.0, fromMs = from, block = rnd.nextInt(1, 2048), seed = rnd.nextLong())
+            assertTrue(x.all { !it.isNaN() && abs(it) < 0.6f })
+            // Silent wherever the rhythm says hold (a couple of ms clear of each edge).
+            for (i in 0 until x.size / 2 step 64) {
+                val t = from + i * 1000.0 / rate
+                if (t < 0) continue
+                val state = p.at(t.toLong())
+                val length = p.phases.first { it.first == state.phase }.second
+                val clear = state.msLeftInPhase > 2 && length - state.msLeftInPhase > 2
+                if (clear && (state.phase == BreathPhase.HOLD_IN || state.phase == BreathPhase.HOLD_OUT)) {
+                    assertTrue("sound in a hold at $t ms", x[2 * i] == 0f && x[2 * i + 1] == 0f)
+                }
+            }
+        }
+    }
+
+    @Test
     fun `ten minutes of breath is made in a second or two, a fraction of a percent of a phone's time`() {
         render(pattern("Coherent"), 5.0)
         val began = System.nanoTime()

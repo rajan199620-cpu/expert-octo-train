@@ -46,7 +46,11 @@ data class BreathPattern(
         }
     }
 
-    val cycleMs: Long get() = ((inhaleSec + holdInSec + exhaleSec + holdOutSec) * 1000).toLong()
+    /**
+     * The sum of the phases as [phases] rounds them, not the rounded sum of the seconds: with a
+     * phase like 1.2345 s the two differ by a millisecond, and [at] then found no phase at all.
+     */
+    val cycleMs: Long get() = phases.sumOf { it.second }
 
     /** The phases of one breath with their lengths (ms), in order; 0-second phases left out. */
     val phases: List<Pair<BreathPhase, Long>>
