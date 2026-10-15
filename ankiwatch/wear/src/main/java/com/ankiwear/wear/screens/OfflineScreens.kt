@@ -238,15 +238,19 @@ fun OfflineReviewScreen(
     val next = remember(queue, answers, now, early) { early ?: queue.next(now) }
     // Where the review stood before the last answer, for Undo.
     var before by remember(queue) { mutableStateOf<OfflineQueue.State?>(null) }
+    // And the card it was on: Undo brings exactly that one back, whatever has come due since.
+    var beforeShown by remember(queue) { mutableStateOf<OfflineQueue.Next.Show?>(null) }
     val scope = rememberCoroutineScope()
     val undo: (() -> Unit)? = if (canUndo && before != null) {
         {
             scope.launch {
                 val previous = before ?: return@launch
+                val shown = beforeShown
                 if (onUndo()) {
                     queue.restore(previous)
                     before = null
-                    early = null
+                    beforeShown = null
+                    early = shown
                     now = clock()
                     answers = queue.state.answers
                     onUndone()
@@ -269,6 +273,7 @@ fun OfflineReviewScreen(
                 onAnswer = { _, _, ease, timeTaken ->
                     val at = clock()
                     before = queue.state
+                    beforeShown = next
                     queue.answer(card.key, ease, at)
                     onAnswered(card, ease, timeTaken)
                     early = null

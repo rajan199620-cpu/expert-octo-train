@@ -366,6 +366,23 @@ class OfflineReviewTest {
     }
 
     @Test
+    fun undoBringsBackTheGradedCardEvenWhenAnotherHasComeDue() {
+        val holder = Holder()
+        showWithUndo(lawPack(), holder)
+        val (c3, c5, _) = lawCards
+        reveal(); grade(1) // c3, Again: back in under a minute
+        reveal(); grade(3) // c5
+        assertEquals(Triple(c5.noteId, c5.cardOrd, 3), holder.held.value)
+        clock += 5 * 60_000L // c3 is due again by now
+        tapUndo()
+        // Still c5 that comes back, not c3, which was due first.
+        reveal(); grade(4)
+        assertEquals(Triple(c5.noteId, c5.cardOrd, 4), holder.held.value)
+        reveal(); grade(3)
+        assertEquals(Triple(c3.noteId, c3.cardOrd, 3), holder.held.value)
+    }
+
+    @Test
     fun undoIsGoneOnceTheGradeHasGoneOut() {
         val holder = Holder()
         showWithUndo(lawPack(), holder)

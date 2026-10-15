@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
@@ -67,8 +68,13 @@ fun ComposeTestRule.contentViewport(): Rect =
     onNodeWithTag(ReviewTags.CONTENT, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
 
 /** The scrollable list inside ScalingLazyColumn (the tag sits on its wrapper). */
-private fun ComposeTestRule.contentScroller() =
-    onNode(hasScrollToIndexAction() and hasAnyAncestor(hasTestTag(ReviewTags.CONTENT)), useUnmergedTree = true)
+private fun ComposeTestRule.contentScroller(): SemanticsNodeInteraction {
+    val matcher = hasScrollToIndexAction() and hasAnyAncestor(hasTestTag(ReviewTags.CONTENT))
+    // Wait for exactly one list before acting on it: a lookup that fails dumps the whole
+    // tree for its message, and that dump can crash Compose if a frame is mid-layout.
+    waitUntil(5_000) { onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes().size == 1 }
+    return onNode(matcher, useUnmergedTree = true)
+}
 
 /** Scrolls the card list by [dy] pixels; positive goes further down the note. */
 fun ComposeTestRule.scrollContentBy(dy: Float) {
