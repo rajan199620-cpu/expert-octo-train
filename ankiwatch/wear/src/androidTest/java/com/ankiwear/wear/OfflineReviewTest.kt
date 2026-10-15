@@ -97,8 +97,13 @@ class OfflineReviewTest {
         rule.waitForIdle()
     }
 
+    /** Again and Good are buttons; Hard and Easy are holds on them, as on the watch. */
     private fun grade(ease: Int) {
-        rule.onNodeWithTag(ReviewTags.ease(ease)).performClick()
+        when (ease) {
+            2 -> rule.onNodeWithTag(ReviewTags.ease(1)).performTouchInput { longClick() }
+            4 -> rule.onNodeWithTag(ReviewTags.ease(3)).performTouchInput { longClick() }
+            else -> rule.onNodeWithTag(ReviewTags.ease(ease)).performClick()
+        }
         rule.waitForIdle()
     }
 
