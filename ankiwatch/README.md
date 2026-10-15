@@ -15,10 +15,12 @@ Based on [AnkiWatch](https://github.com/OleksandrShabaldas/AnkiWatch) by Oleksan
 | **Pink box** `[hint]` | The cloze this card tests. Tap it to peek. |
 | **Blue box** `[hint]` | A sibling cloze from the same note. Tap to open or close it. |
 | Plain text from a `#` cloze | Your anchor statement, shown as context on sibling cards (tested on its own card). |
-| **Show answer** | Opens the tested cloze and shows the note's Note / Mnemonics / Extra. |
+| **`[why]`** (or the section's own label) | A folded sidenote: `<details>` with a summary, or a label you click to open a hidden panel. Stays folded on both sides; tap to open, tap again to fold. |
+| **Show answer** | Opens the tested cloze. The note's other fields (Note / Mnemonics / Extra / Why …) follow as folded headers: tap **▸ Note** to open one. |
 | **Again** / **Good** | Grade the card. **Hold Again = Hard**, **hold Good = Easy**. Each button shows its next interval; the Hard/Easy intervals are at the end of the answer. |
 | **Bottom side button** | Press: show the answer, then press again for **Good**. Hold (½ s): **Again**. Ignored while the next cards load; on *Done!* it returns to the decks. |
 | **Bury** | Under the card (scroll down). Hides this card until tomorrow, as Bury does in AnkiDroid; its sibling cards stay. |
+| **↶ Undo** | Under the card (and on *Done!*). Takes back your last grade or Bury and shows that card again. The watch keeps your latest grade for up to 30 s, until your next grade or until you leave the review, and only then sends it: AnkiDroid can't undo a grade once it has it. One step back, live and offline. |
 | Whole note / Focus on cloze | Focus mode (default) shows only the part of a long note holding the tested cloze, plus its heading or parent list item. Either way a card opens scrolled so the tested cloze (then its answer) is fully on screen. |
 | Bezel / swipe | Scroll. Swipe right to leave the review. |
 

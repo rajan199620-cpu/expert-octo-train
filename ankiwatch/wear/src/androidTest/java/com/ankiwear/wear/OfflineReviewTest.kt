@@ -276,6 +276,159 @@ class OfflineReviewTest {
         assertTrue("slowest step took ${slowest}ms", slowest < 5_000)
     }
 
+    // ── Undo ─────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * The screen with a stand-in for the watch's held answer: each answer is held until the
+     * next one, and Undo takes the held one back. [committed] is what reached the phone.
+     */
+    private class Holder {
+        val committed = mutableListOf<Triple<Long, Int, Int>>()
+        val held = mutableStateOf<Triple<Long, Int, Int>?>(null)
+        var undone = 0
+    }
+
+    private fun showWithUndo(pack: OfflinePack, holder: Holder) {
+        rule.setContent {
+            val q = remember { mutableStateOf(OfflineQueue(pack)) }
+            queueState = q
+            AnkiWearTheme {
+                OfflineReviewScreen(
+                    queue = q.value,
+                    clock = { clock },
+                    tickMs = 50,
+                    canUndo = holder.held.value != null,
+                    onUndo = {
+                        val back = holder.held.value != null
+                        holder.held.value = null
+                        back
+                    },
+                    onUndone = { holder.undone++ },
+                    onAnswered = { card, ease, _ ->
+                        holder.held.value?.let { holder.committed += it }
+                        holder.held.value = Triple(card.noteId, card.cardOrd, ease)
+                    },
+                    onExit = { exits++ }
+                )
+            }
+        }
+        rule.waitForIdle()
+    }
+
+    private fun undoButton() = rule.onAllNodesWithTag(ReviewTags.UNDO).fetchSemanticsNodes()
+
+    private fun tapUndo() {
+        if (rule.onAllNodesWithTag(OfflineTags.DONE).fetchSemanticsNodes().isEmpty()) {
+            rule.scrollContentTo(hasTestTag(ReviewTags.UNDO))
+        }
+        rule.onNodeWithTag(ReviewTags.UNDO).performClick()
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun undoBringsTheSameCardBackAndForgetsTheGrade() {
+        val holder = Holder()
+        showWithUndo(lawPack(), holder)
+        val (c3, _, _) = lawCards
+        assertTrue(undoButton().isEmpty()) // nothing to undo yet
+        header().assertTextEquals("Offline · 3 left")
+        reveal(); grade(3)
+        header().assertTextEquals("Offline · 2 left")
+        tapUndo()
+        // Back on the same card, question side, with the count as before.
+        header().assertTextEquals("Offline · 3 left")
+        rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).assertExists()
+        assertEquals(0, queueState.value.state.answers)
+        assertEquals(1, holder.undone)
+        assertTrue(holder.committed.isEmpty())
+        assertTrue(undoButton().isEmpty()) // one step only
+        // Answer it differently this time: Again, then finish the deck.
+        reveal(); grade(1)
+        assertEquals(Triple(c3.noteId, c3.cardOrd, 1), holder.held.value)
+        reveal(); grade(3)
+        reveal(); grade(3)
+        clock += 3_600_000L
+        rule.waitUntil(5_000) { rule.onAllNodesWithTag(OfflineTags.WAIT).fetchSemanticsNodes().isEmpty() }
+        rule.waitForIdle()
+        reveal(); grade(3) // c3 back from Again
+        rule.onNodeWithTag(OfflineTags.DONE).assertExists()
+        // Undo works from the Done screen too, and brings the last card back.
+        tapUndo()
+        rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).assertExists()
+        header().assertTextEquals("Offline · 1 left")
+        reveal(); grade(4)
+        rule.onNodeWithTag(OfflineTags.DONE).assertExists()
+    }
+
+    @Test
+    fun undoIsGoneOnceTheGradeHasGoneOut() {
+        val holder = Holder()
+        showWithUndo(lawPack(), holder)
+        reveal(); grade(3)
+        // The hold ran out (or the review was left): the watch no longer offers Undo.
+        rule.runOnIdle { holder.held.value?.let { holder.committed += it }; holder.held.value = null }
+        rule.waitForIdle()
+        assertTrue(undoButton().isEmpty())
+        header().assertTextEquals("Offline · 2 left")
+    }
+
+    /**
+     * A long random offline session with Undo mixed in, on the question side, the answer side
+     * and the Done screen. Every undo must bring back the card just graded with the review as
+     * it was, and at the end exactly the grades not undone reach the phone, every card graded.
+     */
+    @Test
+    fun stressRandomSessionWithUndo() {
+        val rnd = Random(4242)
+        val cards = (0 until 60).map { i ->
+            val note = 20_000L + i / 2
+            val ord = i % 2
+            PackCard(note, ord, 4, listOf("1m", "6m", "10m", "4d"), "", "", "Note $note: {{c1::a$note}} {{c2::b$note}}", ord + 1, emptyList(), "Cloze")
+        }
+        val pack = OfflinePack(11, 1, "undo stress", 0, cards)
+        val holder = Holder()
+        showWithUndo(pack, holder)
+        var steps = 0
+        var undos = 0
+        while (true) {
+            assertTrue("session didn't end after $steps steps", steps++ < 1_500)
+            val done = rule.onAllNodesWithTag(OfflineTags.DONE).fetchSemanticsNodes().isNotEmpty()
+            val canUndo = holder.held.value != null
+            val waiting = rule.onAllNodesWithTag(OfflineTags.WAIT).fetchSemanticsNodes().isNotEmpty()
+            if (canUndo && !waiting && rnd.nextInt(if (done) 2 else 6) == 0) {
+                val last = holder.held.value!!
+                val answersBefore = queueState.value.state.answers
+                if (!done && rnd.nextBoolean()) reveal() // undo from the answer side too
+                tapUndo()
+                undos++
+                assertEquals("step $steps", answersBefore - 1, queueState.value.state.answers)
+                // The undone card is the one on screen again.
+                rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).assertExists()
+                assertTrue("step $steps", rule.allText().contains("Note ${last.first}:"))
+                continue
+            }
+            when {
+                done -> break
+                waiting -> {
+                    rule.onNodeWithTag(OfflineTags.SHOW_NOW).performClick()
+                    rule.waitForIdle()
+                }
+                else -> {
+                    reveal()
+                    grade(if (rnd.nextInt(5) == 0) 1 else listOf(3, 4)[rnd.nextInt(2)])
+                    if (rnd.nextInt(4) == 0) clock += rnd.nextLong(0, 20 * 60_000L)
+                }
+            }
+        }
+        holder.held.value?.let { holder.committed += it }
+        val graded = holder.committed.map { it.first to it.second }.toSet()
+        assertEquals("every card graded", cards.map { it.noteId to it.cardOrd }.toSet(), graded)
+        assertEquals("the phone gets the grades not undone", queueState.value.state.answers, holder.committed.size)
+        assertEquals(undos, holder.undone)
+        assertTrue("undo was exercised", undos >= 10)
+        Log.i("AnkiWatchTest", "offline undo stress: ${cards.size} cards, ${holder.committed.size} grades, $undos undos")
+    }
+
     // ── The Offline screen ───────────────────────────────────────────────────────────────
 
     private class ScreenState(

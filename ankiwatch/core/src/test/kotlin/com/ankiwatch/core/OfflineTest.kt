@@ -504,3 +504,22 @@ class OfflineTest {
         }
     }
 }
+
+class OfflineUndoTest {
+    private fun card(note: Long) = PackCard(note, 0, 4, listOf("1m", "10m", "1d", "4d"), "", "", "t{{c1::$note}}", 1)
+
+    @Test
+    fun undoingAnAnswerShowsTheSameCardAgainFromTheSameState() {
+        val q = OfflineQueue(OfflinePack(1, 1, "d", 0, (1L..3L).map(::card)))
+        val first = q.next(0) as OfflineQueue.Next.Show
+        val before = q.state
+        q.answer(first.card.key, 3, 0)
+        assertEquals(1, q.state.answers)
+        assertTrue(first.card.key in q.state.seen)
+        q.restore(before)
+        assertEquals(before, q.state)
+        val again = q.next(0) as OfflineQueue.Next.Show
+        assertEquals(first.card.key, again.card.key)
+        assertEquals(3, q.remaining)
+    }
+}

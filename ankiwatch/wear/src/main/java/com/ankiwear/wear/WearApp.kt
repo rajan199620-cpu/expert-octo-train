@@ -123,6 +123,7 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, o
         val pendingGrades by dataLayerClient.pendingGrades.collectAsState()
         val download by dataLayerClient.download.collectAsState()
         val offlineVersion by dataLayerClient.offlineVersion.collectAsState()
+        val heldAnswer by dataLayerClient.heldAnswer.collectAsState()
 
         // The downloaded decks, read off the main thread whenever they change.
         var offlinePacks by remember { mutableStateOf(emptyList<OfflineStore.Summary>()) }
@@ -234,6 +235,9 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, o
         val lifecycleOwner = LocalLifecycleOwner.current
         DisposableEffect(lifecycleOwner, currentRoute, selectedDeck) {
             val observer = LifecycleEventObserver { _, event ->
+                // A held answer goes out when the app leaves the screen: it could be closed
+                // before the hold runs out.
+                if (event == Lifecycle.Event.ON_STOP) dataLayerClient.flushHeldAnswerSoon()
                 if (event == Lifecycle.Event.ON_RESUME) {
                     scope.launch {
                         dataLayerClient.checkConnection()
@@ -249,6 +253,12 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, o
             }
             lifecycleOwner.lifecycle.addObserver(observer)
             onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+
+        // Leaving a review sends its held answer: Undo is only offered while reviewing.
+        LaunchedEffect(currentRoute) {
+            val reviewing = currentRoute == "review" || currentRoute?.startsWith("offline-review") == true
+            if (!reviewing) dataLayerClient.flushHeldAnswerSoon()
         }
 
         SwipeDismissableNavHost(
@@ -420,10 +430,24 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, o
                         focusMode = it
                         prefs?.focusMode = it
                     },
+                    // Only the latest live answer can be taken back, and only while it is held.
+                    onUndo = heldAnswer?.takeIf { !it.offline && it.card != null }?.let {
+                        {
+                            scope.launch {
+                                val back = dataLayerClient.undoHeldAnswer() ?: return@launch
+                                val card = back.card ?: return@launch
+                                dataLayerClient.restoreCard(card, from = currentCardIndex)
+                                currentCardIndex = 0
+                                isFetchingCards = false
+                                if (back.ease != 1) cardsRemaining += 1
+                            }
+                            Unit
+                        }
+                    },
                     onAnswer = { noteId, cardOrd, ease, timeTakenMs ->
-                        // The answer is written as a guaranteed-delivery DataItem; the phone
-                        // applies it and sends back the next scheduled cards. Even if the
-                        // link is down right now, the grade is queued and applies later.
+                        // The answer is held back for a while so it can be undone, then
+                        // written as a guaranteed-delivery DataItem; the phone applies it.
+                        // Even if the link is down by then, the grade is queued and applies later.
                         if (offlineStore != null && offlinePacks.isNotEmpty()) {
                             // A downloaded copy of this card no longer needs reviewing offline.
                             scope.launch(Dispatchers.IO) {
@@ -431,16 +455,25 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, o
                                 dataLayerClient.offlineChanged()
                             }
                         }
+                        val answeredCard = cards.getOrNull(currentCardIndex)
+                        val exhausted = currentCardIndex + 1 >= cards.size
                         selectedDeck?.let { deck ->
                             val expectedTick = cardsResponseCount
                             scope.launch {
-                                dataLayerClient.sendAnswer(noteId, cardOrd, ease, timeTakenMs, deck.id)
+                                val sentLive = dataLayerClient.holdAnswer(
+                                    DataLayerClient.HeldAnswer(noteId, cardOrd, ease, timeTakenMs, deck.id, offline = false, card = answeredCard)
+                                )
+                                // Out of cards: ask for more now (the held card is left out of
+                                // them) rather than wait for the hold to run out.
+                                if (exhausted) dataLayerClient.requestCards(deck.id)
                                 // If the phone's response doesn't bump the counter within
                                 // ~4s (link went stale after sleep), re-request cards so the
                                 // user doesn't see the just-answered card again on next tap.
-                                delay(4000)
-                                if (dataLayerClient.cardsResponseCount.value == expectedTick) {
-                                    dataLayerClient.requestCards(deck.id)
+                                if (sentLive || exhausted) {
+                                    delay(4000)
+                                    if (dataLayerClient.cardsResponseCount.value == expectedTick) {
+                                        dataLayerClient.requestCards(deck.id)
+                                    }
                                 }
                             }
                         }
@@ -518,6 +551,12 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, o
                 }
                 OfflineReviewScreen(
                     queue = queue,
+                    canUndo = heldAnswer?.let { it.offline && it.deckId == queue.pack.deckId } == true,
+                    onUndo = { dataLayerClient.undoHeldAnswer() != null },
+                    onUndone = {
+                        offlineStore?.save(queue)
+                        dataLayerClient.offlineChanged()
+                    },
                     pendingGrades = pendingGrades,
                     focusMode = focusMode,
                     onFocusModeChange = {
@@ -531,7 +570,9 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, o
                         scope.launch {
                             withContext(Dispatchers.IO) { offlineStore?.markDone(card.key, exceptDeckId = queue.pack.deckId) }
                             dataLayerClient.offlineChanged()
-                            dataLayerClient.sendAnswer(card.noteId, card.cardOrd, ease, timeTakenMs, queue.pack.deckId, offline = true)
+                            dataLayerClient.holdAnswer(
+                                DataLayerClient.HeldAnswer(card.noteId, card.cardOrd, ease, timeTakenMs, queue.pack.deckId, offline = true, card = null)
+                            )
                         }
                     },
                     onExit = { navController.popBackStack() }

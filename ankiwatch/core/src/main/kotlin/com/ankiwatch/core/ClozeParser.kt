@@ -35,7 +35,7 @@ sealed class Node {
 }
 
 class ParsedField(val nodes: List<Node>, val clozeCount: Int) {
-    /** Cloze numbers present in the field, ascending. */
+    /** Cloze numbers present in the field, ascending (collapsed sections aren't clozes). */
     fun clozeNumbers(): List<Int> {
         val found = java.util.TreeSet<Int>()
         val stack = ArrayList<List<Node>>()
@@ -43,7 +43,7 @@ class ParsedField(val nodes: List<Node>, val clozeCount: Int) {
         while (stack.isNotEmpty()) {
             for (node in stack.removeAt(stack.size - 1)) {
                 if (node is Node.Cloze) {
-                    found.add(node.ord)
+                    if (node.ord != Collapsibles.SIDENOTE_ORD) found.add(node.ord)
                     stack.add(node.content)
                 }
             }
@@ -58,7 +58,7 @@ object ClozeParser {
 
     private const val MAX_ORD_DIGITS = 6
 
-    fun parse(html: String): ParsedField = buildTree(tokenize(html))
+    fun parse(html: String): ParsedField = Collapsibles.fold(buildTree(tokenize(html)))
 
     // ── Tokenizer ────────────────────────────────────────────────────────────────────────
 

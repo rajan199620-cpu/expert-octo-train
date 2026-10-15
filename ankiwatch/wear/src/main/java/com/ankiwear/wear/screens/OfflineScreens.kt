@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,6 +43,7 @@ import com.ankiwatch.core.PackCard
 import com.ankiwear.wear.offline.Download
 import com.ankiwear.wear.offline.OfflineStore
 import com.ankiwear.wear.offline.toCardData
+import kotlinx.coroutines.launch
 
 /** Test tags for the offline screens. */
 object OfflineTags {
@@ -221,6 +223,12 @@ fun OfflineReviewScreen(
     onFocusModeChange: (Boolean) -> Unit = {},
     clock: () -> Long = { System.currentTimeMillis() },
     tickMs: Long = 15_000,
+    /** The last answer here is still held, so it can be taken back. */
+    canUndo: Boolean = false,
+    /** Takes the held answer back; false if it had already gone out. */
+    onUndo: suspend () -> Boolean = { false },
+    /** The review went back one answer: store where it now stands. */
+    onUndone: () -> Unit = {},
     onAnswered: (card: PackCard, ease: Int, timeTakenMs: Long) -> Unit,
     onExit: () -> Unit
 ) {
@@ -228,6 +236,25 @@ fun OfflineReviewScreen(
     var now by remember(queue) { mutableLongStateOf(clock()) }
     var early by remember(queue) { mutableStateOf<OfflineQueue.Next.Show?>(null) }
     val next = remember(queue, answers, now, early) { early ?: queue.next(now) }
+    // Where the review stood before the last answer, for Undo.
+    var before by remember(queue) { mutableStateOf<OfflineQueue.State?>(null) }
+    val scope = rememberCoroutineScope()
+    val undo: (() -> Unit)? = if (canUndo && before != null) {
+        {
+            scope.launch {
+                val previous = before ?: return@launch
+                if (onUndo()) {
+                    queue.restore(previous)
+                    before = null
+                    early = null
+                    now = clock()
+                    answers = queue.state.answers
+                    onUndone()
+                }
+            }
+            Unit
+        }
+    } else null
 
     when (next) {
         is OfflineQueue.Next.Show -> {
@@ -238,8 +265,10 @@ fun OfflineReviewScreen(
                 revisionKey = "offline:$answers",
                 focusMode = focusMode,
                 onFocusModeChange = onFocusModeChange,
+                onUndo = undo,
                 onAnswer = { _, _, ease, timeTaken ->
                     val at = clock()
+                    before = queue.state
                     queue.answer(card.key, ease, at)
                     onAnswered(card, ease, timeTaken)
                     early = null
@@ -258,7 +287,7 @@ fun OfflineReviewScreen(
                 onBack = onExit
             )
         }
-        OfflineQueue.Next.Finished -> OfflineDoneScreen(pendingGrades = pendingGrades, onBack = onExit)
+        OfflineQueue.Next.Finished -> OfflineDoneScreen(pendingGrades = pendingGrades, onBack = onExit, onUndo = undo)
     }
 }
 
@@ -314,7 +343,7 @@ fun OfflineWaitScreen(waitMs: Long, waiting: Int, onShowNow: () -> Unit, onBack:
 }
 
 @Composable
-fun OfflineDoneScreen(pendingGrades: Int, onBack: () -> Unit) {
+fun OfflineDoneScreen(pendingGrades: Int, onBack: () -> Unit, onUndo: (() -> Unit)? = null) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -334,6 +363,15 @@ fun OfflineDoneScreen(pendingGrades: Int, onBack: () -> Unit) {
         )
         Spacer(Modifier.height(12.dp))
         Chip(onClick = onBack, colors = ChipDefaults.primaryChipColors(), label = { Text("Back", maxLines = 1) })
+        if (onUndo != null) {
+            Spacer(Modifier.height(6.dp))
+            CompactChip(
+                onClick = onUndo,
+                colors = ChipDefaults.secondaryChipColors(),
+                label = { Text("↶ Undo last answer", fontSize = 11.sp, maxLines = 1) },
+                modifier = Modifier.testTag(ReviewTags.UNDO)
+            )
+        }
     }
 }
 

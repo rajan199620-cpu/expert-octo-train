@@ -25,6 +25,8 @@ import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +46,9 @@ import java.util.concurrent.ConcurrentHashMap
 class DataLayerClient(
     context: Context,
     /** Where offline downloads go; null where there are none (tests, demo). */
-    private val offlineStore: OfflineStore? = null
+    private val offlineStore: OfflineStore? = null,
+    /** How long an answer stays undoable ([HOLD_MS]); shorter in tests. */
+    private val holdMs: Long = HOLD_MS
 ) : DataClient.OnDataChangedListener,
     MessageClient.OnMessageReceivedListener {
 
@@ -126,6 +130,27 @@ class DataLayerClient(
     private val _pendingGrades = MutableStateFlow(0)
     val pendingGrades: StateFlow<Int> = _pendingGrades.asStateFlow()
 
+    /**
+     * The latest answer, kept back for [HOLD_MS] so Undo can take it back: AnkiDroid has no
+     * way to undo a grade once it has it. Sent when the next answer comes, when the hold runs
+     * out, or when the review is left.
+     */
+    class HeldAnswer(
+        val noteId: Long,
+        val cardOrd: Int,
+        val ease: Int,
+        val timeTakenMs: Long,
+        val deckId: Long,
+        val offline: Boolean,
+        /** The card as it was shown, to put back on Undo (live review). */
+        val card: CardData?
+    )
+
+    private val _heldAnswer = MutableStateFlow<HeldAnswer?>(null)
+    val heldAnswer: StateFlow<HeldAnswer?> = _heldAnswer.asStateFlow()
+    private val holdLock = Mutex()
+    private var holdJob: Job? = null
+
     /** The offline download asked for last, and how it went. */
     private val _download = MutableStateFlow<Download>(Download.Idle)
     val download: StateFlow<Download> = _download.asStateFlow()
@@ -175,6 +200,9 @@ class DataLayerClient(
         const val KEY_MODEL_NAME = Wire.KEY_MODEL_NAME
 
         private const val DECKS_REQUEST_DEBOUNCE_MS = 700L
+
+        /** How long Undo stays possible after an answer, unless the next answer comes first. */
+        const val HOLD_MS = 30_000L
     }
 
     fun register() {
@@ -360,6 +388,61 @@ class DataLayerClient(
     }
 
     /**
+     * Holds [answer] back (see [HeldAnswer]), first sending the one held before it. True when
+     * that sent a live answer, whose reply brings the next cards.
+     */
+    suspend fun holdAnswer(answer: HeldAnswer): Boolean = holdLock.withLock {
+        holdJob?.cancel()
+        holdJob = null
+        val sentLive = sendHeld(noReply = false)
+        _heldAnswer.value = answer
+        holdJob = ioScope.launch {
+            delay(holdMs)
+            holdLock.withLock { if (_heldAnswer.value === answer) sendHeld(noReply = true) }
+        }
+        sentLive
+    }
+
+    /**
+     * Sends the held answer now. No cards come back for it: the watch already shows the
+     * cards after it, and a reply would reset the card on screen.
+     */
+    suspend fun flushHeldAnswer() {
+        holdLock.withLock {
+            holdJob?.cancel()
+            holdJob = null
+            sendHeld(noReply = true)
+        }
+    }
+
+    /** [flushHeldAnswer] without waiting: leaving the review, the app going to the background. */
+    fun flushHeldAnswerSoon() {
+        ioScope.launch { flushHeldAnswer() }
+    }
+
+    /** Takes the held answer back, unsent; null if there is none (already sent). */
+    suspend fun undoHeldAnswer(): HeldAnswer? = holdLock.withLock {
+        holdJob?.cancel()
+        holdJob = null
+        _heldAnswer.value.also { _heldAnswer.value = null }
+    }
+
+    /** Puts [card] back in front of the cards still to come from [from] on (live Undo). */
+    fun restoreCard(card: CardData, from: Int) {
+        _cards.value = listOf(card) + _cards.value.drop(from)
+    }
+
+    /** True when the held answer went out as a live one. */
+    private suspend fun sendHeld(noReply: Boolean): Boolean {
+        val held = _heldAnswer.value ?: return false
+        _heldAnswer.value = null
+        // "Offline" here means only that the phone applies it without sending cards back.
+        val quiet = held.offline || noReply
+        sendAnswer(held.noteId, held.cardOrd, held.ease, held.timeTakenMs, held.deckId, offline = quiet)
+        return !quiet
+    }
+
+    /**
      * Queues a review answer as a DataItem. Unlike a message, a DataItem is persisted and
      * guaranteed-delivery: an answer tapped while the phone is unreachable is applied once
      * the link returns rather than silently lost. Each answer gets a unique UUID (in both
@@ -526,8 +609,10 @@ class DataLayerClient(
         }
 
         val cardMaps = dataMap.getDataMapArrayList(KEY_CARDS) ?: return
-        val cardList = cardMaps.map { map -> cardFromDataMap(map) }
-        val remaining = dataMap.getInt(KEY_REMAINING, cardList.size)
+        val all = cardMaps.map { map -> cardFromDataMap(map) }
+        // The phone doesn't know about the held answer yet: its card is still due there.
+        val cardList = withoutHeld(all, _heldAnswer.value)
+        val remaining = (dataMap.getInt(KEY_REMAINING, all.size) - (all.size - cardList.size)).coerceAtLeast(0)
         _cards.value = cardList
         _cardsRemaining.value = remaining
         _newRemaining.value = dataMap.getInt(KEY_NEW_REMAINING, 0)
@@ -586,6 +671,14 @@ class DataLayerClient(
         }
     }
 }
+
+/**
+ * [cards] from the phone without the card of a held live answer: the phone doesn't know it
+ * was answered, and would otherwise show it again.
+ */
+internal fun withoutHeld(cards: List<CardData>, held: DataLayerClient.HeldAnswer?): List<CardData> =
+    if (held == null || held.offline) cards
+    else cards.filterNot { it.noteId == held.noteId && it.cardOrd == held.cardOrd }
 
 /** Reads one card written by the phone's `cardToDataMap`. */
 internal fun cardFromDataMap(map: DataMap): CardData {

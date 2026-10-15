@@ -120,6 +120,11 @@ class OfflineQueue(val pack: OfflinePack, state: State = State()) {
         )
     }
 
+    /** Puts the review back to [previous], taken before an answer that was undone. */
+    fun restore(previous: State) {
+        state = sanitize(previous)
+    }
+
     /** [key] was answered elsewhere (online): it no longer needs showing here. */
     fun markDone(key: CardKey) {
         if (key !in byKey) return

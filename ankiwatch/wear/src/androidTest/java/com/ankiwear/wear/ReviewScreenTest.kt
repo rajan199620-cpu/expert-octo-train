@@ -192,6 +192,76 @@ class ReviewScreenTest {
     }
 
     @Test
+    fun undoIsOfferedOnlyWhileThereIsSomethingToUndo() {
+        var undos = 0
+        val undoAvailable = mutableStateOf(false)
+        val current = mutableStateOf<CardData?>(lawC3)
+        rule.setContent {
+            AnkiWearTheme {
+                ReviewScreen(
+                    card = current.value,
+                    revisionKey = current.value?.noteId ?: 0L,
+                    onUndo = if (undoAvailable.value) ({ undos++ }) else null,
+                    onAnswer = { _, _, _, _ -> },
+                    onFinished = {}
+                )
+            }
+        }
+        rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithTag(ReviewTags.UNDO).fetchSemanticsNodes().isEmpty())
+        rule.runOnIdle { undoAvailable.value = true }
+        rule.waitForIdle()
+        rule.scrollContentTo(hasTestTag(ReviewTags.UNDO))
+        rule.onNodeWithTag(ReviewTags.UNDO).performClick()
+        assertEquals(1, undos)
+        // On the answer side as well.
+        rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+        rule.waitForIdle()
+        rule.scrollContentTo(hasTestTag(ReviewTags.UNDO))
+        rule.onNodeWithTag(ReviewTags.UNDO).performClick()
+        assertEquals(2, undos)
+        // The deck's last answer can be taken back from the Done screen.
+        rule.runOnIdle { current.value = null }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ReviewTags.UNDO).performClick()
+        assertEquals(3, undos)
+        rule.screenshot("done-with-undo")
+        rule.runOnIdle { undoAvailable.value = false }
+        rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithTag(ReviewTags.UNDO).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun aWhySidenoteStaysFoldedUntilTapped() {
+        val card = CardData(
+            noteId = 77, cardOrd = 0, question = "", answer = "", buttonCount = 4,
+            nextReviewTimes = listOf("<1m", "6m", "1d", "4d"),
+            cloze = ClozeCard(
+                "Abetment needs {{c1::instigation::first mode}}." +
+                    "<details><summary>why</summary>The law punishes the mind behind the act.</details>",
+                1, emptyList()
+            )
+        )
+        show(card, focus = false)
+        for (answer in listOf(false, true)) {
+            if (answer) {
+                rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+                rule.waitForIdle()
+            }
+            val text = rule.allText()
+            assertTrue(text, text.contains("[why]"))
+            assertFalse(text, text.contains("punishes"))
+        }
+        val index = blockIndexContaining(card, "[why]")
+        rule.scrollContentTo(hasTestTag(ReviewTags.block(index)))
+        rule.tapTextIn(ReviewTags.block(index), "[why]")
+        assertTrue(rule.allText().contains("The law punishes the mind behind the act."))
+        rule.screenshot("why-sidenote-open")
+        rule.tapTextIn(ReviewTags.block(index), "punishes")
+        assertFalse(rule.allText().contains("punishes"))
+    }
+
+    @Test
     fun peekedTestedClozeStaysOpenOnTheAnswerSide() {
         show(lawC3, focus = true)
         val index = blockIndexContaining(lawC3, "[second mode]")
@@ -216,10 +286,26 @@ class ReviewScreenTest {
         rule.waitForIdle()
         rule.screenshot("law-c3-focus-answer")
         rule.assertOnScreen("an act in pursuance must follow")
+        // Note and Extra start folded, as behind their headers on the phone; a tap opens one.
+        val folded = rule.allText()
+        assertFalse(folded, folded.contains("Definitional section"))
+        assertFalse(folded, folded.contains("Memory: P-A-H"))
+        rule.scrollContentTo(hasTestTag(ReviewTags.extraHeader(0)))
+        rule.onNodeWithTag(ReviewTags.extraHeader(0), useUnmergedTree = true).performClick()
+        rule.waitForIdle()
         rule.scrollContentTo(hasText("Definitional section", substring = true))
         rule.assertOnScreen("Definitional section")
+        assertFalse(rule.allText().contains("Memory: P-A-H"))
+        rule.scrollContentTo(hasTestTag(ReviewTags.extraHeader(1)))
+        rule.onNodeWithTag(ReviewTags.extraHeader(1), useUnmergedTree = true).performClick()
+        rule.waitForIdle()
         rule.scrollContentTo(hasText("Memory: P-A-H", substring = true))
         rule.assertOnScreen("Memory: P-A-H")
+        // A second tap folds it again.
+        rule.scrollContentTo(hasTestTag(ReviewTags.extraHeader(0)))
+        rule.onNodeWithTag(ReviewTags.extraHeader(0), useUnmergedTree = true).performClick()
+        rule.waitForIdle()
+        assertFalse(rule.allText().contains("Definitional section"))
         // The hold grades' intervals close the answer side.
         rule.scrollContentTo(hasText("hold: Hard 6m · Easy 4d"))
         rule.assertOnScreen("hold: Hard 6m · Easy 4d")

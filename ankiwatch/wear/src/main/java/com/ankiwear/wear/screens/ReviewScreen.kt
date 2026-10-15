@@ -88,9 +88,11 @@ object ReviewTags {
     const val SHOW_ANSWER = "show-answer"
     const val FOCUS_TOGGLE = "focus-toggle"
     const val BURY = "bury"
+    const val UNDO = "undo"
     const val HEADER = "review-header"
     fun block(index: Int) = "block-$index"
     fun extraBlock(extra: Int, index: Int) = "extra-$extra-$index"
+    fun extraHeader(extra: Int) = "extra-header-$extra"
     fun ease(ease: Int) = "ease-$ease"
 }
 
@@ -110,6 +112,8 @@ fun ReviewScreen(
     allowBury: Boolean = true,
     /** Shown at the top instead of the queue counts (offline: "Offline · 12 left"). */
     header: String? = null,
+    /** Takes the last answer back; null when there is none to take back. */
+    onUndo: (() -> Unit)? = null,
     onAnswer: (noteId: Long, cardOrd: Int, ease: Int, timeTakenMs: Long) -> Unit,
     onFinished: () -> Unit
 ) {
@@ -128,7 +132,7 @@ fun ReviewScreen(
         if (isFetching) {
             LoadingScreen()
         } else {
-            CompletionScreen(onFinished = onFinished)
+            CompletionScreen(onFinished = onFinished, onUndo = onUndo)
         }
         return
     }
@@ -242,6 +246,7 @@ fun ReviewScreen(
             // Bury hides the card until tomorrow; once per card, like a grade.
             onBury = if (allowBury) ({ grade(Wire.EASE_BURY) }) else null,
             buryEnabled = !hasAnswered,
+            onUndo = onUndo,
             insets = insets,
             // Under the answer rather than above the buttons: the card keeps the room.
             footer = if (showAnswer) layout.holdCaption(card.nextReviewTimes) else null,
@@ -350,9 +355,10 @@ fun rememberScreenInsets(): ScreenInsets {
 private sealed class Line {
     class Body(val block: Block) : Line()
     object Gap : Line()
-    /** The chip row under the card: Whole note/Focus (if the note can be focused) and Bury. */
-    class Actions(val hiddenCount: Int?, val focused: Boolean, val bury: Boolean) : Line()
-    class ExtraHeader(val label: String) : Line()
+    /** The chip row under the card: Undo, Whole note/Focus (if the note can be focused) and Bury. */
+    class Actions(val hiddenCount: Int?, val focused: Boolean, val bury: Boolean, val undo: Boolean) : Line()
+    /** A Note/Extra/Why panel's title: tap to open or fold it, as on the phone. */
+    class ExtraHeader(val extraIndex: Int, val label: String, val open: Boolean) : Line()
     class Extra(val extraIndex: Int, val block: Block) : Line()
     class Footer(val text: String) : Line()
     object Empty : Line()
@@ -369,6 +375,7 @@ private fun CardBody(
     onFocusModeChange: (Boolean) -> Unit,
     onBury: (() -> Unit)?,
     buryEnabled: Boolean,
+    onUndo: (() -> Unit)?,
     insets: ScreenInsets,
     footer: String?,
     modifier: Modifier = Modifier
@@ -379,7 +386,10 @@ private fun CardBody(
     val focused = focusMode && canFocus
 
     val canBury = onBury != null
-    val rows = remember(rendered, focused, footer, canBury) {
+    val canUndo = onUndo != null
+    // Panels start folded on every card, like the deck's own Note/Extra/Why headers.
+    var openExtras by remember(revisionKey) { mutableStateOf(emptySet<Int>()) }
+    val rows = remember(rendered, focused, footer, canBury, canUndo, openExtras) {
         buildList {
             if (body.blocks.isEmpty()) add(Line.Empty)
             if (focused) {
@@ -392,12 +402,13 @@ private fun CardBody(
             } else {
                 body.blocks.forEach { add(Line.Body(it)) }
             }
-            if (canFocus || canBury) {
-                add(Line.Actions(if (canFocus) body.blocks.size - focus!!.size else null, focused, canBury))
+            if (canFocus || canBury || canUndo) {
+                add(Line.Actions(if (canFocus) body.blocks.size - focus!!.size else null, focused, canBury, canUndo))
             }
             rendered.extras.forEachIndexed { k, (label, field) ->
-                add(Line.ExtraHeader(label))
-                field.blocks.forEach { add(Line.Extra(k, it)) }
+                val open = k in openExtras
+                add(Line.ExtraHeader(k, label, open))
+                if (open) field.blocks.forEach { add(Line.Extra(k, it)) }
             }
             if (footer != null) add(Line.Footer(footer))
         }
@@ -456,19 +467,32 @@ private fun CardBody(
                     modifier = Modifier.fillMaxWidth()
                 )
                 is Line.ExtraHeader -> Text(
-                    text = row.label,
+                    text = (if (row.open) "▾ " else "▸ ") + row.label,
                     color = extraHeaderColor(row.label),
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 6.dp)
+                        .clickable {
+                            openExtras = if (row.open) openExtras - row.extraIndex else openExtras + row.extraIndex
+                        }
+                        .padding(vertical = 4.dp)
+                        .testTag(ReviewTags.extraHeader(row.extraIndex))
                 )
                 is Line.Actions -> ChipRow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 4.dp)
                 ) {
+                    if (row.undo && onUndo != null) {
+                        CompactChip(
+                            onClick = onUndo,
+                            colors = ChipDefaults.secondaryChipColors(),
+                            label = { Text(text = "↶ Undo", fontSize = 11.sp, maxLines = 1) },
+                            modifier = Modifier.testTag(ReviewTags.UNDO)
+                        )
+                    }
                     if (row.hiddenCount != null) {
                         CompactChip(
                             onClick = { onFocusModeChange(!row.focused) },
@@ -832,7 +856,7 @@ private fun LoadingScreen() {
 }
 
 @Composable
-private fun CompletionScreen(onFinished: () -> Unit) {
+private fun CompletionScreen(onFinished: () -> Unit, onUndo: (() -> Unit)?) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -865,5 +889,14 @@ private fun CompletionScreen(onFinished: () -> Unit) {
                 )
             }
         )
+        if (onUndo != null) {
+            Spacer(modifier = Modifier.height(6.dp))
+            CompactChip(
+                onClick = onUndo,
+                colors = ChipDefaults.secondaryChipColors(),
+                label = { Text(text = "↶ Undo last answer", fontSize = 11.sp, maxLines = 1) },
+                modifier = Modifier.testTag(ReviewTags.UNDO)
+            )
+        }
     }
 }
