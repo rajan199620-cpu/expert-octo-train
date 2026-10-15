@@ -131,6 +131,17 @@ if ($Phone) {
 }
 
 Write-Host (Invoke-Adb @("connect", $Watch))
+$state = (Invoke-Adb @("-s", $Watch, "get-state")).Trim()
+if ($state -match "unauthorized") {
+    Fail "The watch hasn't allowed this PC yet. Look at the watch, tick 'Always allow' and tap Allow, then run this again."
+}
+if ($state -ne "device") {
+    Fail ("Can't reach the watch at $Watch. Check, in this order:`n" +
+        "  1. The PC and the watch are on the same Wi-Fi (the PC's IPv4 address, from ipconfig, starts like the watch's).`n" +
+        "  2. The IP address & Port under the watch's Wireless debugging is exactly $Watch; it changes whenever Wireless debugging is switched off and on.`n" +
+        "  3. The Wi-Fi lets devices reach each other: college, office and public networks often don't. Then put both the PC and the watch on your phone's hotspot.`n" +
+        "  4. If the watch shows a pairing request or the PC was never paired: Wireless debugging > Pair new device, then adb pair <its IP:port> <code>.")
+}
 # Both apps share one package name, so the watch app on a phone would replace the phone app.
 if ((Get-WatchFeature $Watch) -eq "false") {
     Fail ("$Watch is not a watch (it looks like a phone). Use the address shown on the WATCH " +

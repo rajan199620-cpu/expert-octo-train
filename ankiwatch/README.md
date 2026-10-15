@@ -184,6 +184,12 @@ Never commit the keystore; this repository is public.
   the watch was cut off mid-way (a reason after the colon would mean the watch refused the
   app). Charger, screen on, watch Bluetooth off, check the port, then install again with
   `--no-streaming` as in step 5.
+- **`Can't reach the watch at …`** (after `failed to connect to …`): the PC can't see the
+  watch at all, so nothing was copied. Same Wi-Fi on both (the PC's IPv4 address from
+  `ipconfig` starts like the watch's), the exact IP:port shown under Wireless debugging now,
+  and a network that lets devices reach each other; college, office and public Wi-Fi often
+  don't, so put both on the phone's hotspot. `Test-NetConnection <watch IP> -Port <port>`
+  shows whether the port is reachable.
 - **`The term '.\install.ps1' is not recognized`** or **`-File ... does not exist`**: the
   script isn't in the folder you are in; copy all files from the download next to
   `adb.exe` (step 2).

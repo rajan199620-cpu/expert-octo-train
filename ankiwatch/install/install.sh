@@ -142,6 +142,20 @@ if [ "$PHONE" = "--phone" ]; then
 fi
 
 "$ADB" connect "$WATCH"
+state=$("$ADB" -s "$WATCH" get-state 2>&1 || true)
+case "$state" in
+  *unauthorized*)
+    echo "The watch hasn't allowed this computer yet. Look at the watch, tick 'Always allow' and tap Allow, then run this again." >&2
+    exit 1 ;;
+  device) ;;
+  *)
+    echo "Can't reach the watch at $WATCH. Check, in this order:" >&2
+    echo "  1. The PC and the watch are on the same Wi-Fi (the PC's IPv4 address, from ipconfig, starts like the watch's)." >&2
+    echo "  2. The IP address & Port under the watch's Wireless debugging is exactly $WATCH; it changes whenever Wireless debugging is switched off and on." >&2
+    echo "  3. The Wi-Fi lets devices reach each other: college, office and public networks often don't. Then put both the PC and the watch on your phone's hotspot." >&2
+    echo "  4. If the watch shows a pairing request or the PC was never paired: Wireless debugging > Pair new device, then adb pair <its IP:port> <code>." >&2
+    exit 1 ;;
+esac
 # Both apps share one package name, so the watch app on a phone would replace the phone app.
 if [ "$(watch_feature "$WATCH")" = "false" ]; then
   echo "$WATCH is not a watch (it looks like a phone). Use the address shown on the WATCH" >&2
