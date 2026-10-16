@@ -261,6 +261,42 @@ class ReviewScreenTest {
         assertFalse(rule.allText().contains("punishes"))
     }
 
+    /** The deck's own sidenote spans: `<span class="sn" data-sn="why" data-sn-c="N">`. */
+    @Test
+    fun aSidenoteSpanForTheTestedClozeWaitsForTheAnswer() {
+        val card = CardData(
+            noteId = 78, cardOrd = 0, question = "", answer = "", buttonCount = 4,
+            nextReviewTimes = listOf("<1m", "6m", "1d", "4d"),
+            cloze = ClozeCard(
+                "EI matters<ol><li>{{c1::society: urbanisation, isolation}} " +
+                    "<span class=\"sn\" data-sn=\"why\" data-sn-c=\"1\"><strong>Society.</strong> cities leave people alone.</span></li>" +
+                    "<li>{{c2::economy: AI}} <span class=\"sn\" data-sn=\"why\" data-sn-c=\"2\">automation reaches every job.</span></li></ol>",
+                1, emptyList()
+            )
+        )
+        show(card, focus = false)
+        // Question side: c1's own sidenote would give the answer away; c2's is there, folded.
+        var text = rule.allText()
+        assertEquals(text, 1, Regex("""\[why]""").findAll(text).count())
+        assertFalse(text, text.contains("cities"))
+        assertFalse(text, text.contains("automation"))
+        rule.onNodeWithTag(ReviewTags.SHOW_ANSWER).performClick()
+        rule.waitForIdle()
+        text = rule.allText()
+        assertEquals(text, 2, Regex("""\[why]""").findAll(text).count())
+        assertFalse(text, text.contains("cities"))
+        // The first [why] on the answer side is c1's: a tap opens it, another folds it.
+        val rendered = CardRenderer.render(card.cloze!!.content, RenderOptions(activeOrd = 1, showAnswer = true))
+        val index = rendered.blocks.first { it.text == "[why]" }.index
+        rule.scrollContentTo(hasTestTag(ReviewTags.block(index)))
+        rule.tapTextIn(ReviewTags.block(index), "[why]")
+        assertTrue(rule.allText(), rule.allText().contains("Society. cities leave people alone."))
+        assertFalse(rule.allText().contains("automation"))
+        rule.screenshot("why-sn-open")
+        rule.tapTextIn(ReviewTags.block(index), "cities")
+        assertFalse(rule.allText().contains("cities"))
+    }
+
     @Test
     fun peekedTestedClozeStaysOpenOnTheAnswerSide() {
         show(lawC3, focus = true)

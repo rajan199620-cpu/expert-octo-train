@@ -5,7 +5,10 @@ package com.ankiwatch.core
  * watch shows as `[why]` until tapped, the way the deck hides them on the phone:
  *  - `<details><summary>why</summary> … </details>` (unless it has `open`);
  *  - a clickable label followed by a hidden element, the template's own panel pattern:
- *    `<div onclick="showNextElement(this)">why</div><div style="display:none"> … </div>`.
+ *    `<div onclick="showNextElement(this)">why</div><div style="display:none"> … </div>`;
+ *  - a sidenote span, `<span class="sn" data-sn="why" data-sn-c="3"> … </span>`, labelled by
+ *    `data-sn`. `data-sn-c` names the cloze it explains: often it restates that answer, so
+ *    the renderer leaves it out on the question side of that cloze's own card.
  * Other hidden elements stay hidden, as the renderer always did: on template cards they hold
  * the template's own machinery, not something to read.
  *
@@ -36,7 +39,7 @@ internal object Collapsibles {
         while (stack.isNotEmpty()) {
             for (node in stack.removeAt(stack.size - 1)) {
                 when (node) {
-                    is Node.Tag -> if (!node.isEnd && (node.name == "details" || node.attrs.containsKey("onclick"))) return true
+                    is Node.Tag -> if (!node.isEnd && (node.name == "details" || node.attrs.containsKey("onclick") || isSidenote(node))) return true
                     is Node.Cloze -> stack.add(node.content)
                     is Node.Text -> Unit
                 }
@@ -53,7 +56,7 @@ internal object Collapsibles {
         while (i < nodes.size) {
             val node = nodes[i]
             if (node is Node.Cloze) {
-                out.add(Node.Cloze(node.id, node.ord, foldList(node.content, depth + 1, newId), node.hint, node.isAnchor))
+                out.add(Node.Cloze(node.id, node.ord, foldList(node.content, depth + 1, newId), node.hint, node.isAnchor, node.sidenoteFor))
                 i++
                 continue
             }
@@ -78,6 +81,16 @@ internal object Collapsibles {
                     body = inner
                 }
                 out.addAll(collapsed(label, foldList(body, depth + 1, newId), newId()))
+                i = end + 1
+                continue
+            }
+            // A sidenote span: the whole element is the hidden body.
+            if (isSidenote(node)) {
+                val end = matchingEnd(nodes, i)
+                val body = nodes.subList(i + 1, minOf(end, nodes.size))
+                val label = labelOf(listOf(Node.Text(node.attrs["data-sn"].orEmpty())))
+                val target = node.attrs["data-sn-c"]?.trim()?.toIntOrNull()?.takeIf { it > 0 } ?: 0
+                out.addAll(collapsed(label, foldList(body, depth + 1, newId), newId(), target))
                 i = end + 1
                 continue
             }
@@ -135,14 +148,14 @@ internal object Collapsibles {
         return nodes.size
     }
 
-    private fun collapsed(label: String, body: List<Node>, id: Int): List<Node> {
+    private fun collapsed(label: String, body: List<Node>, id: Int, sidenoteFor: Int = 0): List<Node> {
         val hint = label.ifBlank { DEFAULT_LABEL }
         val content = ArrayList<Node>(body.size + 2)
         content.add(DIV)
         content.addAll(body)
         content.add(DIV_END)
         // Its own block, so the label doesn't run on from the text before it.
-        return listOf(DIV, Node.Cloze(id, SIDENOTE_ORD, content, hint, isAnchor = false), DIV_END)
+        return listOf(DIV, Node.Cloze(id, SIDENOTE_ORD, content, hint, isAnchor = false, sidenoteFor = sidenoteFor), DIV_END)
     }
 
     private fun labelOf(nodes: List<Node>): String {
@@ -158,6 +171,10 @@ internal object Collapsibles {
         val text = sb.toString().collapseWhitespace().trim().trim('▸', '▾', '▶', '▼', '►', '+', '-', ':', ' ').trim()
         return if (text.length <= MAX_LABEL) text else text.take(MAX_LABEL - 1) + "…"
     }
+
+    /** `data-sn="…"`, or a `sn` class. */
+    private fun isSidenote(tag: Node.Tag): Boolean =
+        tag.attrs.containsKey("data-sn") || tag.attrs["class"]?.split(' ', '\t', '\n')?.contains("sn") == true
 
     private fun isHidden(tag: Node.Tag): Boolean {
         val style = tag.attrs["style"] ?: return false

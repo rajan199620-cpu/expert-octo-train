@@ -127,6 +127,10 @@ private class Renderer(private val field: ParsedField, private val opt: RenderOp
                 is Node.Cloze -> {
                     if (opt.plainClozes) {
                         stack.add(Cursor(node.content, popsMark = false))
+                    } else if (node.sidenoteFor != 0 && node.sidenoteFor == opt.activeOrd && !opt.showAnswer &&
+                        !containsActive.getOrElse(node.id) { false }
+                    ) {
+                        // The sidenote explains the answer still being asked for: not until it's shown.
                     } else {
                         val mark = markFor(node)
                         if (mark.state.isHidden) {

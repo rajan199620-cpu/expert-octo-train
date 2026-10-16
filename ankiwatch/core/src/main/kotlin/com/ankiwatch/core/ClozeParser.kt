@@ -24,13 +24,16 @@ sealed class Node {
      *
      * [isAnchor] mirrors the template's `#` rule: an answer that starts with `#` stays
      * visible as context on sibling cards. The `#` itself is already stripped from [content].
+     *
+     * [sidenoteFor], on a collapsed section only: the cloze number it explains, 0 for none.
      */
     class Cloze(
         val id: Int,
         val ord: Int,
         val content: List<Node>,
         val hint: String?,
-        val isAnchor: Boolean
+        val isAnchor: Boolean,
+        val sidenoteFor: Int = 0
     ) : Node()
 }
 

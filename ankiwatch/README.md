@@ -15,7 +15,7 @@ Based on [AnkiWatch](https://github.com/OleksandrShabaldas/AnkiWatch) by Oleksan
 | **Pink box** `[hint]` | The cloze this card tests. Tap it to peek. |
 | **Blue box** `[hint]` | A sibling cloze from the same note. Tap to open or close it. |
 | Plain text from a `#` cloze | Your anchor statement, shown as context on sibling cards (tested on its own card). |
-| **`[why]`** (or the section's own label) | A folded sidenote: `<details>` with a summary, or a label you click to open a hidden panel. Stays folded on both sides; tap to open, tap again to fold. |
+| **`[why]`** (or the section's own label) | A folded sidenote: a `<span class="sn" data-sn="why">`, `<details>` with a summary, or a label you click to open a hidden panel. Stays folded; tap to open, tap again to fold. A sidenote tied to a cloze (`data-sn-c="3"`) appears on that cloze's own card only once the answer is shown, since it often restates it. |
 | **Show answer** | Opens the tested cloze. The note's other fields (Note / Mnemonics / Extra / Why …) follow as folded headers: tap **▸ Note** to open one. |
 | **Again** / **Good** | Grade the card. **Hold Again = Hard**, **hold Good = Easy**. Each button shows its next interval; the Hard/Easy intervals are at the end of the answer. |
 | **Bottom side button** | Press: show the answer, then press again for **Good**. Hold (½ s): **Again**. Ignored while the next cards load; on *Done!* it returns to the decks. |

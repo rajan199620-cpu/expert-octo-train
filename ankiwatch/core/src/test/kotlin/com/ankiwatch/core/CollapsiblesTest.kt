@@ -129,6 +129,70 @@ class CollapsiblesTest {
         assertTrue(shown, shown.endsWith("…]"))
     }
 
+    // A note's own sidenote spans: data-sn is the label, data-sn-c the cloze it explains.
+    private val sn = "topic <br><ol><li>frame — {{c3::#ABC}} " +
+        "<span class=\"sn\" data-sn=\"why\" data-sn-c=\"3\"><strong>Why ABC.</strong> three heads, a frame first.</span></li>" +
+        "<ol><li>{{c1::alpha <u>a</u>nswer}} (PYQ 2023) " +
+        "<span class=\"sn\" data-sn=\"why\" data-sn-c=\"1\"><strong>Alpha.</strong> restates the alpha answer. <b>Exam:</b> 2023.</span></li>" +
+        "<li>{{c2::beta answer}} <span class=\"sn\" data-sn=\"why\" data-sn-c=\"2\">beta reason</span></li></ol>" +
+        "<li>general · <span class=\"sn\" data-sn=\"why\"><strong>One idea runs through this note.</strong> engine and steering.</span></li></ol>"
+
+    private fun whyLabels(r: RenderedField) =
+        r.blocks.flatMap { it.runs }.filter { it.text == "[why]" && it.cloze != null }.map { it.cloze!!.id }
+
+    @Test
+    fun aSidenoteSpanIsFoldedBehindItsLabel() {
+        for (ord in 1..3) for (answer in listOf(false, true)) {
+            val r = render(sn, ord = ord, answer = answer)
+            val text = r.plainText()
+            for (body in listOf("three heads", "restates the alpha", "beta reason", "engine and steering")) {
+                assertFalse("c$ord ${if (answer) "answer" else "question"}: $body in $text", text.contains(body))
+            }
+        }
+        // Not cards: the deck still has c1–c3 only.
+        assertEquals(listOf(1, 2, 3), ClozeParser.parse(sn).clozeNumbers())
+    }
+
+    @Test
+    fun aSidenoteForTheTestedClozeWaitsForTheAnswer() {
+        // c1's question side: its own sidenote would give the answer away, so it isn't there.
+        val q = render(sn, ord = 1)
+        assertFalse(q.plainText(), q.plainText().contains("alpha answer"))
+        assertEquals(3, whyLabels(q).size) // c3's, c2's and the general one
+        // Answer side: there, folded, and a tap opens it, formatting kept.
+        val a = render(sn, ord = 1, answer = true)
+        val ids = whyLabels(a)
+        assertEquals(4, ids.size)
+        val opened = ids.map { render(sn, ord = 1, answer = true, toggled = setOf(it)).plainText() }
+        assertEquals(1, opened.count { it.contains("Alpha. restates the alpha answer. Exam: 2023.") })
+        val open = render(sn, ord = 1, answer = true, toggled = ids.toSet())
+        assertTrue(open.plainText(), open.plainText().contains("engine and steering"))
+        assertTrue(open.blocks.flatMap { it.runs }.any { it.text.contains("Alpha.") && it.style and Style.BOLD != 0 })
+        // Sibling cards: c1's sidenote is there from the start (c1 isn't asked there).
+        val c2 = render(sn, ord = 2)
+        assertEquals(3, whyLabels(c2).size) // all but c2's own
+        assertFalse(c2.plainText().contains("[why] beta"))
+    }
+
+    @Test
+    fun sidenoteMarkupVariants() {
+        // No data-sn-c: always available. Only the class: labelled "more". Other classes beside sn.
+        val r = render("{{c1::x}}<span class=\"note sn\">aside</span><span data-sn=\"source\" data-sn-c=\"zz\">src</span>")
+        assertTrue(r.plainText(), r.plainText().contains("[more]"))
+        assertTrue(r.plainText().contains("[source]"))
+        assertFalse(r.plainText().contains("aside"))
+        assertFalse(r.plainText().contains("src"))
+        // A class merely containing the letters isn't one.
+        assertTrue(render("{{c1::x}}<span class=\"snippet\">shown</span>").plainText().contains("shown"))
+        // The tested cloze inside its own sidenote is still asked.
+        val inside = render("<span class=\"sn\" data-sn=\"why\" data-sn-c=\"1\">because {{c1::reason::cue}}</span>")
+        assertTrue(inside.plainText(), inside.plainText().contains("[cue]"))
+        assertTrue(inside.hasGenuine)
+        // Never closed: the rest of the field is the sidenote.
+        val open = render("{{c1::x}} <span class=\"sn\" data-sn=\"why\">the rest")
+        assertFalse(open.plainText().contains("the rest"))
+    }
+
     @Test
     fun deepNestingDoesNotOverflow() {
         val depth = 20_000
