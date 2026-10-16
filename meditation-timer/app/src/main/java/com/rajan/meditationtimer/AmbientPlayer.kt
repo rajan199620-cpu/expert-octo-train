@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Plays the background sound under a sit: a recording looped by MediaPlayer (the bundled rain, or
@@ -41,7 +42,8 @@ class AmbientPlayer(private val context: Context) {
     @Volatile private var duckUntil = 0L
     @Volatile private var stopping = false
 
-    @Volatile private var thread: Thread? = null
+    /** The current birdsong thread, if any; swapped atomically so an old one ending can't clear a new one. */
+    private val thread = AtomicReference<Thread?>(null)
     @Volatile private var media: MediaPlayer? = null
     /** How loud the recording sits in the mix: a little lower under birdsong, so the sum isn't louder. */
     private var mediaMix = 1f
@@ -167,8 +169,7 @@ class AmbientPlayer(private val context: Context) {
         stopping = true
         releaseFocus()
         synchronized(lock) { lock.notifyAll() }
-        thread?.let { it.interrupt(); runCatching { it.join(500) } }
-        thread = null
+        thread.getAndSet(null)?.let { it.interrupt(); runCatching { it.join(500) } }
         releaseMedia()
         state = State.STOPPED
     }
@@ -190,13 +191,13 @@ class AmbientPlayer(private val context: Context) {
 
     private fun startSynth(kind: Ambience, mix: Float): Boolean {
         val t = Thread({ runSynth(kind, mix) }, "ambience").apply { isDaemon = true; priority = Thread.NORM_PRIORITY + 1 }
-        thread = t
+        live.incrementAndGet() // counted from here, so a check right after start sees it
+        thread.set(t)
         t.start()
         return true
     }
 
     private fun runSynth(kind: Ambience, mix: Float) {
-        live.incrementAndGet()
         var track: AudioTrack? = null
         try {
             val scape = Soundscape.create(kind, RATE) ?: return
@@ -262,9 +263,8 @@ class AmbientPlayer(private val context: Context) {
             runCatching { track?.release() }
             // Only if still the current sound: an old thread ending late mustn't touch a new start.
             // With rain playing alongside, whichever of the two ends last marks the sound stopped
-            // (see [releaseMedia]; both fields are volatile, so one of them always sees the other gone).
-            if (thread === Thread.currentThread()) {
-                thread = null
+            // (see [releaseMedia]; both are volatile, so one of them always sees the other gone).
+            if (thread.compareAndSet(Thread.currentThread(), null)) {
                 if (media == null) {
                     state = State.STOPPED
                     releaseFocus()
@@ -333,7 +333,7 @@ class AmbientPlayer(private val context: Context) {
         mediaTick?.let { main.removeCallbacks(it) }
         media?.let { runCatching { it.stop() }; runCatching { it.release() } }
         media = null
-        if (thread == null) state = State.STOPPED
+        if (thread.get() == null) state = State.STOPPED
     }
 
     companion object {
