@@ -1,0 +1,18 @@
+<resources>
+    <color name="background">#FF1B1535</color>
+    <color name="ic_launcher_background">#FF1B1535</color>
+
+    <style name="Theme.MeditationTimer" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="WidgetDot">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">22dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:scaleType">centerInside</item>
+        <item name="android:src">@drawable/widget_dot_future</item>
+    </style>
+</resources>
