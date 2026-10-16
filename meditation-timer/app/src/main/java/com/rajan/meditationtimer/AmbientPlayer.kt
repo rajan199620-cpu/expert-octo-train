@@ -14,8 +14,9 @@ import android.os.SystemClock
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Plays the background sound under a sit: a generated soundscape streamed to an AudioTrack, or
- * the user's own recording looped by MediaPlayer. It fades in, fades out on pause, dips under
+ * Plays the background sound under a sit: a recording looped by MediaPlayer (the bundled rain, or
+ * the user's own), generated birdsong streamed to an AudioTrack, or both at once for rain and
+ * birds. It fades in, fades out on pause, dips under
  * every bell so the bell is always heard, and fades away at the end instead of cutting off.
  *
  * It also gives way, as Android asks media to: a phone call or an app speaking for a moment
@@ -41,7 +42,9 @@ class AmbientPlayer(private val context: Context) {
     @Volatile private var stopping = false
 
     @Volatile private var thread: Thread? = null
-    private var media: MediaPlayer? = null
+    @Volatile private var media: MediaPlayer? = null
+    /** How loud the recording sits in the mix: a little lower under birdsong, so the sum isn't louder. */
+    private var mediaMix = 1f
     private val main = Handler(Looper.getMainLooper())
 
     private val audio: AudioManager? = context.getSystemService(AudioManager::class.java)
@@ -90,12 +93,17 @@ class AmbientPlayer(private val context: Context) {
         stopping = false
         state = State.PLAYING
         fade(1f, fadeInMs)
-        when (kind) {
-            Ambience.CUSTOM -> customUri?.let(::startMedia) ?: run { state = State.STOPPED }
-            else -> startSynth(kind)
+        val playing = when (kind) {
+            Ambience.CUSTOM -> customUri?.let { startMedia(it, mix = 1f, randomStart = false) } ?: false
+            Ambience.RAIN -> startMedia(rainUri(context), mix = 1f, randomStart = true)
+            Ambience.RAIN_AND_BIRDS -> startMedia(rainUri(context), mix = RAIN_UNDER_BIRDS, randomStart = true) or startSynth(kind, BIRDS_OVER_RAIN)
+            else -> startSynth(kind, 1f)
         }
         // Nothing to play (a deleted recording): don't keep other apps quiet for nothing.
-        if (state == State.STOPPED) releaseFocus()
+        if (!playing) {
+            state = State.STOPPED
+            releaseFocus()
+        }
     }
 
     fun setVolume(value: Float) {
@@ -149,8 +157,9 @@ class AmbientPlayer(private val context: Context) {
         releaseFocus()
         fade(0f, fadeOutMs)
         synchronized(lock) { lock.notifyAll() }
-        // The synth thread ends itself once silent; a recording is released after its fade.
-        if (media != null) main.postDelayed({ releaseMedia() }, fadeOutMs.toLong() + 100)
+        // The synth thread ends itself once silent; a recording is released after its fade, unless
+        // a new sound has started since (ending a sit and starting the next within the fade).
+        media?.let { fading -> main.postDelayed({ if (media === fading) releaseMedia() }, fadeOutMs.toLong() + 100) }
     }
 
     /** Immediately, no fade: for tearing down before a new start. */
@@ -179,13 +188,14 @@ class AmbientPlayer(private val context: Context) {
 
     // --- Generated sound ---
 
-    private fun startSynth(kind: Ambience) {
-        val t = Thread({ runSynth(kind) }, "ambience").apply { isDaemon = true; priority = Thread.NORM_PRIORITY + 1 }
+    private fun startSynth(kind: Ambience, mix: Float): Boolean {
+        val t = Thread({ runSynth(kind, mix) }, "ambience").apply { isDaemon = true; priority = Thread.NORM_PRIORITY + 1 }
         thread = t
         t.start()
+        return true
     }
 
-    private fun runSynth(kind: Ambience) {
+    private fun runSynth(kind: Ambience, mix: Float) {
         live.incrementAndGet()
         var track: AudioTrack? = null
         try {
@@ -231,7 +241,7 @@ class AmbientPlayer(private val context: Context) {
                 }
 
                 scape.render(block, BLOCK)
-                val v = volume
+                val v = volume * mix
                 for (i in 0 until BLOCK) {
                     val g = fadeGain.next() * duckGain.next() * v
                     pcm[2 * i] = (block[2 * i] * g * 32767f).toInt().toShort()
@@ -251,20 +261,29 @@ class AmbientPlayer(private val context: Context) {
             runCatching { track?.stop() }
             runCatching { track?.release() }
             // Only if still the current sound: an old thread ending late mustn't touch a new start.
+            // With rain playing alongside, whichever of the two ends last marks the sound stopped
+            // (see [releaseMedia]; both fields are volatile, so one of them always sees the other gone).
             if (thread === Thread.currentThread()) {
-                state = State.STOPPED
-                releaseFocus()
+                thread = null
+                if (media == null) {
+                    state = State.STOPPED
+                    releaseFocus()
+                }
             }
             live.decrementAndGet()
         }
     }
 
-    // --- The user's own recording ---
+    // --- Recordings: the bundled rain, or the user's own ---
 
     private var mediaLevel = 0f
     private var mediaTick: Runnable? = null
 
-    private fun startMedia(uri: Uri) {
+    /**
+     * Rain starts at a random point in its four-minute loop, so the same thunder roll doesn't
+     * open every sit. (The file is cut to loop seamlessly: see tools/make_rain.py.)
+     */
+    private fun startMedia(uri: Uri, mix: Float, randomStart: Boolean): Boolean {
         val player = runCatching {
             MediaPlayer().apply {
                 setAudioAttributes(ATTRIBUTES)
@@ -272,13 +291,15 @@ class AmbientPlayer(private val context: Context) {
                 isLooping = true
                 setVolume(0f, 0f)
                 prepare()
+                if (randomStart && duration > 0) seekTo((Math.random() * duration).toInt())
                 start()
             }
-        }.getOrNull()
-        if (player == null) { state = State.STOPPED; return }
+        }.getOrNull() ?: return false
         media = player
+        mediaMix = mix
         mediaLevel = 0f
         mediaFade()
+        return true
     }
 
     /** MediaPlayer has no ramps of its own: step its volume every 50 ms. */
@@ -304,7 +325,7 @@ class AmbientPlayer(private val context: Context) {
 
     private fun applyMediaVolume() {
         val duck = if (SystemClock.elapsedRealtime() < duckUntil) DUCK_LEVEL else 1f
-        val g = mediaLevel * volume * duck
+        val g = mediaLevel * volume * duck * mediaMix
         runCatching { media?.setVolume(g, g) }
     }
 
@@ -324,6 +345,11 @@ class AmbientPlayer(private val context: Context) {
         const val END_FADE_MS = 6_000
         const val DUCK_MS = 5_000L
         const val DUCK_LEVEL = 0.35f
+        /** Rain & birds: each a little lower than alone, so together they're no louder. */
+        const val RAIN_UNDER_BIRDS = 0.7f
+        const val BIRDS_OVER_RAIN = 0.9f
+
+        fun rainUri(context: Context): Uri = Uri.parse("android.resource://${context.packageName}/${R.raw.rain}")
 
         private val ATTRIBUTES: AudioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)

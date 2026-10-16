@@ -198,8 +198,11 @@ mixed). No breath-holding in either; sessions end on a whole round.
 **Background sound** (Sit → Sound & stillness, off by default): **Rain**, **Birds** (a
 breeze, two whistlers, a dove's low coo, a gentle carol and a distant koel; no quick chirps or
 trills: every note is at least 150 ms and glides slowly), **Rain & birds** together, or
-**My recording** (any audio file on the phone, looped). Rain and birdsong are generated on the
-phone as it plays, so they never loop or repeat and add nothing to the download. The sound has its
+**My recording** (any audio file on the phone, looped). Rain is a real recording: "Rain and
+Thunder" by loswin23 on Pixabay (Pixabay Content License, free to use in an app). It was cut into a
+seamless four-minute loop, with the thunder turned down so a roll comes in at most ~8 dB over the
+rain instead of 14, and each sit starts it at a random point (`tools/make_rain.py` rebuilds it;
+3.7 MB). Birdsong is generated on the phone as it plays, so it never repeats. The sound has its
 own volume (separate from the bell), fades in over 8 s, fades out on pause, dips under every bell
 so the bell is always heard, and eases away over the final bell. *Listen* plays 10 s to set it.
 Why these two: in a meta-analysis of 18 studies, natural sounds lowered stress and improved mood

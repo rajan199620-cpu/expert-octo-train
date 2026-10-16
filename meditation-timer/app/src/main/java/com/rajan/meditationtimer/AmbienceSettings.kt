@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 /**
- * Background sound: off, generated rain or birdsong, or a recording of your own. Its volume is
+ * Background sound: off, recorded rain, generated birdsong, or a recording of your own. Its volume is
  * separate from the bell's, and Listen plays ten seconds so it can be set before a sit.
  */
 @Composable
