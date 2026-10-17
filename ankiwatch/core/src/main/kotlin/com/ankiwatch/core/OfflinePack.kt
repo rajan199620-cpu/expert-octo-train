@@ -172,25 +172,26 @@ object OfflinePackCodec {
 
     private fun corrupt(why: String) = IllegalArgumentException("Offline pack is damaged: $why")
 
-    /** Fails once more than [limit] bytes come out, so a crafted gzip can't fill memory. */
-    private class Capped(input: InputStream, private val limit: Long) : FilterInputStream(input) {
-        private var total = 0L
+}
 
-        override fun read(): Int {
-            val b = super.read()
-            if (b >= 0) count(1)
-            return b
-        }
+/** Fails once more than [limit] bytes come out, so a crafted gzip can't fill memory. */
+internal class Capped(input: InputStream, private val limit: Long) : FilterInputStream(input) {
+    private var total = 0L
 
-        override fun read(b: ByteArray, off: Int, len: Int): Int {
-            val n = super.read(b, off, len)
-            if (n > 0) count(n.toLong())
-            return n
-        }
+    override fun read(): Int {
+        val b = super.read()
+        if (b >= 0) count(1)
+        return b
+    }
 
-        private fun count(n: Long) {
-            total += n
-            if (total > limit) throw IOException("more than $limit bytes unpacked")
-        }
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        val n = super.read(b, off, len)
+        if (n > 0) count(n.toLong())
+        return n
+    }
+
+    private fun count(n: Long) {
+        total += n
+        if (total > limit) throw IOException("more than $limit bytes unpacked")
     }
 }

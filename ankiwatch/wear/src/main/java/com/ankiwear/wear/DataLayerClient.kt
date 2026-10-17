@@ -3,6 +3,7 @@ package com.ankiwear.wear
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.ankiwatch.core.DeckListCodec
 import com.ankiwatch.core.Link
 import com.ankiwatch.core.Wire
 import com.ankiwear.wear.model.CardData
@@ -149,6 +150,8 @@ class DataLayerClient(
     private val _heldAnswer = MutableStateFlow<HeldAnswer?>(null)
     val heldAnswer: StateFlow<HeldAnswer?> = _heldAnswer.asStateFlow()
     private val holdLock = Mutex()
+    private val decksLock = Mutex()
+    private var decksShownTime = Long.MIN_VALUE
     private var holdJob: Job? = null
 
     /** The offline download asked for last, and how it went. */
@@ -240,7 +243,7 @@ class DataLayerClient(
                     }
                 }
                 latestDecks?.let {
-                    handleDecksResponse(it)
+                    applyDecks(it)
                     Log.d(TAG, "Hydrated decks from cache")
                 }
             } finally {
@@ -538,7 +541,11 @@ class DataLayerClient(
             }
             if (event.type != DataEvent.TYPE_CHANGED) continue
             when (path) {
-                PATH_RESPONSE_DECKS -> handleDecksResponse(DataMapItem.fromDataItem(event.dataItem).dataMap)
+                // The full list is in an Asset, read off the main thread.
+                PATH_RESPONSE_DECKS -> {
+                    val map = DataMapItem.fromDataItem(event.dataItem).dataMap
+                    ioScope.launch { applyDecks(map) }
+                }
                 PATH_RESPONSE_CARDS -> handleCardsResponse(DataMapItem.fromDataItem(event.dataItem).dataMap)
                 // Read the cards off the main thread; the event's item is only valid until
                 // this callback returns, hence the frozen copy.
@@ -563,9 +570,32 @@ class DataLayerClient(
         }
     }
 
-    private fun handleDecksResponse(dataMap: DataMap) {
-        val deckMaps = dataMap.getDataMapArrayList(KEY_DECKS) ?: return
-        val deckList = deckMaps.map { map ->
+    /**
+     * Shows the deck list in [dataMap]: the whole list from its Asset, or, from a phone app
+     * before the Asset (or if the Asset can't be read), what fitted in the DataItem itself.
+     * A list older than the one already shown is ignored, since two can be read at once.
+     */
+    private suspend fun applyDecks(dataMap: DataMap) {
+        val time = dataMap.getLong(KEY_TIMESTAMP, System.currentTimeMillis())
+        val full = dataMap.getAsset(Wire.KEY_DECK_LIST)?.let { asset ->
+            try {
+                val bytes = dataClient.getFdForAsset(asset).await().inputStream.use { it.readBytes() }
+                DeckListCodec.decode(bytes).map { DeckInfo(it.id, it.name, it.newCount, it.learnCount, it.reviewCount) }
+            } catch (e: Exception) {
+                Log.w(TAG, "Couldn't read the full deck list, showing what fitted inline: ${e.message}")
+                null
+            }
+        }
+        val deckList = full ?: inlineDecks(dataMap) ?: return
+        decksLock.withLock {
+            if (time < decksShownTime) return
+            decksShownTime = time
+            showDecks(deckList, time)
+        }
+    }
+
+    private fun inlineDecks(dataMap: DataMap): List<DeckInfo>? =
+        dataMap.getDataMapArrayList(KEY_DECKS)?.map { map ->
             DeckInfo(
                 id = map.getLong(KEY_DECK_ID),
                 name = map.getString(KEY_DECK_NAME, ""),
@@ -574,8 +604,10 @@ class DataLayerClient(
                 reviewCount = map.getInt(KEY_REVIEW_COUNT)
             )
         }
+
+    private fun showDecks(deckList: List<DeckInfo>, time: Long) {
         _decks.value = deckList
-        _decksLastUpdated.value = dataMap.getLong(KEY_TIMESTAMP, System.currentTimeMillis())
+        _decksLastUpdated.value = time
         // Fresh decks arriving means the phone is reachable and healthy — clear any stale
         // error (e.g. "Phone not connected" from before Bluetooth came back) so the deck
         // list renders without the user having to tap Retry.

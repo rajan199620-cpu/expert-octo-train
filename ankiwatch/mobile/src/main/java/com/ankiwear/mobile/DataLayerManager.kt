@@ -3,11 +3,13 @@ package com.ankiwear.mobile
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.ankiwatch.core.DeckListCodec
 import com.ankiwatch.core.Link
 import com.ankiwatch.core.OfflinePack
 import com.ankiwatch.core.OfflinePackCodec
 import com.ankiwatch.core.Wire
 import com.ankiwatch.core.PayloadBudget
+import com.ankiwatch.core.WireDeck
 import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
@@ -95,15 +97,17 @@ class DataLayerManager(context: Context) : AnswerQueue {
     }
 
     /**
-     * Sends the deck list to the watch via DataClient, cut to fit one DataItem. Returns what
-     * was sent, for the phone's status screen; throws if the Data Layer refused it.
+     * Sends the deck list to the watch via DataClient: the whole list as an Asset (no size
+     * cap, so thousands of subdecks all arrive), plus as much of it as fits in the DataItem
+     * itself for a watch app from before the Asset. Returns what was sent, for the phone's
+     * status screen; throws if the Data Layer refused it.
      */
     suspend fun sendDecks(decks: List<DeckData>): String {
+        val list = DeckListCodec.encode(decks.map { WireDeck(it.id, it.name, it.newCount, it.learnCount, it.reviewCount) })
         val keep = PayloadBudget.decksThatFit(decks.map { it.name }, decks.map { it.totalDue > 0 })
-        val sent = keep.map { decks[it] }
         val request = PutDataMapRequest.create(PATH_RESPONSE_DECKS).apply {
             val deckMaps = ArrayList<DataMap>()
-            for (deck in sent) {
+            for (deck in keep.map { decks[it] }) {
                 val map = DataMap().apply {
                     putLong(KEY_DECK_ID, deck.id)
                     putString(KEY_DECK_NAME, deck.name)
@@ -114,14 +118,14 @@ class DataLayerManager(context: Context) : AnswerQueue {
                 deckMaps.add(map)
             }
             dataMap.putDataMapArrayList(KEY_DECKS, deckMaps)
+            dataMap.putAsset(Wire.KEY_DECK_LIST, Asset.createFromBytes(list))
             dataMap.putLong(KEY_TIMESTAMP, System.currentTimeMillis())
         }
         request.setUrgent()
-        val kb = (request.dataMap.toByteArray().size + 1023) / 1024
+        val kb = (list.size + 1023) / 1024
         dataClient.putDataItem(request.asPutDataRequest()).await()
-        Log.d(TAG, "Sent ${sent.size}/${decks.size} decks to watch ($kb KB)")
-        return if (sent.size == decks.size) "sent ${sent.size} decks ($kb KB)"
-        else "sent ${sent.size} of ${decks.size} decks ($kb KB, size limit)"
+        Log.d(TAG, "Sent ${decks.size} decks to watch ($kb KB; ${keep.size} inline)")
+        return "sent ${decks.size} decks ($kb KB)"
     }
 
     /**

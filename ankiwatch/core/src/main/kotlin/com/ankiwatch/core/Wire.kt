@@ -80,6 +80,11 @@ object Wire {
     const val KEY_TIME_TAKEN = "time_taken"
     const val KEY_ERROR_MESSAGE = "error_message"
     const val KEY_DECKS = "decks"
+    /**
+     * On a deck list: the whole list as a [DeckListCodec] Asset. [KEY_DECKS] still carries as
+     * much of it as fits in a DataItem, for a watch app from before the Asset.
+     */
+    const val KEY_DECK_LIST = "deck_list"
     const val KEY_CARDS = "cards"
     const val KEY_TIMESTAMP = "timestamp"
     const val KEY_REMAINING = "remaining"
