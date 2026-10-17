@@ -54,11 +54,14 @@ class DeckListTest {
         return names.take(count).sorted().mapIndexed { n, name -> WireDeck(1_000L + n, name, n % 9 + bump, n % 4, n % 30) }
     }
 
+    /** The part of [decks] the phone puts in the DataItem itself, decks with cards due first. */
+    private fun inlinePart(decks: List<WireDeck>): List<WireDeck> =
+        PayloadBudget.decksThatFit(decks.map { it.name }, decks.map { it.newCount + it.learnCount + it.reviewCount > 0 }).map { decks[it] }
+
     /** What the phone's DataLayerManager.sendDecks writes; [asset] null is a phone app from before the Asset. */
     private suspend fun write(decks: List<WireDeck>, time: Long, asset: ByteArray? = DeckListCodec.encode(decks)) {
-        val keep = PayloadBudget.decksThatFit(decks.map { it.name }, decks.map { it.newCount + it.learnCount + it.reviewCount > 0 })
         val request = PutDataMapRequest.create(Wire.PATH_RESPONSE_DECKS).apply {
-            dataMap.putDataMapArrayList(Wire.KEY_DECKS, ArrayList(keep.map { decks[it] }.map { d ->
+            dataMap.putDataMapArrayList(Wire.KEY_DECKS, ArrayList(inlinePart(decks).map { d ->
                 DataMap().apply {
                     putLong(Wire.KEY_DECK_ID, d.id)
                     putString(Wire.KEY_DECK_NAME, d.name)
@@ -160,7 +163,8 @@ class DeckListTest {
     fun withoutAReadableAssetTheInlineListIsShown() {
         runBlocking {
             val decks = collection(3_000)
-            val inline = PayloadBudget.decksThatFit(decks.map { it.name }, decks.map { true }).map { decks[it] }
+            val inline = inlinePart(decks)
+            assertTrue(inline.size in 1 until decks.size)
 
             // A phone app from before the Asset.
             write(decks, time = 4_000, asset = null)
