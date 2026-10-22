@@ -4,6 +4,7 @@ A running notebook of cyber-safety and investigation tips, built up over time.
 Entries marked 📝 came from handwritten notes (the photos are kept in
 [`source-notes/`](source-notes/)); everything else was added to fill in context.
 Items marked ⚠️ *verify* still need confirming against an official source.
+For a one-page version, see [CHEATSHEET.md](CHEATSHEET.md).
 
 **Emergency first step (India):** report cyber fraud on **1930** or at
 **[cybercrime.gov.in](https://cybercrime.gov.in)** as fast as possible —
