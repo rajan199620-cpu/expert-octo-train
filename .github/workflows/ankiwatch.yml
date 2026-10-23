@@ -118,7 +118,8 @@ jobs:
           path: release-apks
 
       # Each script line runs on its own; the last line fails the step if the tests did,
-      # after screenshots and logs have been saved.
+      # after screenshots and logs have been saved. A hung test is cut off well inside the
+      # job's limit, so its logs are still saved.
       - name: Run on a Wear OS emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -131,7 +132,7 @@ jobs:
           script: |
             adb logcat -G 16M || true
             adb logcat -c || true
-            ./ankiwatch/gradlew -p ankiwatch --no-daemon :wear:connectedDebugAndroidTest || touch wear-ui-failed
+            timeout 30m ./ankiwatch/gradlew -p ankiwatch --no-daemon :wear:connectedDebugAndroidTest || touch wear-ui-failed
             adb logcat -d -v raw -s ANKIWATCH_SHOT:I > wear-shots.log || true
             adb logcat -d -s AnkiWatchTest:I TestRunner:I AndroidRuntime:E > wear-logcat.log || true
             bash .github/scripts/check_release_apks.sh release-apks watch || touch release-failed

@@ -23,7 +23,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.Timeout
 import org.junit.runner.RunWith
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 /**
@@ -34,7 +36,11 @@ import kotlin.random.Random
 @RunWith(AndroidJUnit4::class)
 class DeckTreeTest {
 
-    @get:Rule
+    // A stuck test fails with where it was stuck, instead of hanging the whole run.
+    @get:Rule(order = 0)
+    val timeout: Timeout = Timeout.builder().withTimeout(180, TimeUnit.SECONDS).withLookingForStuckThread(true).build()
+
+    @get:Rule(order = 1)
     val rule = createComposeRule()
 
     private val decks = mutableStateOf(emptyList<DeckInfo>())
