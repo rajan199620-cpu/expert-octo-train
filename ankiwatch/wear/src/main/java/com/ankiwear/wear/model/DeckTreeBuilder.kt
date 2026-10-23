@@ -107,15 +107,4 @@ object DeckTreeBuilder {
         tree.forEach(::walk)
         return out
     }
-
-    /** Collects every node name in the tree — useful for "expand all" as the initial state. */
-    fun allNodeNames(tree: List<DeckNode>): Set<String> {
-        val out = mutableSetOf<String>()
-        fun walk(node: DeckNode) {
-            out.add(node.deck.name)
-            node.children.forEach(::walk)
-        }
-        tree.forEach(::walk)
-        return out
-    }
 }

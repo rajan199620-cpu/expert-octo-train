@@ -18,6 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,6 +66,14 @@ fun DeckListScreen(
 ) {
     val listState = rememberScalingLazyListState()
 
+    // Everything starts collapsed, new decks included: a big collection is a wall of
+    // subdecks otherwise. Only the branches the user opened are kept, and saveably, so
+    // they stay open across deck-list refreshes and a trip into a review and back.
+    // Names of decks that went away are harmless here and kept, so a list that is
+    // briefly empty or partial doesn't close everything. Held above the
+    // loading return below, which would otherwise drop it.
+    var expandedNames by rememberSaveable(stateSaver = NameSetSaver) { mutableStateOf(emptySet<String>()) }
+
     if (isLoading && decks.isEmpty()) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -83,19 +93,6 @@ fun DeckListScreen(
     // Build the deck tree from the flat list. Re-runs whenever the deck list
     // changes (counts updated, decks added/removed).
     val tree = remember(decks) { DeckTreeBuilder.build(decks) }
-    // Default to fully expanded on first load. Crucially this is NOT keyed on `decks`, so
-    // it survives the deck-list refreshes that happen every time the user returns from a
-    // review — otherwise a branch the user collapsed would spring back open on every
-    // refresh. When the deck set changes we preserve existing expand/collapse choices,
-    // auto-expand only genuinely new nodes, and drop names that no longer exist.
-    var expandedNames by remember { mutableStateOf(DeckTreeBuilder.allNodeNames(tree)) }
-    var knownNames by remember { mutableStateOf(DeckTreeBuilder.allNodeNames(tree)) }
-    LaunchedEffect(tree) {
-        val all = DeckTreeBuilder.allNodeNames(tree)
-        val newlyAppeared = all - knownNames
-        expandedNames = (expandedNames + newlyAppeared).intersect(all)
-        knownNames = all
-    }
     val visible = remember(tree, expandedNames) {
         DeckTreeBuilder.flattenVisible(tree, expandedNames)
     }
@@ -174,9 +171,18 @@ fun DeckListScreen(
     }
 }
 
+/** Keeps the open branches' names in saved state. */
+private val NameSetSaver = listSaver<Set<String>, String>(save = { it.toList() }, restore = { it.toSet() })
+
 /** Test tags for the deck list. */
 object DeckListTags {
     const val OFFLINE = "deck-list-offline"
+
+    /** The row of the deck [name] (its full "::" path). */
+    fun row(name: String) = "deck-row:$name"
+
+    /** The ▸/▾ that opens or closes the deck [name] (its full "::" path). */
+    fun toggle(name: String) = "deck-toggle:$name"
 }
 
 @Composable
@@ -238,7 +244,7 @@ private fun DeckItem(
 
     Card(
         onClick = bodyClick,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().testTag(DeckListTags.row(node.deck.name))
     ) {
         Row(
             modifier = Modifier
@@ -259,7 +265,8 @@ private fun DeckItem(
                     Box(
                         modifier = Modifier
                             .size(CHEVRON_ZONE_WIDTH)
-                            .clickable { onToggleExpand() },
+                            .clickable { onToggleExpand() }
+                            .testTag(DeckListTags.toggle(node.deck.name)),
                         contentAlignment = Alignment.Center
                     ) {
                         // Unicode triangles are the lightest-weight way to render a
