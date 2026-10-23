@@ -11,6 +11,7 @@ import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -149,16 +150,24 @@ class DeckTreeTest {
         assertTrue("UPSC::Mains::GS5" in shown())
         assertTrue("Optional" in shown() && "Optional::Psychology" !in shown())
 
-        // A moment with nothing to show while it loads.
+        // A moment with nothing to show while it loads. Its spinner never stops moving, so
+        // the test clock is stepped by hand while it's up; waiting for idle would never end.
         val before = decks.value
-        rule.runOnIdle {
-            loading.value = true
-            decks.value = emptyList()
-        }
-        rule.waitForIdle()
-        rule.runOnIdle {
-            decks.value = before
-            loading.value = false
+        rule.mainClock.autoAdvance = false
+        try {
+            rule.runOnUiThread {
+                loading.value = true
+                decks.value = emptyList()
+            }
+            rule.mainClock.advanceTimeByFrame()
+            rule.onNodeWithText("Loading decks...").assertExists()
+            rule.runOnUiThread {
+                decks.value = before
+                loading.value = false
+            }
+            rule.mainClock.advanceTimeByFrame()
+        } finally {
+            rule.mainClock.autoAdvance = true
         }
         rule.waitForIdle()
         check("after loading")
