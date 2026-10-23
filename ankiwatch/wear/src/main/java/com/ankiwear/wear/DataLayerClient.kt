@@ -49,7 +49,9 @@ class DataLayerClient(
     /** Where offline downloads go; null where there are none (tests, demo). */
     private val offlineStore: OfflineStore? = null,
     /** How long an answer stays undoable ([HOLD_MS]); shorter in tests. */
-    private val holdMs: Long = HOLD_MS
+    private val holdMs: Long = HOLD_MS,
+    /** Stands in for the phone in tests: gets each message, says whether it was sent. */
+    private val sendToPhone: (suspend (path: String, data: ByteArray) -> Boolean)? = null
 ) : DataClient.OnDataChangedListener,
     MessageClient.OnMessageReceivedListener {
 
@@ -156,6 +158,9 @@ class DataLayerClient(
 
     /** The offline download asked for last, and how it went. */
     private val _download = MutableStateFlow<Download>(Download.Idle)
+
+    /** Decks still to download after the one being fetched, in the order asked. */
+    private val downloadQueue = ArrayDeque<DeckInfo>()
     val download: StateFlow<Download> = _download.asStateFlow()
 
     /** Goes up whenever the stored downloads change, so screens listing them refresh. */
@@ -286,18 +291,48 @@ class DataLayerClient(
      * Asks the phone for [deck]'s whole due queue, to review without it. The cards come back
      * as a DataItem ([Wire.PATH_OFFLINE_PACK]) and land in the offline store.
      */
-    suspend fun requestOfflinePack(deck: DeckInfo) {
-        _download.value = Download.Waiting(deck.name, System.currentTimeMillis())
+    suspend fun requestOfflinePack(deck: DeckInfo) = requestOfflinePacks(listOf(deck))
+
+    /**
+     * Downloads [decks] one after another: each is asked for once the one before it has
+     * arrived. Every download comes back on the same DataItem path, so two in flight at once
+     * could overwrite each other. A failure stops the rest, and says how many that was.
+     */
+    suspend fun requestOfflinePacks(decks: List<DeckInfo>) {
+        val list = decks.distinctBy { it.id }
+        if (list.isEmpty()) return
+        synchronized(downloadQueue) {
+            downloadQueue.clear()
+            downloadQueue.addAll(list.drop(1))
+        }
+        fetchPack(list[0])
+    }
+
+    private suspend fun fetchPack(deck: DeckInfo) {
+        _download.value = Download.Waiting(deck.name, System.currentTimeMillis(), synchronized(downloadQueue) { downloadQueue.size })
         val dataMap = DataMap().apply {
             putLong(KEY_DECK_ID, deck.id)
             putString(KEY_DECK_NAME, deck.name)
         }
         if (!sendMessageToPhone(Wire.PATH_REQUEST_OFFLINE, dataMap.toByteArray())) {
-            _download.value = Download.Failed(_errorMessage.value ?: "Phone not connected")
+            failDownload(_errorMessage.value ?: "Phone not connected")
         }
     }
 
+    /** The download failed with [message]; the decks queued after it aren't asked for. */
+    private fun failDownload(message: String) {
+        val left = synchronized(downloadQueue) { downloadQueue.size.also { downloadQueue.clear() } }
+        _download.value = Download.Failed(if (left == 0) message else "$message (${left} more not downloaded)")
+    }
+
+    /** After a download arrived: asks for the next queued deck, if any. */
+    private suspend fun fetchNext() {
+        val next = synchronized(downloadQueue) { downloadQueue.removeFirstOrNull() } ?: return
+        fetchPack(next)
+    }
+
     fun clearDownload() {
+        synchronized(downloadQueue) { downloadQueue.clear() }
         _download.value = Download.Idle
     }
 
@@ -371,13 +406,15 @@ class DataLayerClient(
     /** Stores a download from the phone and removes its DataItem (the cards can be large). */
     private suspend fun importPack(item: DataItem) {
         val store = offlineStore ?: return
+        val waited: Boolean
         try {
             val map = DataMapItem.fromDataItem(item).dataMap
             val asset = map.getAsset(Wire.KEY_PACK) ?: throw IOException("the download holds no cards")
             val bytes = dataClient.getFdForAsset(asset).await().inputStream.use { it.readBytes() }
             val summary = store.import(bytes)
             Log.d(TAG, "Stored offline download for ${summary.deckName}: ${summary.total} cards")
-            if (_download.value is Download.Waiting) _download.value = Download.Ready(summary)
+            waited = _download.value is Download.Waiting
+            if (waited) _download.value = Download.Ready(summary)
             offlineChanged()
             try {
                 dataClient.deleteDataItems(item.uri).await()
@@ -386,8 +423,11 @@ class DataLayerClient(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Offline download failed", e)
-            _download.value = Download.Failed("The download didn't arrive intact (${e.message ?: e.javaClass.simpleName}). Try again.")
+            failDownload("The download didn't arrive intact (${e.message ?: e.javaClass.simpleName}). Try again.")
+            return
         }
+        // Its DataItem is gone, so the next download can't be mistaken for this one.
+        if (waited) fetchNext()
     }
 
     /**
@@ -563,7 +603,7 @@ class DataLayerClient(
             PATH_STATUS_ERROR -> {
                 val errorMsg = String(messageEvent.data)
                 Log.e(TAG, "Error from phone: $errorMsg")
-                if (_download.value is Download.Waiting) _download.value = Download.Failed(errorMsg)
+                if (_download.value is Download.Waiting) failDownload(errorMsg)
                 _errorMessage.value = errorMsg
                 _phoneReportedError.value = true
             }
@@ -658,6 +698,7 @@ class DataLayerClient(
 
     /** Sends [data] to the phone; false (with the reason in [errorMessage]) if it couldn't. */
     private suspend fun sendMessageToPhone(path: String, data: ByteArray): Boolean {
+        sendToPhone?.let { return it(path, data) }
         try {
             val nodeIds = phoneNodeIds()
             if (nodeIds.isEmpty()) {

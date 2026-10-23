@@ -50,6 +50,7 @@ object OfflineTags {
     const val LIST = "offline-list"
     const val SYNC = "offline-sync"
     const val DOWNLOAD = "offline-download"
+    const val VOICE = "offline-voice"
     const val DOWNLOAD_STATUS = "offline-download-status"
     const val WAIT = "offline-wait"
     const val SHOW_NOW = "offline-show-now"
@@ -72,7 +73,9 @@ fun OfflineScreen(
     onReview: (OfflineStore.Summary) -> Unit,
     onDownload: () -> Unit,
     onRemove: (OfflineStore.Summary) -> Unit,
-    onDismissDownload: () -> Unit
+    onDismissDownload: () -> Unit,
+    /** Download by saying the deck's name; null hides it. */
+    onVoice: (() -> Unit)? = null
 ) {
     val listState = rememberScalingLazyListState()
     var confirmRemove by remember { mutableStateOf<Long?>(null) }
@@ -130,11 +133,24 @@ fun OfflineScreen(
                 )
             }
         }
+        val canDownload = phoneReachable && pendingGrades == 0 && download !is Download.Waiting
+        if (onVoice != null) item {
+            Chip(
+                onClick = onVoice,
+                enabled = canDownload,
+                colors = ChipDefaults.primaryChipColors(),
+                label = { Text("\uD83C\uDFA4 Say a deck", maxLines = 1) },
+                secondaryLabel = { Text("Like \u201cprelims DPSP\u201d", maxLines = 1) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp)
+                    .testTag(OfflineTags.VOICE)
+            )
+        }
         item {
-            val waiting = download is Download.Waiting
             Chip(
                 onClick = onDownload,
-                enabled = phoneReachable && pendingGrades == 0 && !waiting,
+                enabled = canDownload,
                 colors = ChipDefaults.secondaryChipColors(),
                 label = { Text("Download a deck", maxLines = 1) },
                 secondaryLabel = {
@@ -182,7 +198,8 @@ private fun DownloadStatus(download: Download, now: Long, onDismiss: () -> Unit)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(6.dp))
-                    Text("Getting ${download.deckName.substringAfterLast("::")}…", fontSize = 12.sp, maxLines = 2)
+                    val more = if (download.queued > 0) " (${download.queued} more after it)" else ""
+                    Text("Getting ${download.deckName.substringAfterLast("::")}…$more", fontSize = 12.sp, maxLines = 3)
                 }
                 if (now - download.since > SLOW_DOWNLOAD_MS) {
                     Text(

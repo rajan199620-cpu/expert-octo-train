@@ -38,6 +38,12 @@ the watch for as long as you like, with the phone at home or switched off.
 
 1. **Download** (phone nearby): Decks → **Offline review** → **Download a deck**, and pick
    the deck (a parent deck brings its subdecks). It takes a few seconds.
+   Or tap **🎤 Say a deck** and say it: *"prelims DPSP"* downloads Prelims' DPSP, never
+   Mains'; *"both DPSP from prelims and mains"* or *"GS1 and GS4"* downloads each of them, one
+   after another. Number words, "G S", "general studies" and roman numerals are understood
+   ("GS four", "paper I"). When a name fits more than one deck (*"polity"*), or part of what you
+   said fits nothing, the watch lists the decks it found, with the ones it is sure of ticked, and
+   downloads only what you tick.
 2. **Review** (no phone needed): open AnkiWatch. The *Phone not connected* screen offers
    **Review offline**; the deck list has **Offline review**. Tap the deck and review as usual:
    buttons, side button, Bury.
@@ -209,6 +215,9 @@ Never commit the keystore; this repository is public.
   Offline review: the download format (exact round trips, damaged, oversized and unpacking
   bombs refused), AnkiDroid's interval labels, and the offline queue (AnkiDroid's default
   learning steps, learn-ahead, waiting, random sessions with restarts that must end).
+  Saying a deck: dozens of real phrasings, same-named decks told apart by their parents,
+  several decks in one phrase, names with "and" in them, every deck of random collections
+  found by its spoken name, random garbage, and 4,000 decks answered in milliseconds.
   Deliberately injected bugs are caught by the suite.
 - Watch UI on a round Wear OS emulator: covered answers absent from the screen while walking
   the whole note, the tested cloze and its answer on screen when each side opens (checked by
@@ -221,7 +230,9 @@ Never commit the keystore; this repository is public.
   any size. Offline review with no phone and a fake clock (learning cards coming back,
   waiting, *Show it now*, side button, Bury, a restart mid-session), a 100-card random
   offline session, the Offline screen's states, and the watch's download store (restarts,
-  damaged files, overlapping decks, 300 random operations). On the watch's own Data Layer:
+  damaged files, overlapping decks, 300 random operations). Saying a deck: the pick list's
+  ticks, the reasons nothing was found, and several decks downloading one after another
+  through the real Data Layer, a failure stopping the rest. On the watch's own Data Layer:
   grades the phone acknowledges stop counting as waiting at once, and nothing else does
   (1,250 grades in split acks). Screenshots captured.
 - Phone code against the real AnkiDroid app on an emulator: cloze fields and numbers, deck

@@ -1,5 +1,8 @@
 package com.ankiwear.wear
 
+import android.content.ActivityNotFoundException
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -10,6 +13,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -18,6 +22,7 @@ import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import com.ankiwatch.core.CardKey
+import com.ankiwatch.core.DeckMatcher
 import com.ankiwatch.core.Link
 import com.ankiwear.wear.model.CardData
 import com.ankiwear.wear.model.CardType
@@ -29,6 +34,10 @@ import com.ankiwear.wear.screens.OfflineReviewScreen
 import com.ankiwear.wear.screens.OfflineScreen
 import com.ankiwear.wear.offline.OfflineStore
 import com.ankiwear.wear.screens.ReviewScreen
+import com.ankiwear.wear.screens.Voice
+import com.ankiwear.wear.screens.VoiceChooseScreen
+import com.ankiwear.wear.screens.VoiceNothingScreen
+import com.ankiwear.wear.screens.VoiceOutcome
 import com.ankiwear.wear.theme.AnkiWearTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -134,6 +143,37 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, o
         val openOffline: (() -> Unit)? = if (offlineStore != null && offlinePacks.isNotEmpty()) {
             { navController.navigate("offline") }
         } else null
+
+        // Downloading by voice: what the watch heard, matched against the deck list. One
+        // clear answer (or several, "prelims and mains DPSP") downloads straight away; when
+        // it isn't sure, or found nothing, the "offline-voice" screen says so.
+        var voice by remember { mutableStateOf<VoiceOutcome?>(null) }
+        val currentDecks by rememberUpdatedState(decks)
+        val downloadNamed: (List<String>) -> Unit = { names ->
+            val byName = currentDecks.associateBy { it.name }
+            val chosen = names.mapNotNull { byName[it] }
+            scope.launch { dataLayerClient.requestOfflinePacks(chosen) }
+            navController.popBackStack("offline", inclusive = false)
+        }
+        val listen = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { reply ->
+            val heard = Voice.heard(reply.resultCode, reply.data)
+            if (heard.isEmpty()) return@rememberLauncherForActivityResult // backed out
+            val outcome = VoiceOutcome.of(DeckMatcher.match(heard, currentDecks.map { it.name }), currentDecks.isNotEmpty())
+            if (outcome.download.isNotEmpty()) {
+                downloadNamed(outcome.download)
+            } else {
+                voice = outcome
+                if (navController.currentDestination?.route != "offline-voice") navController.navigate("offline-voice")
+            }
+        }
+        val sayDeck: () -> Unit = {
+            try {
+                listen.launch(Voice.intent())
+            } catch (e: ActivityNotFoundException) {
+                voice = VoiceOutcome.NO_SPEECH
+                if (navController.currentDestination?.route != "offline-voice") navController.navigate("offline-voice")
+            }
+        }
 
         var isLoadingDecks by remember { mutableStateOf(true) }
         var timedOut by remember { mutableStateOf(false) }
@@ -522,8 +562,33 @@ private fun LiveWearApp(dataLayerClient: DataLayerClient, prefs: ReviewPrefs?, o
                             dataLayerClient.offlineChanged()
                         }
                     },
-                    onDismissDownload = { dataLayerClient.clearDownload() }
+                    onDismissDownload = { dataLayerClient.clearDownload() },
+                    onVoice = sayDeck
                 )
+            }
+
+            composable("offline-voice") {
+                val outcome = voice ?: VoiceOutcome.NO_SPEECH
+                val choose = outcome.result as? DeckMatcher.Result.Choose
+                if (choose != null) {
+                    VoiceChooseScreen(
+                        heard = choose.heard,
+                        names = choose.names,
+                        chosen = choose.chosen,
+                        onDownload = downloadNamed,
+                        onSayAgain = sayDeck
+                    )
+                } else {
+                    VoiceNothingScreen(
+                        heard = (outcome.result as? DeckMatcher.Result.None)?.heard,
+                        decksKnown = outcome.decksKnown,
+                        onSayAgain = sayDeck,
+                        onPick = {
+                            navController.popBackStack("offline", inclusive = false)
+                            navController.navigate("offline-pick")
+                        }
+                    )
+                }
             }
 
             composable("offline-pick") {

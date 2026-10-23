@@ -9,8 +9,8 @@ import com.ankiwear.wear.model.ClozeCard
 sealed class Download {
     object Idle : Download()
 
-    /** Asked the phone for [deckName]'s cards at [since] (epoch millis). */
-    data class Waiting(val deckName: String, val since: Long) : Download()
+    /** Asked the phone for [deckName]'s cards at [since] (epoch millis); [queued] more to come after it. */
+    data class Waiting(val deckName: String, val since: Long, val queued: Int = 0) : Download()
 
     data class Ready(val summary: OfflineStore.Summary) : Download()
 
