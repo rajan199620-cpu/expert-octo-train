@@ -76,10 +76,15 @@ object Recap {
     fun defaultMonth(months: List<YearMonth>): YearMonth? = months.firstOrNull()
 
     /**
-     * A month the recap should open on once instead: last month, when its "in review is ready"
-     * note on the Sit screen was tapped.
+     * A month the recap should open on once instead (last month, when its "in review is ready"
+     * note on the Sit screen was tapped), and the day it was asked for: honoured that day only,
+     * so a note tapped without scrolling down to the card doesn't turn up days later.
      */
-    var requested: YearMonth? = null
+    var requested: Pair<YearMonth, LocalDate>? = null
+
+    /** The month to open on now, if one was asked for today; asking is used up either way. */
+    fun takeRequested(today: LocalDate): YearMonth? =
+        requested.also { requested = null }?.takeIf { it.second == today }?.first
 
     fun month(records: List<SessionRecord>, zone: ZoneId, month: YearMonth, today: LocalDate): MonthRecap? {
         val inMonth = records.filter { YearMonth.from(it.day(zone)) == month }.sortedBy { it.startedAtMs }

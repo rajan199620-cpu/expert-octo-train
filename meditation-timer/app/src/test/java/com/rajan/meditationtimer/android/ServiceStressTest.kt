@@ -483,6 +483,20 @@ class ServiceStressTest {
     }
 
     @Test
+    fun `a sit started during the last one's fade keeps its recording`() {
+        val uri = Uri.parse("content://test/my-rain.mp3")
+        ShadowMediaPlayer.addMediaInfo(DataSource.toDataSource(app, uri), ShadowMediaPlayer.MediaInfo(60_000, 0))
+        val player = AmbientPlayer(app)
+        player.start(Ambience.CUSTOM, 0.5f, uri, fadeInMs = 50)
+        player.stop(AmbientPlayer.END_FADE_MS)
+        player.start(Ambience.CUSTOM, 0.5f, uri, fadeInMs = 50)
+        idle(10) // past the first sit's fade, when it lets go of its own recording
+        assertEquals(AmbientPlayer.State.PLAYING, player.state)
+        player.stopNow()
+        assertEquals(AmbientPlayer.State.STOPPED, player.state)
+    }
+
+    @Test
     fun `ambient player survives any order of calls`() {
         val player = AmbientPlayer(app)
         val rnd = Random(3)

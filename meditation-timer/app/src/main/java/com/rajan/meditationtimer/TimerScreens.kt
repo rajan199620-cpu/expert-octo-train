@@ -288,7 +288,7 @@ private fun SetupScreen(
         var recapSeen by remember { mutableStateOf(prefs.recapSeen) }
         if (recapReady != null && recapSeen != recapReady.toString()) {
             fun seen() { recapSeen = recapReady.toString(); prefs.recapSeen = recapSeen }
-            RecapReadyCard(recapReady, today, onOpen = { seen(); Recap.requested = recapReady; onHistory() }, onHide = { seen() })
+            RecapReadyCard(recapReady, today, onOpen = { seen(); Recap.requested = recapReady to today; onHistory() }, onHide = { seen() })
         }
 
         // Set-once settings as three rows that say what's set; each opens only its own sheet

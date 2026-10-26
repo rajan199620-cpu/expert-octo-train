@@ -97,7 +97,7 @@ fun RecapReadyCard(month: YearMonth, today: LocalDate, onOpen: () -> Unit, onHid
 @Composable
 fun MonthRecapCard(records: List<SessionRecord>, zone: ZoneId, today: LocalDate) {
     val months = remember(records) { Recap.months(records, zone, today) }
-    val requested = remember { Recap.requested.also { Recap.requested = null } }
+    val requested = remember { Recap.takeRequested(today) }
     val first = requested?.takeIf { it in months } ?: Recap.defaultMonth(months) ?: return
     var shownText by rememberSaveable { mutableStateOf(first.toString()) }
     val shown = YearMonth.parse(shownText).takeIf { it in months } ?: first

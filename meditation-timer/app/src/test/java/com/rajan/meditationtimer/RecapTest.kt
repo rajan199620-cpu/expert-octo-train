@@ -62,6 +62,13 @@ class RecapTest {
         // No sits yet this month: the latest month that has some.
         assertEquals(YearMonth.of(2026, 9), Recap.defaultMonth(Recap.months(records.dropLast(1), zone, today)))
         assertNull(Recap.defaultMonth(emptyList()))
+        // The "last month is ready" note opens on last month: once, and only the day it was tapped.
+        Recap.requested = YearMonth.of(2026, 9) to today
+        assertEquals(YearMonth.of(2026, 9), Recap.takeRequested(today))
+        assertNull(Recap.takeRequested(today))
+        Recap.requested = YearMonth.of(2026, 9) to today
+        assertNull(Recap.takeRequested(today.plusDays(2)))
+        assertNull(Recap.requested)
     }
 
     @Test
