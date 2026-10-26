@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_mindfield"
+        android:shortcutId="log"
+        android:shortcutShortLabel="@string/shortcut_log">
+        <intent
+            android:action="com.rajan.mindfield.OPEN_LOG"
+            android:targetClass="com.rajan.mindfield.MainActivity"
+            android:targetPackage="com.rajan.mindfield" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_mindfield"
+        android:shortcutId="review"
+        android:shortcutShortLabel="@string/shortcut_review">
+        <intent
+            android:action="com.rajan.mindfield.OPEN_REVIEW"
+            android:targetClass="com.rajan.mindfield.MainActivity"
+            android:targetPackage="com.rajan.mindfield" />
+    </shortcut>
+</shortcuts>
