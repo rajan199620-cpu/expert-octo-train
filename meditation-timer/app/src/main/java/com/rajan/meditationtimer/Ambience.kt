@@ -5,6 +5,7 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.tanh
@@ -19,10 +20,9 @@ enum class Ambience(val label: String) {
 }
 
 /**
- * An endless soundscape generated sample by sample, so it never loops: birdsong repeating every
- * few minutes becomes something the mind notices and waits for. (Rain is a recording instead,
- * res/raw/rain.ogg: a wash of noise hides a long loop, and no synthesis came close to the real
- * thing.) Pure Kotlin, no Android, so it can be tested and rendered on any JVM.
+ * An endless soundscape generated sample by sample, so it never loops: a recording repeating
+ * every minute becomes something the mind notices and waits for. Pure Kotlin, no Android, so it
+ * can be tested and rendered on any JVM.
  */
 abstract class Soundscape(val sampleRate: Int, seed: Long) {
     private var state = seed xor 0x5DEECE66DL
@@ -59,7 +59,9 @@ abstract class Soundscape(val sampleRate: Int, seed: Long) {
 
     companion object {
         fun create(kind: Ambience, sampleRate: Int, seed: Long = System.nanoTime()): Soundscape? = when (kind) {
-            Ambience.BIRDS, Ambience.RAIN_AND_BIRDS -> Birds(sampleRate, seed)
+            Ambience.RAIN -> Rain(sampleRate, seed)
+            Ambience.BIRDS -> Birds(sampleRate, seed)
+            Ambience.RAIN_AND_BIRDS -> Mix(Rain(sampleRate, seed), 0.7f, Birds(sampleRate, seed + 1), 0.9f)
             else -> null
         }
     }
@@ -79,6 +81,94 @@ private class Wander(private val rate: Int, private val lo: Float, private val h
         value += a * (target - value)
         return value
     }
+}
+
+/** RBJ band-pass (constant peak gain), for raindrop resonances. */
+private class BandPass(f: Float, q: Float, rate: Int) {
+    private val b0: Float; private val b2: Float; private val a1: Float; private val a2: Float
+    private var x1 = 0f; private var x2 = 0f; private var y1 = 0f; private var y2 = 0f
+    init {
+        val w = 2 * PI * f / rate
+        val alpha = sin(w) / (2 * q)
+        val a0 = 1 + alpha
+        b0 = (alpha / a0).toFloat(); b2 = (-alpha / a0).toFloat()
+        a1 = (-2 * kotlin.math.cos(w) / a0).toFloat(); a2 = ((1 - alpha) / a0).toFloat()
+    }
+    fun process(x: Float): Float {
+        val y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2
+        x2 = x1; x1 = x; y2 = y1; y1 = y
+        return y
+    }
+}
+
+/**
+ * Steady rain: a wash of filtered noise in each ear (decorrelated, so it surrounds rather than
+ * sits in the middle), a low body, hundreds of small drops a second each ringing at its own
+ * pitch, and now and then a heavier drip close by. Gusts swell and ease every few seconds.
+ */
+class Rain(rate: Int, seed: Long) : Soundscape(rate, seed) {
+    private val hissA = lp(6500f); private val hissHp = lp(350f)
+    private val bodyA = lp(900f); private val bodyHp = lp(120f)
+    private val rumbleA = lp(80f)
+    private var hL = 0f; private var hR = 0f; private var hpL = 0f; private var hpR = 0f
+    private var bL = 0f; private var bR = 0f; private var bpL = 0f; private var bpR = 0f
+    private var r1 = 0f; private var r2 = 0f
+    private val gust = Wander(rate, 0.8f, 1.15f, ::rand)
+
+    private class Drop(val filter: BandPass, val decay: Float, var env: Float, val pan: Float)
+    private val drops = ArrayList<Drop>()
+
+    private class Drip(var phase: Float, var freq: Float, val fall: Float, var env: Float, val decay: Float, val pan: Float)
+    private val drips = ArrayList<Drip>()
+
+    override fun frame() {
+        val g = gust.next()
+        // Wash: two independent noises, so left and right are different rain.
+        hL += hissA * (noise() - hL); hR += hissA * (noise() - hR)
+        hpL += hissHp * (hL - hpL); hpR += hissHp * (hR - hpR)
+        bL += bodyA * (noise() - bL); bR += bodyA * (noise() - bR)
+        bpL += bodyHp * (bL - bpL); bpR += bodyHp * (bR - bpR)
+        r1 += rumbleA * (noise() - r1); r2 += rumbleA * (r1 - r2)
+        var l = 0.30f * g * (hL - hpL) + 0.34f * g * (bL - bpL) + 1.6f * r2
+        var r = 0.30f * g * (hR - hpR) + 0.34f * g * (bR - bpR) + 1.6f * r2
+
+        // Small drops: about 240 a second, more in a gust; sizes follow a power law, so most are
+        // faint ticks and a few stand out.
+        if (rand() < 240f * g * g / sampleRate && drops.size < 96) {
+            val size = rand().pow(3)
+            drops.add(Drop(BandPass(between(1400f, 6500f), between(1.5f, 5f), sampleRate), exp(-1f / (sampleRate * between(0.0015f, 0.006f))), 0.05f + 0.6f * size, rand()))
+        }
+        var i = 0
+        while (i < drops.size) {
+            val d = drops[i]
+            val y = d.filter.process(noise() * d.env)
+            l += y * (1 - d.pan); r += y * d.pan
+            d.env *= d.decay
+            if (d.env < 0.0005f) { drops[i] = drops[drops.size - 1]; drops.removeAt(drops.size - 1) } else i++
+        }
+
+        // Heavier drips off a roof edge: a short falling tone, a couple a second, never loud.
+        if (rand() < 1.5f / sampleRate && drips.size < 4) {
+            drips.add(Drip(0f, between(500f, 900f), between(0.99990f, 0.99997f), between(0.03f, 0.07f), exp(-1f / (sampleRate * between(0.02f, 0.04f))), between(0.15f, 0.85f)))
+        }
+        i = 0
+        while (i < drips.size) {
+            val d = drips[i]
+            d.phase += (2 * PI * d.freq / sampleRate).toFloat()
+            d.freq *= d.fall
+            val y = sin(d.phase) * d.env
+            l += y * (1 - d.pan); r += y * d.pan
+            d.env *= d.decay
+            if (d.env < 0.0003f) { drips[i] = drips[drips.size - 1]; drips.removeAt(drips.size - 1) } else i++
+        }
+        // Gentle two-pole tone filter: real rain heard indoors has little above ~8 kHz, and a
+        // bright hiss tires the ear over a long sit.
+        t1L += toneA * (l - t1L); t2L += toneA * (t1L - t2L)
+        t1R += toneA * (r - t1R); t2R += toneA * (t1R - t2R)
+        left = 0.8f * t2L; right = 0.8f * t2R
+    }
+    private val toneA = lp(7000f)
+    private var t1L = 0f; private var t2L = 0f; private var t1R = 0f; private var t2R = 0f
 }
 
 /**
@@ -254,6 +344,22 @@ class Birds(rate: Int, seed: Long) : Soundscape(rate, seed) {
 internal const val MIN_NOTE_MS = 150f
 internal const val MAX_GLIDE_HZ_PER_SEC = 6000f
 internal const val MAX_VIBRATO_HZ = 8f
+
+/** Two soundscapes at once (rain with birds over it), each a little lower so the sum isn't louder. */
+class Mix(private val a: Soundscape, private val gainA: Float, private val b: Soundscape, private val gainB: Float) :
+    Soundscape(a.sampleRate, 0) {
+    private var bufA = FloatArray(0)
+    private var bufB = FloatArray(0)
+
+    override fun render(out: FloatArray, frames: Int) {
+        if (bufA.size < frames * 2) { bufA = FloatArray(frames * 2); bufB = FloatArray(frames * 2) }
+        a.render(bufA, frames)
+        b.render(bufB, frames)
+        for (i in 0 until frames * 2) out[i] = soft(bufA[i] * gainA + bufB[i] * gainB)
+    }
+
+    override fun frame() {}
+}
 
 /**
  * A gain that glides to its target instead of jumping (a jump is a click). Used for the fade in

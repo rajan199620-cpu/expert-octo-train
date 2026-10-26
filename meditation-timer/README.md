@@ -37,9 +37,9 @@ always serves the newest build (CI republishes it on every push).
 - The Guide can also show the welcome again.
 
 **Today's reading** (first thing each day)
-- **What it is:** opening the app shows the day's lesson with its research in full (finding,
-  source and strength of evidence). Next brings one **common problem**, then you continue to
-  the sit.
+- **What it is:** one page a day, taking turns: one day the day's lesson with its research in
+  full (finding, source and strength of evidence), the next day one **common problem** and what
+  to do about it. Then you continue to the sit.
 - **How often:** it shows on every open until it has been read or skipped that day, then not
   again until tomorrow. It never interrupts a running sit or a one-tap sit from the widget or a
   shortcut. Switch it off in Practice tools.
@@ -178,8 +178,9 @@ sit?". **Backup** (top right) opens Google backup, file backup/restore and the v
   three months, a month or a week ago (longest ago first). Hide puts it away until tomorrow.
 - **Month in review** (History): time sat, days sat, best week, longest sit, what the sits changed
   (check-ins), the feeling rated most often, wandering caught per 10 minutes, and notes written,
-  compared with the month before. Opens on last month; ‹ › step through months with sits. For the
-  first three days of a month the Sit screen says last month's review is ready.
+  compared with the month before. Opens on this month so far; ‹ › step through months with sits.
+  For the first three days of a month the Sit screen says last month's review is ready, and
+  tapping it opens on last month.
 
 **Sit screen**: the duration, today's lesson, and Begin. Bells, sound and practice tools are three
 rows that say what's set (e.g. "Bell · rain"); tapping one opens just that topic in a sheet from the
@@ -198,11 +199,8 @@ mixed). No breath-holding in either; sessions end on a whole round.
 **Background sound** (Sit → Sound & stillness, off by default): **Rain**, **Birds** (a
 breeze, two whistlers, a dove's low coo, a gentle carol and a distant koel; no quick chirps or
 trills: every note is at least 150 ms and glides slowly), **Rain & birds** together, or
-**My recording** (any audio file on the phone, looped). Rain is a real recording: "Rain and
-Thunder" by loswin23 on Pixabay (Pixabay Content License, free to use in an app). It was cut into a
-seamless four-minute loop, with the thunder turned down so a roll comes in at most ~8 dB over the
-rain instead of 14, and each sit starts it at a random point (`tools/make_rain.py` rebuilds it;
-3.7 MB). Birdsong is generated on the phone as it plays, so it never repeats. The sound has its
+**My recording** (any audio file on the phone, looped). Rain and birdsong are generated on the
+phone as it plays, so they never loop or repeat and add nothing to the download. The sound has its
 own volume (separate from the bell), fades in over 8 s, fades out on pause, dips under every bell
 so the bell is always heard, and eases away over the final bell. *Listen* plays 10 s to set it.
 Why these two: in a meta-analysis of 18 studies, natural sounds lowered stress and improved mood

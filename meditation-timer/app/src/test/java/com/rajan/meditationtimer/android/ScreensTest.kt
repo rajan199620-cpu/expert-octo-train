@@ -22,6 +22,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -340,7 +341,7 @@ class ScreensTest {
 
     @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
     @Test
-    fun `the day's reading opens first - research, Next, a common problem, then the sit`() {
+    fun `the day's reading opens first - one page, the research on the first day - then the sit`() {
         Prefs(app).readingSeenOn = null
         seed()
         launch()
@@ -353,17 +354,9 @@ class ScreensTest {
         compose.onNodeWithText("Breathe").assertDoesNotExist() // nothing else until it's read or skipped
         compose.onNodeWithText("Begin  ·", substring = true).assertDoesNotExist()
         shot("24-reading-research")
-        compose.onNodeWithText("Next").performClick()
-        compose.waitForIdle()
-        val problem = Problems.forIndex(0)
-        compose.onNodeWithText("A common problem").assertExists()
-        compose.onNodeWithText(problem.title).assertExists()
-        compose.onNodeWithText(problem.answer).assertExists()
-        shot("25-reading-problem")
-        // Back goes to the research; Next again, then on to the sit.
-        compose.onNodeWithText("‹ Back").performClick()
-        compose.onNodeWithText("Today's research").assertExists()
-        compose.onNodeWithText("Next").performClick()
+        // One page a day: no common problem after it today.
+        compose.onNodeWithText("A common problem").assertDoesNotExist()
+        compose.onNodeWithText("Next").assertDoesNotExist()
         compose.onNodeWithText("Continue").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Begin  ·", substring = true).assertExists()
@@ -378,15 +371,22 @@ class ScreensTest {
     }
 
     @Test
-    fun `the reading returns the next day with the next problem, can be skipped, and switched off`() {
+    fun `the reading takes turns - research one day, the next common problem the next - can be skipped, and switched off`() {
         val prefs = Prefs(app)
-        prefs.readingSeenOn = LocalDate.now().minusDays(1).toString()
+        val yesterday = LocalDate.now().minusDays(1).toString()
+        // Yesterday was the research; the problem day before it showed the first problem.
+        prefs.readingSeenOn = yesterday
+        prefs.readingWasProblem = false
+        prefs.readingKindDay = yesterday
         prefs.readingProblem = 0
-        prefs.readingProblemDay = LocalDate.now().minusDays(1).toString()
+        prefs.readingProblemDay = LocalDate.now().minusDays(2).toString()
         launch()
-        compose.onNodeWithText("Today's research").assertExists()
-        compose.onNodeWithText("Next").performClick()
-        compose.onNodeWithText(Problems.forIndex(1).title).assertExists()
+        val problem = Problems.forIndex(1)
+        compose.onNodeWithText("A common problem").assertExists()
+        compose.onNodeWithText(problem.title).assertExists()
+        compose.onNodeWithText(problem.answer).assertExists()
+        compose.onNodeWithText("Today's research").assertDoesNotExist()
+        shot("25-reading-problem")
         compose.onNodeWithText("Skip").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Begin  ·", substring = true).assertExists()
@@ -654,8 +654,8 @@ class ScreensTest {
         compose.onNodeWithText("Where you stand").assertExists()
         compose.onNodeWithText("What a sit changes").assertDoesNotExist() // that's in Trends
         shot("07-history-overview")
-        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("in review", substring = true))
-        compose.onNodeWithText("in review", substring = true).assertExists()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Days sat"))
+        compose.onNodeWithText("Days sat").assertExists()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("calmer after a sit", substring = true))
         shot("08-history-overview-bottom")
         // A highlight opens Trends, at the top even though Overview was scrolled down to reach it.
@@ -889,7 +889,7 @@ class ScreensTest {
     }
 
     @Test
-    fun `month in review opens on last month and steps back through months with sits`() {
+    fun `month in review opens on this month and steps back through months with sits`() {
         seed(days = 75)
         launch()
         compose.onAllNodesWithText("History").onLast().performClick()
@@ -897,10 +897,12 @@ class ScreensTest {
         val now = YearMonth.now(zone)
         fun title(m: YearMonth) = m.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) + (if (m.year == now.year) "" else " ${m.year}")
         val list = compose.onNode(hasScrollToNodeAction())
-        list.performScrollToNode(hasText("in review", substring = true))
-        compose.onNodeWithText("${title(now.minusMonths(1))} in review").assertExists()
-        compose.onNodeWithText("Days sat").assertExists()
+        list.performScrollToNode(hasText("Days sat"))
+        compose.onNodeWithText("${title(now)} so far").assertExists()
         compose.onNodeWithText("Best week").assertExists()
+        compose.onNodeWithText("›").assertIsNotEnabled() // nothing newer than this month
+        compose.onNodeWithText("‹").performClick()
+        compose.onNodeWithText("${title(now.minusMonths(1))} in review").assertExists()
         shot("14-month-review")
         compose.onNodeWithText("‹").performClick()
         compose.onNodeWithText("${title(now.minusMonths(2))} in review").assertExists()
@@ -939,7 +941,7 @@ class ScreensTest {
         launch()
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.waitForIdle()
-        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("in review", substring = true))
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Days sat"))
         compose.onNodeWithText("Trends").performClick()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Catching the wandering mind"))
         compose.onNodeWithText("Sessions").performClick()

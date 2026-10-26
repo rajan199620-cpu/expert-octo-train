@@ -57,8 +57,6 @@ class ServiceStressTest {
         SessionRepository.reset()
         SessionRepository.startCounting(false)
         SessionRepository.pendingBefore = 0
-        // The bundled rain, as Robolectric's media player knows it: four minutes long.
-        ShadowMediaPlayer.addMediaInfo(DataSource.toDataSource(app, AmbientPlayer.rainUri(app)), ShadowMediaPlayer.MediaInfo(239_000, 0))
     }
 
     @After
@@ -412,7 +410,7 @@ class ServiceStressTest {
 
     @Test
     fun `background sound never changes how a sit runs or logs, and leaves nothing playing`() {
-        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS, Ambience.CUSTOM)) {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.CUSTOM)) {
             SessionRepository.reset()
             Prefs(app).ambience = kind
             Prefs(app).ambienceUri = if (kind == Ambience.CUSTOM) "content://nowhere/missing.mp3" else null // a deleted file
@@ -484,69 +482,13 @@ class ServiceStressTest {
         player.stopNow()
     }
 
-    private fun waitForSoundThreads() {
-        val deadline = System.currentTimeMillis() + 10_000
-        while (AmbientPlayer.live.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(20)
-        assertEquals("sound threads left running", 0, AmbientPlayer.live.get())
-    }
-
-    @Test
-    fun `rain is the recording, alone or under birdsong, and pauses and stops cleanly`() {
-        val player = AmbientPlayer(app)
-        player.start(Ambience.RAIN, 0.5f, fadeInMs = 50)
-        assertEquals(AmbientPlayer.State.PLAYING, player.state)
-        assertEquals("rain alone runs no generator", 0, AmbientPlayer.live.get())
-        player.pause()
-        idle(3)
-        assertEquals(AmbientPlayer.State.PAUSED, player.state)
-        player.resume()
-        assertEquals(AmbientPlayer.State.PLAYING, player.state)
-        player.stop(100)
-        idle(1)
-        assertEquals(AmbientPlayer.State.STOPPED, player.state)
-
-        // Rain & birds: the recording and the birdsong together. However their endings fall, the
-        // sound only reads stopped once both have gone, and nothing is left behind.
-        repeat(2) { round ->
-            player.start(Ambience.RAIN_AND_BIRDS, 0.5f, fadeInMs = 50)
-            assertEquals(AmbientPlayer.State.PLAYING, player.state)
-            assertEquals("birdsong runs alongside", 1, AmbientPlayer.live.get())
-            player.pause()
-            idle(3)
-            assertEquals(AmbientPlayer.State.PAUSED, player.state)
-            player.resume()
-            player.stop(100)
-            if (round == 0) {
-                waitForSoundThreads() // birdsong ends first
-                assertEquals(AmbientPlayer.State.PLAYING, player.state)
-                idle(1)
-            } else {
-                idle(1) // the recording is released first
-                waitForSoundThreads()
-            }
-            assertEquals(AmbientPlayer.State.STOPPED, player.state)
-        }
-    }
-
-    @Test
-    fun `a sit started during the last one's fade keeps its rain`() {
-        val player = AmbientPlayer(app)
-        player.start(Ambience.RAIN, 0.5f, fadeInMs = 50)
-        player.stop(AmbientPlayer.END_FADE_MS)
-        player.start(Ambience.RAIN, 0.5f, fadeInMs = 50)
-        idle(10) // past the first sit's fade, when it would have let go of its recording
-        assertEquals(AmbientPlayer.State.PLAYING, player.state)
-        player.stopNow()
-        assertEquals(AmbientPlayer.State.STOPPED, player.state)
-    }
-
     @Test
     fun `ambient player survives any order of calls`() {
         val player = AmbientPlayer(app)
         val rnd = Random(3)
         repeat(300) {
             when (rnd.nextInt(7)) {
-                0 -> player.start(listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS, Ambience.OFF).random(rnd), rnd.nextFloat(), fadeInMs = 50)
+                0 -> player.start(listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.OFF).random(rnd), rnd.nextFloat(), fadeInMs = 50)
                 1 -> player.pause()
                 2 -> player.resume()
                 3 -> player.duck()

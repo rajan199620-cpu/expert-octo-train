@@ -200,7 +200,7 @@ class Prefs(context: Context) {
         weeklyGoal = experience.weeklyGoal
     }
 
-    /** Today's lesson and one common problem, first thing when the app opens each day. */
+    /** Today's lesson or a common problem (on alternate days), first thing when the app opens each day. */
     var dailyReading: Boolean
         get() = sp.getBoolean(KEY_DAILY_READING, true)
         set(value) = sp.edit { putBoolean(KEY_DAILY_READING, value) }
@@ -217,6 +217,14 @@ class Prefs(context: Context) {
     var readingProblemDay: String?
         get() = sp.getString(KEY_READING_PROBLEM_DAY, null)
         set(value) = sp.edit { putString(KEY_READING_PROBLEM_DAY, value) }
+
+    /** Whether the last day's reading was a common problem (else the research), and which day that was. */
+    var readingWasProblem: Boolean
+        get() = sp.getBoolean(KEY_READING_WAS_PROBLEM, true)
+        set(value) = sp.edit { putBoolean(KEY_READING_WAS_PROBLEM, value) }
+    var readingKindDay: String?
+        get() = sp.getString(KEY_READING_KIND_DAY, null)
+        set(value) = sp.edit { putString(KEY_READING_KIND_DAY, value) }
 
     /** The day the "on this day" note was put away: it stays hidden until tomorrow. */
     var memoryHiddenOn: String?
@@ -262,6 +270,8 @@ class Prefs(context: Context) {
         private const val KEY_READING_SEEN = "reading_seen_on"
         private const val KEY_READING_PROBLEM = "reading_problem"
         private const val KEY_READING_PROBLEM_DAY = "reading_problem_day"
+        private const val KEY_READING_WAS_PROBLEM = "reading_was_problem"
+        private const val KEY_READING_KIND_DAY = "reading_kind_day"
         private const val KEY_AMBIENCE = "ambience"
         private const val KEY_AMBIENCE_VOLUME = "ambience_volume"
         private const val KEY_AMBIENCE_URI = "ambience_uri"

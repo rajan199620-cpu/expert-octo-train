@@ -90,13 +90,15 @@ fun RecapReadyCard(month: YearMonth, today: LocalDate, onOpen: () -> Unit, onHid
 }
 
 /**
- * One month summed up, opening on the last finished month, with ‹ › to step through the
- * months that have sits. Each line appears only when that month has the data behind it.
+ * One month summed up, opening on this month so far (or last month, when its "in review" note
+ * was tapped), with ‹ › to step through the months that have sits. Each line appears only when
+ * that month has the data behind it.
  */
 @Composable
 fun MonthRecapCard(records: List<SessionRecord>, zone: ZoneId, today: LocalDate) {
     val months = remember(records) { Recap.months(records, zone, today) }
-    val first = Recap.defaultMonth(months, today) ?: return
+    val requested = remember { Recap.requested.also { Recap.requested = null } }
+    val first = requested?.takeIf { it in months } ?: Recap.defaultMonth(months) ?: return
     var shownText by rememberSaveable { mutableStateOf(first.toString()) }
     val shown = YearMonth.parse(shownText).takeIf { it in months } ?: first
     val index = months.indexOf(shown)

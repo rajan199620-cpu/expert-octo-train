@@ -3,9 +3,6 @@ package com.rajan.meditationtimer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -13,9 +10,9 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * The generated birdsong, checked the way an ear can't be: never clipping, never silent, never
+ * The generated sounds, checked the way an ear can't be: never clipping, never silent, never
  * blowing up over a long sit, stereo rather than mono, the right kind of spectrum, and cheap
- * enough to run all sit long on a phone. Rain is a recording; its file is checked at the end.
+ * enough to run all sit long on a phone.
  */
 class AmbienceTest {
     private val rate = 32_000
@@ -62,7 +59,7 @@ class AmbienceTest {
 
     @Test
     fun bothSoundsStayInRangeAndAtAComfortableLevel() {
-        for (kind in listOf(Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
             val x = render(kind, 60)
             assertTrue("$kind has NaN", x.none { it.isNaN() })
             val peak = x.maxOf { abs(it) }
@@ -75,7 +72,7 @@ class AmbienceTest {
 
     @Test
     fun aThirtyMinuteSitNeitherFadesAwayNorBuildsUp() {
-        for (kind in listOf(Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
             val x = render(kind, 30 * 60, seed = 9)
             val minute = rate * 2 * 60
             val levels = (0 until 30).map { rms(x, it * minute, (it + 1) * minute) }
@@ -87,7 +84,7 @@ class AmbienceTest {
 
     @Test
     fun leftAndRightAreDifferentSoItSurroundsYou() {
-        for (kind in listOf(Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
             val x = render(kind, 20)
             var lr = 0.0; var ll = 0.0; var rr = 0.0
             for (i in 0 until x.size / 2) { val l = x[2 * i].toDouble(); val r = x[2 * i + 1].toDouble(); lr += l * r; ll += l * l; rr += r * r }
@@ -97,7 +94,11 @@ class AmbienceTest {
     }
 
     @Test
-    fun birdsSingInTheirRange() {
+    fun rainIsBroadbandAndBirdsSingInTheirRange() {
+        val rain = render(Ambience.RAIN, 60)
+        // Rain: energy spread across the spectrum, not a tone; little left above 10 kHz.
+        bandShare(rain, 300.0, 8000.0).let { assertTrue("rain mid $it", it > 0.5) }
+        bandShare(rain, 10_000.0, 16_000.0).let { assertTrue("rain top $it", it < 0.05) }
         val birds = render(Ambience.BIRDS, 60)
         // Birdsong lives roughly 2–7 kHz; the breeze sits low; together most energy is in those bands.
         bandShare(birds, 2000.0, 7500.0).let { assertTrue("birds song band $it", it > 0.15) }
@@ -142,14 +143,14 @@ class AmbienceTest {
 
     @Test
     fun differentSeedsGiveDifferentSoundSameSeedTheSame() {
-        val a = render(Ambience.BIRDS, 2, seed = 1)
-        assertTrue(a.contentEquals(render(Ambience.BIRDS, 2, seed = 1)))
-        assertTrue(!a.contentEquals(render(Ambience.BIRDS, 2, seed = 2)))
+        val a = render(Ambience.RAIN, 2, seed = 1)
+        assertTrue(a.contentEquals(render(Ambience.RAIN, 2, seed = 1)))
+        assertTrue(!a.contentEquals(render(Ambience.RAIN, 2, seed = 2)))
     }
 
     @Test
     fun cheapEnoughToRunAllSitLong() {
-        for (kind in listOf(Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
+        for (kind in listOf(Ambience.RAIN, Ambience.BIRDS, Ambience.RAIN_AND_BIRDS)) {
             render(kind, 5) // warm up the JIT
             val t = System.nanoTime()
             render(kind, 60)
@@ -186,27 +187,5 @@ class AmbienceTest {
         assertTrue(sliderGain(0.5f) in 0.05f..0.2f)
         var last = 0f
         for (i in 1..100) { val v = sliderGain(i / 100f); assertTrue(v > last); last = v }
-    }
-
-    @Test
-    fun rainIsARecordingThatLoopsLongAndStaysSmall() {
-        // Rain and the rain under birdsong come from the recording, not the generator.
-        assertEquals(null, Soundscape.create(Ambience.RAIN, rate))
-        val file = File("src/main/res/raw/rain.ogg")
-        val bytes = file.readBytes()
-        // Ogg Vorbis (plays on every Android version and loops without a gap), stereo, 48 kHz.
-        assertEquals("OggS", String(bytes, 0, 4, Charsets.US_ASCII))
-        val head = String(bytes, 0, 64, Charsets.ISO_8859_1).indexOf("\u0001vorbis")
-        assertTrue("not Vorbis", head > 0)
-        assertEquals("channels", 2, bytes[head + 11].toInt())
-        val sampleRate = ByteBuffer.wrap(bytes, head + 12, 4).order(ByteOrder.LITTLE_ENDIAN).int
-        assertEquals(48_000, sampleRate)
-        // Length from the last page's granule position: long enough that the loop isn't noticed
-        // (about four minutes), small enough not to bloat the download.
-        val last = String(bytes, Charsets.ISO_8859_1).lastIndexOf("OggS")
-        val samples = ByteBuffer.wrap(bytes, last + 6, 8).order(ByteOrder.LITTLE_ENDIAN).long
-        val seconds = samples / sampleRate.toDouble()
-        assertTrue("loop of $seconds s", seconds in 180.0..300.0)
-        assertTrue("${bytes.size} bytes", bytes.size < 5_000_000)
     }
 }

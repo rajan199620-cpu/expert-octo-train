@@ -54,13 +54,14 @@ class RecapTest {
     }
 
     @Test
-    fun recapOpensOnLastFinishedMonthAndBrowsesOnlyMonthsWithSits() {
+    fun recapOpensOnThisMonthAndBrowsesOnlyMonthsWithSits() {
         val records = listOf(sit(LocalDate.of(2026, 7, 3)), sit(LocalDate.of(2026, 9, 10)), sit(today))
         val months = Recap.months(records, zone, today)
         assertEquals(listOf(YearMonth.of(2026, 10), YearMonth.of(2026, 9), YearMonth.of(2026, 7)), months)
-        assertEquals(YearMonth.of(2026, 9), Recap.defaultMonth(months, today))
-        assertEquals(YearMonth.of(2026, 10), Recap.defaultMonth(listOf(YearMonth.of(2026, 10)), today))
-        assertNull(Recap.defaultMonth(emptyList(), today))
+        assertEquals(YearMonth.of(2026, 10), Recap.defaultMonth(months))
+        // No sits yet this month: the latest month that has some.
+        assertEquals(YearMonth.of(2026, 9), Recap.defaultMonth(Recap.months(records.dropLast(1), zone, today)))
+        assertNull(Recap.defaultMonth(emptyList()))
     }
 
     @Test

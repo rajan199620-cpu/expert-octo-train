@@ -288,7 +288,7 @@ private fun SetupScreen(
         var recapSeen by remember { mutableStateOf(prefs.recapSeen) }
         if (recapReady != null && recapSeen != recapReady.toString()) {
             fun seen() { recapSeen = recapReady.toString(); prefs.recapSeen = recapSeen }
-            RecapReadyCard(recapReady, today, onOpen = { seen(); onHistory() }, onHide = { seen() })
+            RecapReadyCard(recapReady, today, onOpen = { seen(); Recap.requested = recapReady; onHistory() }, onHide = { seen() })
         }
 
         // Set-once settings as three rows that say what's set; each opens only its own sheet
@@ -430,8 +430,8 @@ private fun PracticeTools(prefs: Prefs) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ToggleRow(
             "Today's reading when I open the app",
-            "Today's lesson and its research, then one common problem and what to do about it. Once a day, " +
-                "before the Sit screen.",
+            "One page a day before the Sit screen: today's lesson and its research one day, a common " +
+                "problem and what to do about it the next.",
             reading,
         ) { reading = it; prefs.dailyReading = it }
         SectionLabel(

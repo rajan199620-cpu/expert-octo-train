@@ -184,6 +184,25 @@ class ReadingCompareSettleTest {
     }
 
     @Test
+    fun `one page a day - the research and a common problem take turns, starting with the research`() {
+        assertFalse(Reading.problemToday(true, null, today)) // first day ever: the research
+        assertTrue(Reading.problemToday(false, today.minusDays(1).toString(), today))
+        assertFalse(Reading.problemToday(true, today.minusDays(4).toString(), today)) // a gap still alternates
+        assertTrue(Reading.problemToday(true, today.toString(), today)) // the same all day
+        assertFalse(Reading.problemToday(false, today.toString(), today))
+        // A month of opening the app (several times a day): half research, half problems, never two in a row.
+        var wasProblem = true
+        var lastDay: String? = null
+        val kinds = (0L until 30L).map { d ->
+            val day = today.plusDays(d)
+            repeat(3) { wasProblem = Reading.problemToday(wasProblem, lastDay, day); lastDay = day.toString() }
+            wasProblem
+        }
+        assertEquals(15, kinds.count { it })
+        assertTrue(kinds.zipWithNext().none { (a, b) -> a == b })
+    }
+
+    @Test
     fun `each day's reading brings the next problem, and the list comes round again`() {
         val first = Reading.problemIndex(-1, null, today)
         assertEquals(0, first)

@@ -278,9 +278,14 @@ private fun App(
                             }
                             READING -> {
                                 val lesson = rememberLessonIndex()
-                                // A new day moves on to the next common problem; the same day keeps it.
+                                // One page a day: the research one day, a common problem the next
+                                // (each problem day moves on to the next problem); the same day keeps it.
                                 val problem = remember(readingDay) {
                                     val today = LocalDate.now()
+                                    val isProblem = Reading.problemToday(prefs.readingWasProblem, prefs.readingKindDay, today)
+                                    prefs.readingWasProblem = isProblem
+                                    prefs.readingKindDay = today.toString()
+                                    if (!isProblem) return@remember null
                                     val i = Reading.problemIndex(prefs.readingProblem, prefs.readingProblemDay, today)
                                     prefs.readingProblem = i
                                     prefs.readingProblemDay = today.toString()

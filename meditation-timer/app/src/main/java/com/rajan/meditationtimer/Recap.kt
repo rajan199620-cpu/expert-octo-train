@@ -70,13 +70,16 @@ object Recap {
     }
 
     /**
-     * The month the recap opens on: the last finished month with sits, so on the 1st of October
-     * you see September; a brand-new user with only this month's sits sees this month so far.
+     * The month the recap opens on: this month so far, or if it has no sits yet, the latest month
+     * that does. ([months] is newest first and never later than this month.)
      */
-    fun defaultMonth(months: List<YearMonth>, today: LocalDate): YearMonth? {
-        val now = YearMonth.from(today)
-        return months.firstOrNull { it < now } ?: months.firstOrNull()
-    }
+    fun defaultMonth(months: List<YearMonth>): YearMonth? = months.firstOrNull()
+
+    /**
+     * A month the recap should open on once instead: last month, when its "in review is ready"
+     * note on the Sit screen was tapped.
+     */
+    var requested: YearMonth? = null
 
     fun month(records: List<SessionRecord>, zone: ZoneId, month: YearMonth, today: LocalDate): MonthRecap? {
         val inMonth = records.filter { YearMonth.from(it.day(zone)) == month }.sortedBy { it.startedAtMs }

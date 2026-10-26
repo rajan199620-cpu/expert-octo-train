@@ -107,9 +107,18 @@ class LargeTextScreensTest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitForIdle()
         shot("12-reading")
-        // Next stays pinned below the text however large it is.
-        compose.onNodeWithText("Next").performClick()
+        // Continue stays pinned below the text however large it is.
+        compose.onNodeWithText("Continue").performClick()
         compose.waitForIdle()
+        compose.onNodeWithText("Begin  ·", substring = true).assertExists()
+        // The next day is a common problem instead.
+        scenario?.close()
+        val yesterday = LocalDate.now().minusDays(1).toString()
+        Prefs(app).readingSeenOn = yesterday
+        Prefs(app).readingKindDay = yesterday
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitForIdle()
+        compose.onNodeWithText("A common problem").assertExists()
         shot("13-reading-problem")
         compose.onNodeWithText("Continue").performClick()
         compose.waitForIdle()
@@ -158,7 +167,7 @@ class LargeTextScreensTest {
         compose.onAllNodesWithText("History").onLast().performClick()
         compose.waitForIdle()
         shot("06-history")
-        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("in review", substring = true))
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Days sat"))
         shot("07-review")
         compose.onNodeWithText("Trends").performClick()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("How your sits felt"))
