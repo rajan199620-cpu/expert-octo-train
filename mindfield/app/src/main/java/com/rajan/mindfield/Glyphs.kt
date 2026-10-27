@@ -75,10 +75,10 @@ private fun DrawScope.drawGlyph(glyph: Glyph, color: Color) {
             circle(0.5f, 0.5f, 0.13f)
         }
         Glyph.MIRROR -> {
-            // A hand mirror: you caught it in yourself.
-            drawOval(color, p(0.24f, 0.06f), Size(0.52f * s, 0.6f * s), style = stroke)
-            line(0.5f, 0.66f, 0.5f, 0.94f)
-            line(0.38f, 0.26f, 0.48f, 0.18f)
+            // A person pointing at themselves: you caught it in yourself.
+            circle(0.4f, 0.28f, 0.17f)
+            path({ m(0.1f, 0.92f); c(0.1f, 0.62f, 0.24f, 0.52f, 0.4f, 0.52f); c(0.56f, 0.52f, 0.7f, 0.62f, 0.7f, 0.92f) })
+            path({ m(0.94f, 0.4f); l(0.62f, 0.4f); m(0.74f, 0.28f); l(0.62f, 0.4f); l(0.74f, 0.52f) })
         }
         Glyph.TARGET -> {
             circle(0.5f, 0.5f, 0.4f)
@@ -180,9 +180,18 @@ private fun DrawScope.drawGlyph(glyph: Glyph, color: Color) {
             rays(0.5f, 0.5f, 0.3f, 0.44f, 8)
         }
         Glyph.GEAR -> {
-            circle(0.5f, 0.5f, 0.27f)
+            // Square-ended teeth, so it doesn't read as the sun on the Today tab.
+            circle(0.5f, 0.5f, 0.28f)
             circle(0.5f, 0.5f, 0.1f)
-            rays(0.5f, 0.5f, 0.3f, 0.44f, 8, 22.5)
+            for (i in 0 until 8) {
+                val a = Math.toRadians(45.0 * i)
+                drawLine(
+                    color,
+                    p(0.5f + 0.3f * cos(a).toFloat(), 0.5f + 0.3f * sin(a).toFloat()),
+                    p(0.5f + 0.44f * cos(a).toFloat(), 0.5f + 0.44f * sin(a).toFloat()),
+                    s * 0.14f, StrokeCap.Butt,
+                )
+            }
         }
         Glyph.PEN -> {
             path({ m(0.16f, 0.84f); l(0.2f, 0.66f); l(0.68f, 0.18f); l(0.82f, 0.32f); l(0.34f, 0.8f); close() })

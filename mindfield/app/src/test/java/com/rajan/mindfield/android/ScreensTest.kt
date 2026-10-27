@@ -356,7 +356,8 @@ class ScreensTest {
         launch()
         val due = com.rajan.mindfield.core.Spacing.due(Store.state.value, Store.library, Store.today()).size
         assertTrue("the seed leaves reviews due", due > 0)
-        step("Review $due").performScrollTo().performClick()
+        step("Review").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("$due due")))
+        step("Review").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Start review").assertExists()
         compose.onNodeWithText("Coming up".uppercase()).performScrollTo().assertExists()

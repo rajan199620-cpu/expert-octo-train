@@ -236,13 +236,17 @@ fun TodayStepper(steps: List<PathStep>, due: Int, onStep: (Step) -> Unit) {
                         .background(if (steps[i - 1].done) p.brand else p.line),
                 )
             }
-            val label = if (s.step == Step.REVIEW && due > 0) "Review $due" else s.step.label
+            // The review count rides on the circle, so a long label can't push it off a narrow screen.
+            val count = if (s.step == Step.REVIEW && due > 0) due else null
             Column(
                 Modifier
                     .widthIn(min = 56.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .clickable(role = Role.Button) { view.tick(); onStep(s.step) }
-                    .semantics { stateDescription = if (s.done) "done" else "to do" }
+                    .semantics {
+                        stateDescription = if (s.done) "done" else "to do"
+                        if (count != null) contentDescription = "$count due"
+                    }
                     .padding(horizontal = 4.dp, vertical = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(5.dp),
@@ -251,15 +255,18 @@ fun TodayStepper(steps: List<PathStep>, due: Int, onStep: (Step) -> Unit) {
                     Modifier
                         .size(30.dp)
                         .clip(CircleShape)
-                        .background(if (s.done) p.brand else p.surface)
-                        .border(1.5.dp, if (s.done) p.brand else p.line, CircleShape)
+                        .background(if (s.done) p.brand else if (count != null) p.brand.copy(alpha = 0.12f) else p.surface)
+                        .border(1.5.dp, if (s.done || count != null) p.brand else p.line, CircleShape)
                         .clearAndSetSemantics { },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (s.done) GlyphIcon(Glyph.CHECK, onColor(p.brand), 15.dp)
-                    else Text("${i + 1}", style = MaterialTheme.typography.labelLarge, color = p.muted)
+                    when {
+                        s.done -> GlyphIcon(Glyph.CHECK, onColor(p.brand), 15.dp)
+                        count != null -> Text("$count", style = MaterialTheme.typography.labelLarge, color = p.brand)
+                        else -> Text("${i + 1}", style = MaterialTheme.typography.labelLarge, color = p.muted)
+                    }
                 }
-                Text(label, style = MaterialTheme.typography.labelLarge, color = if (s.done) p.ink else p.muted, maxLines = 1)
+                Text(s.step.label, style = MaterialTheme.typography.labelLarge, color = if (s.done) p.ink else p.muted, maxLines = 1)
             }
         }
     }

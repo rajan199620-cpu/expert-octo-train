@@ -106,7 +106,7 @@ class LargeTextScreensTest {
         launch()
         shot("10-today")
         // The stepper fits the narrow screen at 150% text: every step's label is on screen.
-        for (label in listOf("Predict", "Plan", "Report")) compose.onNodeWithText(label).assertIsDisplayed()
+        for (label in listOf("Predict", "Plan", "Report", "Review")) compose.onNodeWithText(label).assertIsDisplayed()
         val c = Store.todayConcept()
         compose.onNodeWithText(c.predict.options[c.predict.answer]).performScrollTo().performClick()
         scrollTo("Make an if-then plan", substring = true)
