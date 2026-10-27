@@ -92,7 +92,7 @@ class ScreensTest {
 
     /** Opens a settings topic: the gear on the You tab, then the topic's row. */
     private fun openSettings(row: String) {
-        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.onNodeWithContentDescription("Settings").performScrollTo().performClick()
         compose.waitForIdle()
         openSheet(row)
     }
@@ -244,7 +244,7 @@ class ScreensTest {
         scrollTo("Where you notice psychology".uppercase())
         shot("28-you-insights")
         // Settings sit behind the gear: a list of topics, each opening its own sheet.
-        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.onNodeWithContentDescription("Settings").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Backup file").assertExists()
         captureScreenRoboImage("build/outputs/roborazzi/29-settings.png")
@@ -323,7 +323,7 @@ class ScreensTest {
         compose.onNodeWithText("Done").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText("of 7 days this week", substring = true).assertDoesNotExist()
-        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.onNodeWithContentDescription("Settings").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText("3 days a week with a field report").assertExists()
     }
@@ -376,8 +376,8 @@ class ScreensTest {
         launch()
         val c = Store.todayConcept()
         compose.onNodeWithText("You planned:", substring = true).assertExists()
-        val report = compose.onNodeWithText("How did it show up in your day?").fetchSemanticsNode().boundsInRoot.top
-        val predict = compose.onNodeWithText("Predict first".uppercase()).fetchSemanticsNode().boundsInRoot.top
+        val report = compose.onNodeWithText("How did it show up in your day?").fetchSemanticsNode().positionInRoot.y
+        val predict = compose.onNodeWithText("Predict first".uppercase()).fetchSemanticsNode().positionInRoot.y
         assertTrue("report ($report) above predict ($predict)", report < predict)
         shot("17-today-evening")
         // One tap files it from the top; the report stays where it is afterwards.
@@ -386,8 +386,8 @@ class ScreensTest {
         compose.onNodeWithText("Save to journal").performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(c.id, Store.state.value.entriesOn(today).single().conceptId)
-        val after = compose.onNodeWithText("How did it show up in your day?").fetchSemanticsNode().boundsInRoot.top
-        val predictAfter = compose.onNodeWithText("Predict first".uppercase()).fetchSemanticsNode().boundsInRoot.top
+        val after = compose.onNodeWithText("How did it show up in your day?").fetchSemanticsNode().positionInRoot.y
+        val predictAfter = compose.onNodeWithText("Predict first".uppercase()).fetchSemanticsNode().positionInRoot.y
         assertTrue(after < predictAfter)
     }
 
@@ -399,8 +399,8 @@ class ScreensTest {
         compose.onNodeWithText("You planned:", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Predict first".uppercase()).assertExists()
         scrollTo("How did it show up in your day?")
-        val report = compose.onNodeWithText("How did it show up in your day?").fetchSemanticsNode().boundsInRoot.top
-        val predict = compose.onNodeWithText("Predict first".uppercase()).fetchSemanticsNode().boundsInRoot.top
+        val report = compose.onNodeWithText("How did it show up in your day?").fetchSemanticsNode().positionInRoot.y
+        val predict = compose.onNodeWithText("Predict first".uppercase()).fetchSemanticsNode().positionInRoot.y
         assertTrue(report > predict)
     }
 

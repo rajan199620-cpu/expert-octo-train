@@ -134,7 +134,7 @@ class LargeTextScreensTest {
         shot("23-journal")
         tab("You")
         shot("24-you")
-        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.onNodeWithContentDescription("Settings").performScrollTo().performClick()
         compose.waitForIdle()
         captureScreenRoboImage("build/outputs/roborazzi/large-25-settings.png")
         scrollTo("Backup file")
