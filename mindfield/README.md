@@ -117,9 +117,9 @@ new ones before any repeat.
 Taken from Duolingo, Headway, Elevate, Strava and the Meditation Timer, keeping only what has
 research behind it:
 
-- **Today's path** at the top of Today: Predict · Plan · Report (and Review when cards are due).
-  Each step is ticked off as it's done, and tapping one scrolls to it, so the long page has a
-  map. Showing progress already made helps people finish (the goal-gradient effect: Kivetz,
+- **Today's path** at the top of Today, as a stepper: Predict · Plan · Report (and Review when
+  cards are due). Each step is ticked off as it's done, and tapping one scrolls to it, so the page
+  has a map. Showing progress already made helps people finish (the goal-gradient effect: Kivetz,
   Urminsky & Zheng, *JMR* 2006).
 - **A forgiving streak**, like Duolingo's streak freeze: one missed day a week doesn't break
   it.
@@ -146,17 +146,25 @@ research behind it:
 
 ## Screens
 
-- **Today**: the specimen plate (each concept has its own generative emblem in its area's
-  colour), predict first, the study, in the real world, mission + plan, field report, review
-  nudge, and a floating "Log today" button.
-- **Guide**: the collection. Undiscovered concepts stay sealed until their day (or turn on
-  "show undiscovered"). Search, filter by area, myths, or what you've spotted.
-- **Review**: spaced questions, with a "how well they're sticking" chart.
+Four tabs: Today, Guide, Journal and You. Icons are line drawings made in the app, not emoji.
+
+- **Today**: the day and streak, today's path as a stepper (Predict · Plan · Report · Review N),
+  the specimen plate (each concept has its own generative emblem in its area's colour, and a
+  share button), predict first, what's going on with how to spot it, the study, the real-world
+  case (folded, with a teaser), the mission with its if-then plan and "watch out", the field
+  report, see also, and the sources folded into one line. From the evening report's time until
+  midnight the field report moves to the top, with the concept's name and your plan.
+- **Guide**: the collection. Spotted concepts carry a stamp; undiscovered ones are dashed
+  outlines until their day (or turn on "show undiscovered"). Search, filter by area, myths, or
+  what you've spotted. "Review & practice" at the top opens review.
+- **Review** (over Today, from the stepper, the Guide or the app shortcut): spaced questions, the
+  next seven days of reviews, and a "how well they're sticking" chart. A round in progress
+  survives leaving it.
 - **Journal**: every field note, filters, search, "On this day" (a week, a month, three and six
   months, a year ago), edit and delete.
-- **You**: day count, streak, this week, discovered/spotted counts, prediction score, how
-  concepts show up (spotted/in me/used), where you notice psychology (radar by area), most
-  spotted, how deliberate uses went (worked/mixed/backfired), a 12-week heatmap, and settings.
+- **You**: day count, streak, this week and all-time totals in one card, the month in review, how
+  you compare, how concepts show up (spotted/in me/used), where you notice psychology (radar by
+  area), most spotted, how deliberate uses went, a 12-week heatmap. Settings sit behind the gear.
 - **Widget**: today's concept on the home screen with a "Log it" button.
 - Long-press the app icon: *Log a sighting*, *Review*.
 
