@@ -443,6 +443,27 @@ scenario: Years after a minor car accident, Vikram can describe the other driver
 source: Penfield, W., & Perot, P. (1963). The brain's record of auditory and visual experience: A final summary and discussion. Brain; Loftus, E. F., & Loftus, G. R. (1980). On the permanence of stored information in the human brain. American Psychologist; Dywan, J., & Bowers, K. (1983). The use of hypnosis to enhance recall. Science; Simons, D. J., & Chabris, C. F. (2011). What people believe about how memory works: A representative survey of the U.S. population. PLoS ONE.
 related: false-memories, misinformation-effect, choice-blindness
 
+## microexpressions-myth
+title: The microexpression myth
+aka: Lie to Me
+category: memory
+evidence: busted
+hook: TV made "microexpressions" famous as flashes of hidden emotion that unmask liars. Real faces rarely show them, and spotting them catches no lies.
+what: Microexpressions are full emotional expressions that flash across the face in a fraction of a second. Paul Ekman's work made them the best-known lie detector in popular culture. They do exist, but they are rare, they appear in honest people too, and no expression signals lying itself: fear or distress can belong to an innocent person who is afraid of not being believed. Training people to spot them hasn't made anyone better at catching lies.
+study: In 2008 Stephen Porter and Leanne ten Brinke filmed people showing real and faked emotions, and analysed all 697 expressions frame by frame, 30 frames a second. Microexpressions appeared in only 2% of expressions, from about a fifth of the participants, and only in the upper or lower half of the face, never the full-face flash the theory describes. In 2019 Sarah Jordan and colleagues tested the commercial microexpression training tool on 90 people: trainees were no better at detecting lies than people given bogus training or none, and overall accuracy was slightly below chance.
+case: The TV drama Lie to Me, which ran from 2009 to 2011, starred an expert who caught liars from fleeting facial expressions, a character inspired by Ekman. In 2010 Timothy Levine, Kim Serota and Hillary Shulman tested about a hundred people: some watched an episode of Lie to Me, some an episode of another crime drama, Numb3rs, and some watched nothing. Then everyone judged a set of honest and deceptive interviews. Watching Lie to Me didn't improve lie detection. It made viewers more suspicious, so they wrongly labelled more honest people as liars. The nuance: the authors of the CIA book Spy the Lie, who spent careers interviewing suspects, reach the same verdict from practice: microexpressions show an emotion, not a lie, and are too fleeting to use in real time. Ekman's research on how emotions show on the face is a separate matter; it's the leap from a flash of emotion to "liar" that fails.
+proof: Busted as a way to catch liars: complete microexpressions are rare, honest people show them too, and training to spot them doesn't improve accuracy.
+spot: Notice any claim, on TV or in a training course, that a flicker on someone's face proves they're lying.
+use: The next time a face makes you suspicious today, write down the specific fact you would need to check instead of trusting the look.
+guard: When someone's expression seems "off" in a tense moment, remember that the innocent have plenty to feel afraid or angry about too.
+predict: When researchers analysed 697 facial expressions frame by frame, how often did microexpressions appear?
+- In about half of the lies, which is why they work
+- In about a quarter of all expressions
+* In about 2% of expressions, from liars and truth-tellers alike
+scenario: After a weekend course on reading faces, Dev decides a job candidate is hiding something because of a split-second frown. A reference check later confirms every claim the candidate made.
+source: Porter, S., & ten Brinke, L. (2008). Reading between the lies. Psychological Science; Jordan, S., et al. (2019). A test of the micro-expressions training tool: Does it improve lie detection? Journal of Investigative Psychology and Offender Profiling; Levine, T. R., Serota, K. B., & Shulman, H. C. (2010). The impact of Lie to Me on viewers' actual ability to detect deception. Communication Research.
+related: lie-detection-myth, facial-feedback, illusion-of-transparency
+
 # =====================================================================================
 # THE SELF
 # =====================================================================================
@@ -849,6 +870,26 @@ predict: People took a popular personality type test twice, five weeks apart. Ho
 scenario: Aditi's manager keeps her off client pitches because a workshop test labelled her an introvert. A month later Aditi retakes the test and is told she's an extrovert.
 source: Pittenger, D. J. (2005). Cautionary comments regarding the Myers-Briggs Type Indicator. Consulting Psychology Journal: Practice and Research; Bess, T. L., & Harvey, R. J. (2002). Bimodal score distributions and the Myers-Briggs Type Indicator: Fact or artifact? Journal of Personality Assessment.
 related: barnum-effect, acting-extraverted, fundamental-attribution-error
+
+## innocence-trap
+title: The innocence trap
+category: self
+evidence: good
+hook: Innocent people think their innocence shows, so they talk freely and skip the safeguards meant to protect them.
+what: When you know you've done nothing wrong, it feels obvious to everyone else too. That's the illusion of transparency applied to guilt: innocent people expect to be believed, so they waive rights, answer every question and see no need for a lawyer. Their faith in a just world makes them more exposed, not less, if the person questioning them has already made up their mind.
+study: In 2004 Saul Kassin and Rebecca Norwick had some participants steal $100 in a mock crime while others did not. A detective then questioned each one and asked them to waive their rights. Innocent participants were far more likely than guilty ones to sign the waiver, and the gap held whether the detective was neutral, friendly or hostile. Asked why, most innocent participants said they had nothing to hide.
+case: In the 1989 Central Park jogger case in New York, five teenagers, none of whom was later found to have been involved, were questioned for hours, some without a parent present, and four of them gave videotaped statements admitting involvement. All five were convicted. In 2002 a convicted rapist, Matias Reyes, confessed to committing the attack alone; the DNA evidence matched Reyes the evidence, and the convictions were vacated. In 2014 New York City settled with the five men for $41 million. The men have said since that they were told they could go home if they admitted to it, and that, knowing they were innocent, they expected the truth to come out. The nuance: waiving your rights isn't a sign of guilt or of innocence, and most suspects in most cases, guilty or not, waive them. The lesson is narrower: feeling innocent is not a protection, because the people questioning you can't see inside your head.
+proof: Kassin and Norwick's experiment is one study, but it fits a wider body of research on the illusion of transparency and on how innocent suspects behave in interrogations.
+spot: Notice when you, or someone you know, says "I've got nothing to hide, so I'll just explain" in a situation with real stakes.
+use: Think of one formal situation you could face (a dispute at work, an insurance claim, a police stop) and decide now what you would ask for before answering questions.
+guard: Being innocent doesn't mean others can see it. In any serious accusation, slow down, ask for advice and get the facts on paper before you explain yourself.
+predict: In a mock crime, who was more likely to waive their right to silence when a detective asked?
+- The guilty, trying to look cooperative
+- Both were about equally likely
+* The innocent, sure that the truth would show
+scenario: Accused of taking money from the till, Neha refuses the offer of a union representative. Being honest, she is sure that the manager will see it in five minutes of talking.
+source: Kassin, S. M., & Norwick, R. J. (2004). Why people waive their Miranda rights: The power of innocence. Law and Human Behavior; Kassin, S. M. (2005). On the psychology of confessions: Does innocence put innocents at risk? American Psychologist.
+related: illusion-of-transparency, just-world, false-confessions
 
 # =====================================================================================
 # THINKING TRAPS
@@ -1338,6 +1379,47 @@ scenario: Dev reads that one DNA variant makes people anxious and buys a test ki
 source: Caspi, A., et al. (2003). Influence of life stress on depression: Moderation by a polymorphism in the 5-HTT gene. Science; Culverhouse, R. C., et al. (2018). Collaborative meta-analysis finds no evidence of a strong interaction between stress and 5-HTTLPR genotype contributing to the development of depression. Molecular Psychiatry; Border, R., et al. (2019). No support for historical candidate gene or candidate gene-by-interaction hypotheses for major depression across multiple large samples. American Journal of Psychiatry; Polderman, T. J. C., et al. (2015). Meta-analysis of the heritability of human traits based on fifty years of twin studies. Nature Genetics.
 related: replication-crisis, law-of-small-numbers, illusory-correlation
 
+## prolific-liars
+title: A few prolific liars
+category: thinking
+evidence: good
+hook: You've heard that everyone lies several times a day. Most people tell no lies on most days; a small group tells most of them.
+what: Popular books, including Spy the Lie, say that we each lie many times a day. Averages hide the shape of the data. Lying is highly skewed: most people are honest most of the time, and a small minority of prolific liars tell a large share of all lies. It matters because a world of "everyone lies all the time" makes suspicion feel reasonable towards everyone, when it should be aimed at the few.
+study: In 2010 Kim Serota, Timothy Levine and Franklin Boster asked a representative sample of 1,000 American adults how many lies they had told in the past 24 hours. The average was 1.65 lies a day, but 60% said they had told none, and half of all the lies were told by about 5% of the people. The same skewed pattern turned up in a survey of nearly 3,000 people in the UK and in a re-analysis of earlier diary studies.
+case: Self-reports from a single day could be distorted, so in 2021 Serota, Levine and Tom Docan-Morgan followed 632 people for 91 days, collecting daily reports covering 116,366 lies. Most participants lied infrequently, and about three-quarters were consistently low-frequency liars across the three months; a small group of prolific liars told most of the lies. People also had "bad lie days", when lying spiked for a while, but these didn't change the overall picture. The nuance: the numbers are still self-reports, and people may under-report. But other work has found that people who admit to more lies also cheat more in lab tasks, which suggests the reports track real behaviour, and that the skew is not a reporting artefact.
+proof: Replicated in several samples in the US, the UK and elsewhere, including a 91-day diary study, though it relies on self-reports.
+spot: Notice when "everyone lies" is used to justify a lie, or to justify distrusting everyone equally.
+use: Count any lies you tell today, white lies included. Tonight, compare your total with the claim that people lie many times a day.
+guard: Don't spread suspicion evenly. Watch track records: people who have lied to you before are a much better guide than the idea that everyone does it.
+predict: In a survey of 1,000 adults, what share of all the lies told in a day came from the most prolific 5% of people?
+- About 5%; everyone lies about equally
+- About a fifth
+* About half
+scenario: After one colleague is caught inventing sales figures, Kiran's manager starts double-checking everyone's reports, although the rest of the team have years of accurate figures.
+source: Serota, K. B., Levine, T. R., & Boster, F. J. (2010). The prevalence of lying in America. Human Communication Research; Serota, K. B., & Levine, T. R. (2015). A few prolific liars. Journal of Language and Social Psychology; Serota, K. B., Levine, T. R., & Docan-Morgan, T. (2021). Unpacking variation in lie prevalence. Communication Monographs.
+related: base-rate-neglect, truth-default, availability-heuristic
+
+## criminal-profiling
+title: Criminal profiling
+aka: Mindhunting
+category: thinking
+evidence: debated
+hook: Mindhunter made profilers famous for reading a killer from a crime scene. When their accuracy is tested, they barely beat educated guesses.
+what: Criminal profiling, developed by the FBI's Behavioral Science Unit and popularised by John Douglas's Mindhunter, infers who an unknown offender is (age, job, background, personality) from how a crime was committed. Some ideas behind it, such as the fact that offenders' behaviour is fairly consistent from crime to crime, have support. But tested head to head, profilers predict offender characteristics little better than other people, and profiles are vague enough that readers find them accurate whoever turns out to be guilty.
+study: In 2007 Brent Snook and colleagues reviewed the profiling literature and combined the studies that tested accuracy. They found the literature was mostly common-sense justification rather than tests. Self-labelled profilers and experienced investigators were no better than comparison groups at predicting most offender characteristics, and only marginally better overall; a second analysis was somewhat more favourable. In 2004 David Canter and colleagues tested the FBI's "organized versus disorganized" offender types on 100 US serial murders and found no such two types: the "organized" features occurred in most crimes.
+case: In 1992 Rachel Nickell was murdered on Wimbledon Common in London. Psychologist Paul Britton drew up a profile of the killer, police decided a local man, Colin Stagg, fitted it, and Britton helped design an undercover operation in which an officer tried to draw out fantasies matching the profile. In 1994 the trial judge threw the evidence out, criticising the "excessive zeal" of the operation, and Stagg was acquitted. In 2008 DNA identified the real killer, Robert Napper, who was already in Broadmoor for other murders, and who admitted Nickell's manslaughter. Stagg received compensation and an apology. The nuance: in 2003 Laurence Alison and colleagues found that police officers rated the same vague profile as accurate whether the offender they were shown was the real one or a fabricated one. A profile can make a wrong suspect look right.
+proof: Debated: the field has little rigorous testing; the best syntheses find small or no advantages for profilers, and key typologies don't survive data.
+spot: Notice confident portraits of an unknown person built from scant evidence, such as "the kind of person who would do this is a loner".
+use: When you next read a confident description of an unknown culprit, in the news or at work, pick out which claims could fit almost anyone.
+guard: Treat any profile, of a criminal, a customer or a candidate, as a hypothesis to test against evidence, never as a reason to fit a person to it.
+predict: When professional profilers were tested against comparison groups at predicting offenders' characteristics, how did they do?
+- Far better; years of experience pay off
+* Little or no better on most characteristics
+- Worse, because experience made them overconfident
+scenario: After a laptop goes missing, the office manager decides it must be "a loner with money problems" and starts watching Arun, the quiet new hire. CCTV later shows a delivery driver taking it.
+source: Snook, B., Eastwood, J., Gendreau, P., Goggin, C., & Cullen, R. M. (2007). Taking stock of criminal profiling. Criminal Justice and Behavior; Canter, D. V., Alison, L. J., Alison, E., & Wentink, N. (2004). The organized/disorganized typology of serial murder: Myth or model? Psychology, Public Policy, and Law; Alison, L., Smith, M. D., & Morgan, K. (2003). Interpreting the accuracy of offender profiles. Psychology, Crime & Law.
+related: barnum-effect, confirmation-bias, overconfidence
+
 # =====================================================================================
 # INFLUENCE & PERSUASION
 # =====================================================================================
@@ -1724,6 +1806,26 @@ predict: Students who thought they shared a birthday with a stranger were asked 
 scenario: In the lift, a stranger offers to carry Pooja's shopping, says "we'd better hurry, we're both running late" and promises he'll leave as soon as the bags are inside. She hears herself agreeing before she has decided anything.
 source: de Becker, G. (1997). The Gift of Fear. Little, Brown; Burger, J. M., et al. (2004). What a coincidence! The effects of incidental similarity on compliance. Personality and Social Psychology Bulletin; Winters, G. M., & Jeglic, E. L. (2016). I knew it all along: The sexual grooming behaviors of child molesters and the hindsight bias. Journal of Child Sexual Abuse.
 related: similarity, reciprocity, hindsight-bias
+
+## false-confessions
+title: False confessions
+category: influence
+evidence: solid
+hook: Under pressure, innocent people can be led to confess, and a few even come to believe they did it.
+what: Most people are sure they would never confess to something they didn't do. Yet pressure, isolation, exhaustion, false claims of evidence and the hope of going home can lead innocent people to confess. Some do it to make the pressure stop; a few come to believe they really are guilty. Tactics meant to make confessing easier, such as playing down the offence or offering face-saving excuses, raise false confessions as well as true ones.
+study: In 1996 Saul Kassin and Katherine Kiechel had students type letters on a computer and warned them not to press the Alt key, or the computer would crash. It then "crashed", though no one had pressed it. Accused, 69% signed a confession; 28% came to believe they had done it, and 9% invented details of how. False claims from a witness raised confession rates further. In 2005 Melissa Russano and colleagues found that minimisation ("it's not a big deal") and offers of leniency increased true confessions, but increased false ones too, making a confession worth less as evidence.
+case: In the US, false confessions or admissions appear in more than a quarter of the wrongful convictions later overturned by DNA evidence, according to the Innocence Project. In England and Wales, a run of miscarriages of justice in the 1970s and 80s, including the Guildford Four and the Birmingham Six, convicted on confessions obtained under pressure, led to the PEACE model of investigative interviewing from the early 1990s: open questions, gathering information and testing it against evidence instead of pressing for an admission. In 2014 Christian Meissner and colleagues reviewed the studies comparing the approaches: information-gathering interviews produced more true confessions and fewer false ones than accusatory ones. The nuance: the lab studies are low-stakes, but the same tactics appear in proven real cases. Spy the Lie, by former CIA officers, recommends minimisation and rationalisation to encourage confessions, while warning never to mislead. The research says those tactics carry a cost even when used honestly.
+proof: The lab paradigms have been replicated many times, and the pattern matches documented false confessions in DNA exonerations.
+spot: Notice when someone is pushed to "just admit it" with promises that it'll be easier, or told the evidence is already against them.
+use: When you next need the truth from someone, a child, a colleague, ask them to describe what happened before you share what you suspect.
+guard: Treat a confession given under pressure as one more claim to check, not as the end of the question.
+predict: Students were falsely accused of crashing a computer by pressing a forbidden key. How many signed a confession?
+- About 5%; almost no one confesses to something they didn't do
+- About a quarter
+* About two-thirds
+scenario: After an hour of being told the cameras show everything, Ravi, a warehouse worker, signs a statement admitting the theft just to be allowed to leave. The cameras, it turns out, never covered that aisle.
+source: Kassin, S. M., & Kiechel, K. L. (1996). The social psychology of false confessions. Psychological Science; Russano, M. B., Meissner, C. A., Narchet, F. M., & Kassin, S. M. (2005). Investigating true and false confessions within a novel experimental paradigm. Psychological Science; Meissner, C. A., et al. (2014). Accusatorial and information-gathering interrogation methods and their effects on true and false confessions. Journal of Experimental Criminology.
+related: innocence-trap, presumption-of-guilt, misinformation-effect
 
 # =====================================================================================
 # EMOTIONS & WELLBEING
@@ -2603,6 +2705,47 @@ scenario: Every Sunday, Meera's grandmother has forgotten the visit by evening. 
 source: Feinstein, J. S., Duff, M. C., & Tranel, D. (2010). Sustained experience of emotion after loss of memory in patients with amnesia. Proceedings of the National Academy of Sciences; Guzmán-Vélez, E., Feinstein, J. S., & Tranel, D. (2014). Feelings without memory in Alzheimer disease. Cognitive and Behavioral Neurology; Johnson, M. K., Kim, J. K., & Risse, G. (1985). Do alcoholic Korsakoff's syndrome patients acquire affective reactions? Journal of Experimental Psychology: Learning, Memory, and Cognition.
 related: peak-end-rule, mere-exposure, social-connection-health
 
+## truth-default
+title: The truth default
+category: connection
+evidence: good
+hook: We believe what we're told unless something forces us to doubt it. Most lies are found out later, from evidence, not spotted at the time.
+what: Timothy Levine's truth-default theory says people don't weigh every statement for honesty; they simply accept it unless a trigger, such as a contradiction, a warning or a known motive to lie, makes them doubt it. That's why people judge most statements honest and miss many lies. It's usually a sensible default, because most of what people tell us is true. But it means that lies are rarely caught by watching the liar; they're caught when facts surface.
+study: In 2002 Hee Sun Park, Levine and colleagues asked people to recall a time they had discovered a lie and how. Very few lies were caught at the time from the liar's behaviour. Most came to light through information from third parties, physical evidence, or the liar later confessing, and many were discovered long after they were told. Meta-analyses tell the same story from the other side: across studies people judge most statements to be true, so they catch truths far more often than lies.
+case: Between 1992 and 2008 the US Securities and Exchange Commission received six substantive complaints raising red flags about Bernard Madoff's investment business, including detailed analyses from the fraud investigator Harry Markopolos arguing that the returns were mathematically impossible. The SEC examined or investigated the business several times. A 2009 report by the SEC's Inspector General found that examiners never verified Madoff's claimed trades with an independent third party, a simple check that would have revealed there were none. The fraud, around $65 billion on paper, came out only in December 2008, when Madoff confessed. The nuance: the investigators weren't fooled by a convincing face. They took the account they were given as the starting point, and no one checked it against outside evidence. Levine's point is that the default isn't the error; failing to look for facts when there are triggers to doubt is.
+proof: Truth bias is one of the most consistent findings in deception research, and Park et al.'s finding that lies are discovered mostly later and through evidence has been replicated.
+spot: Notice how often you accept a claim simply because nothing has made you doubt it, and notice the moments when a doubt does arise.
+use: Pick one claim you were told today that matters (a delivery date, a quote, a promise) and check one fact behind it.
+guard: When a warning sign appears, don't search the person's face for the answer; look for evidence you can check with someone else.
+predict: When people described how they found out they'd been lied to, how did most of them discover it?
+* Later, from evidence, other people or a confession
+- At the time, from the liar's nervousness
+- At the time, from inconsistencies in the liar's body language
+scenario: Ananya trusts a contractor's assurance that the permits are filed. Three months later a neighbour mentions that the council has no record of them.
+source: Levine, T. R. (2014). Truth-default theory (TDT). Journal of Language and Social Psychology; Park, H. S., Levine, T. R., McCornack, S. A., Morrison, K., & Ferrara, M. (2002). How people really detect lies. Communication Monographs; US SEC Office of Inspector General (2009). Investigation of failure of the SEC to uncover Bernard Madoff's Ponzi scheme.
+related: lie-detection-myth, prolific-liars, confirmation-bias
+
+## presumption-of-guilt
+title: The presumption of guilt
+aka: The Othello error
+category: connection
+evidence: good
+hook: Suspect someone and you'll question them like a guilty person. Under that pressure the innocent start to look guilty.
+what: Paul Ekman named the "Othello error" after Shakespeare's Othello, who reads Desdemona's terror at being disbelieved as proof of guilt. Truthful people under suspicion feel fear, anger and distress, the same feelings we expect from liars. Worse, suspicion changes how we ask: we press, accuse and interrupt, and the defensiveness that follows looks like confirmation. Expectations create the evidence that seems to confirm them.
+study: In 2003 Saul Kassin, Christina Goldstein and Kenneth Savitsky had 52 students either commit or not commit a mock theft, then be questioned by 52 others who had been led to expect that most suspects were guilty or that most were innocent. Interrogators expecting guilt asked more guilt-presuming questions, used more persuasion techniques and pushed harder, especially when the suspect was in fact innocent. Neutral listeners who heard the tapes later judged suspects in the guilt-expectation condition as more defensive and somewhat more guilty.
+case: Polygraph examiners and police in many countries were long trained in accusatory interviewing, which starts from a belief in guilt and works to break down denials. England and Wales moved away from it after a series of miscarriages of justice, adopting the PEACE model of investigative interviewing in the early 1990s, which asks for an account and tests it against evidence rather than seeking to confirm suspicion. A 2014 review by Christian Meissner and colleagues of the available field and lab studies found information-gathering interviews raised true confessions and reduced false ones, compared with accusatory methods. The nuance: the evidence base is still small, and suspicion is sometimes right. The point isn't to trust everyone; it's that the way you ask can manufacture the signs you are looking for, so a calm, open question gives you better information about the guilty and the innocent alike.
+proof: Kassin et al.'s experiment has been extended by later work on investigator bias, and fits decades of research on behavioural confirmation, though the interrogation literature is small.
+spot: Notice when someone's nervousness, anger or tears under questioning is taken as proof that they did it.
+use: The next time you suspect someone of something today, ask an open question ("Tell me what happened") before you voice the suspicion.
+guard: When someone looks defensive, ask yourself how they would look if they were innocent and you had just accused them.
+predict: Interrogators were led to expect most suspects were guilty. What happened when they questioned innocent suspects?
+- They quickly realised the suspects were innocent
+* They pushed hardest of all, and listeners later rated those suspects as more defensive
+- Nothing changed; the questioning followed the same script
+scenario: Convinced his teenage son has been smoking, Suresh grills him at the door. The boy turns red and stammers, which Suresh takes as proof, though the smell came from a friend's jacket.
+source: Kassin, S. M., Goldstein, C. C., & Savitsky, K. (2003). Behavioral confirmation in the interrogation room: On the dangers of presuming guilt. Law and Human Behavior; Ekman, P. (1985/2009). Telling Lies. Norton; Meissner, C. A., et al. (2014). Accusatorial and information-gathering interrogation methods. Journal of Experimental Criminology.
+related: confirmation-bias, lie-detection-myth, false-confessions
+
 # =====================================================================================
 # CHOICES & MONEY
 # =====================================================================================
@@ -3051,6 +3194,27 @@ predict: When "not buy" was reworded as "keep the $14.99 for other purchases", w
 scenario: Raghav signs up for a ₹1,200-a-month streaming bundle without a thought. Only when his sister asks whether he'd rather spend the same money on his weekend football does he cancel half of it.
 source: Frederick, S., Novemsky, N., Wang, J., Dhar, R., & Nowlis, S. (2009). Opportunity cost neglect. Journal of Consumer Research; Maguire, A., Persson, E., & Tinghög, G. (2023). Opportunity cost neglect: A meta-analysis. Journal of the Economic Science Association; Persson, E., & Tinghög, G. (2020). Opportunity cost neglect in public policy. Journal of Economic Behavior & Organization.
 related: mental-accounting, framing-effect, sunk-cost-fallacy
+
+## polygraph
+title: The lie detector test
+aka: The polygraph
+category: decisions
+evidence: debated
+hook: The polygraph doesn't detect lies. It measures arousal, and in screening it flags far more innocent people than spies.
+what: A polygraph records breathing, heart rate, blood pressure and sweating while someone answers questions. Arousal on key questions is read as deception. But fear, anger and anxiety at being suspected arouse the innocent too, and practised people can manage their responses. In investigations of a specific incident it does better than chance; in screening large groups, where real culprits are rare, false alarms swamp the hits.
+study: In 2003 a committee of the US National Research Council reviewed the scientific evidence on the polygraph. It found accuracy in specific-incident tests "well above chance, though well below perfection", based mostly on weak studies. For screening, it gave an example: test 10,000 employees, of whom 10 are spies, with the threshold set to catch 8 of the 10, and about 1,600 innocent people would also fail. Set it strictly enough to fail only about 40 innocent people, and 8 of the 10 spies would pass.
+case: Aldrich Ames, a CIA officer who sold secrets to the Soviet Union and Russia from 1985, betraying agents who were then executed, passed CIA polygraph examinations in 1986 and 1991. A 1994 CIA Inspector General report criticised the security office for clearing Ames despite indications of lying on financial questions; Ames was finally caught in 1994 through counterintelligence work, including unexplained wealth. The authors of Spy the Lie, former CIA polygraph examiners themselves, write that there is no such thing as a mechanical lie detector: the machine measures reactions, not lies. The nuance: much of the polygraph's practical power comes from people confessing because they believe it works. A different format, the concealed information test, which checks recognition of crime details only the culprit would know, has a stronger scientific basis, as Paul Ekman also noted.
+proof: Debated: lab studies show above-chance accuracy for specific incidents, but field evidence is weak and screening use is not supported by the National Research Council.
+spot: Notice when a test result is treated as proof without asking how often the test raises false alarms.
+use: Take one test or screen you rely on (a fraud alert, a medical check, a hiring filter) and ask today what share of its alarms turn out to be false.
+guard: When a screen flags someone in a large group where the real thing is rare, assume the alarm is probably false until other evidence agrees.
+predict: Screening 10,000 employees including 10 spies, with the test set to catch 8 spies, roughly how many innocent people would fail?
+- About 10
+- About 100
+* About 1,600
+scenario: A company makes every staff member take a "honesty test" after a theft. Thirty people fail; the thief, it turns out, passed.
+source: National Research Council (2003). The Polygraph and Lie Detection. National Academies Press; CIA Office of Inspector General (1994). Report on the Aldrich H. Ames case; Houston, P., Floyd, M., Carnicero, S., & Tennant, D. (2012). Spy the Lie. St. Martin's Press.
+related: base-rate-neglect, presumption-of-guilt, lie-detection-myth
 
 # =====================================================================================
 # MOTIVATION & HABITS
@@ -3991,3 +4155,23 @@ predict: After two companies switched to open-plan offices, what happened to fac
 scenario: When Neha's firm tore down its cubicles to encourage collaboration, the floor went quiet: everyone wore headphones and messaged colleagues sitting three desks away.
 source: Bernstein, E. S., & Turban, S. (2018). The impact of the "open" workspace on human collaboration. Philosophical Transactions of the Royal Society B; Pejtersen, J. H., Feveile, H., Christensen, K. B., & Burr, H. (2011). Sickness absence associated with shared and open-plan offices: A national cross sectional questionnaire survey. Scandinavian Journal of Work, Environment & Health; Kim, J., & de Dear, R. (2013). Workspace satisfaction: The privacy-communication trade-off in open-plan offices. Journal of Environmental Psychology.
 related: brainstorming, social-facilitation, multitasking-myth
+
+## emotional-victim-effect
+title: The emotional victim effect
+category: groups
+evidence: good
+hook: People believe a victim who cries more than one who stays calm, even when the words are exactly the same.
+what: We carry a script for how a victim, or a grieving parent, should behave: distressed, tearful, broken. People who fit the script are believed; people who are calm, flat or angry are doubted. But how people react to trauma varies enormously, and outward emotion tells us nothing reliable about whether a story is true. The effect reaches juries, the public and, in several studies, trained professionals.
+study: In 2003 Geir Kaufmann and colleagues in Norway showed people video recordings of a rape victim's statement, performed by an actress in different ways (distressed, neutral or with incongruent positive emotions) with the same words each time. How credible the witness seemed depended strongly on the emotions displayed and hardly at all on the content of the story. Later studies in Norway, Sweden and Turkey found the same "emotional victim effect", including among police investigators.
+case: In 1980 nine-week-old Azaria Chamberlain disappeared from a campsite near Uluru in Australia. Lindy Chamberlain, the baby's mother, said a dingo had taken the child. Much of the public and media suspicion fixed on how composed Lindy Chamberlain appeared, which many people read as the wrong way for a grieving mother to behave. In 1982 a jury convicted Lindy Chamberlain of murder. In 1986 the baby's matinee jacket was found near a dingo lair; Lindy Chamberlain was released, a Royal Commission found the convictions unsafe, and they were quashed in 1988. In 2012 a coroner formally found that a dingo had taken Azaria. The nuance: forensic evidence was central to the conviction and was later discredited; demeanour was not the only cause. But the case shows how strongly an "unexpected" reaction can shape suspicion, which is exactly what the experiments isolate.
+proof: Replicated in several countries and with professional samples, though most studies use mock jurors and video testimony.
+spot: Notice when someone's credibility is judged by whether they cried, stayed calm or "didn't seem upset enough".
+use: The next time you hear about a victim or witness in the news today, notice whether the coverage comments on their emotions, and ask what the evidence is.
+guard: Judge an account by what can be checked, not by whether the person's emotions match what you'd expect.
+predict: In a Norwegian study, what most changed how credible a rape victim's testimony seemed?
+- The details in the story
+* The emotions the witness showed while telling it
+- Whether the witness kept eye contact
+scenario: After a road accident, Priya, the driver who was hit, explains what happened in a flat, matter-of-fact voice. The officer finds the other driver's tearful account more convincing, until a dashcam shows Priya was right.
+source: Kaufmann, G., Drevland, G. C. B., Wessel, E., Overskeid, G., & Magnussen, S. (2003). The importance of being earnest: Displayed emotions and witness credibility. Applied Cognitive Psychology; Bollingmo, G. C., Wessel, E. O., Eilertsen, D. E., & Magnussen, S. (2008). Credibility of the emotional witness: A study of ratings by police investigators. Psychology, Crime & Law; Ask, K., & Landström, S. (2010). Why emotions matter. Law and Human Behavior.
+related: presumption-of-guilt, halo-effect, lie-detection-myth
