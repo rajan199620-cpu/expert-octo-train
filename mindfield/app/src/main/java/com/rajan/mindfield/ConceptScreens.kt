@@ -57,6 +57,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -123,64 +126,54 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
     val context = LocalContext.current
     val days = Stats.checkInDays(state)
     val streak = Stats.streak(days, today)
-    val due = Spacing.due(state, Store.library, today).size
     val cloud by GoogleSync.state.collectAsStateWithLifecycle()
     // Re-checked whenever the screen comes back (e.g. after allowing background use in settings).
     var blocked by remember { mutableStateOf(false) }
     var notificationsOff by remember { mutableStateOf(false) }
+    // The time of day, read again each time the screen comes back.
+    var minuteOfDay by remember { mutableIntStateOf(Store.now().let { it.hour * 60 + it.minute }) }
     LifecycleResumeEffect(today, state.settings) {
         blocked = Health.remindersBlocked(context) && !Health.ignoringBatteryOptimizations(context)
         notificationsOff = Notifier.blocked(context, state.settings)
+        minuteOfDay = Store.now().let { it.hour * 60 + it.minute }
         onPauseOrDispose { }
     }
     val turnOnNotifications = rememberEnableNotifications { notificationsOff = Notifier.blocked(context, Store.state.value.settings) }
     val saveFailed by Store.saveFailed.collectAsStateWithLifecycle()
     val journalReset by Store.journalReset.collectAsStateWithLifecycle()
-    // Today's own concept: a note about another one is a sighting, not today's report.
-    val loggedToday = state.reportedOn(today)
-    // The floating button steps aside while the field report's own buttons are on screen, and while
-    // scrolling down through the text (it would cover the line being read); scrolling up brings it back.
-    var reportShown by remember { mutableStateOf(false) }
-    val scroll = rememberScrollState()
-    var readingDown by remember { mutableStateOf(false) }
-    LaunchedEffect(scroll) {
-        var last = scroll.value
-        snapshotFlow { scroll.value }.collect { v ->
-            when {
-                v <= 0 || v >= scroll.maxValue -> readingDown = false
-                v - last > 8 -> readingDown = true
-                last - v > 8 -> readingDown = false
-            }
-            last = v
-        }
-    }
+    // From the evening report's time until midnight, the field report comes first: by then the
+    // concept has been read, and filing the report is what's left to do.
+    val evening = Store.now().toLocalDate() == today && minuteOfDay >= state.settings.eveningMinute
     // Where each step of today's path sits on the page, so tapping a step can scroll to it.
     val anchors = remember { mutableStateMapOf<Step, Int>() }
+    val scroll = rememberScrollState()
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    Box(Modifier.fillMaxSize()) {
     ConceptPage(
-        concept, state, today, isToday = true, nav = nav, scroll = scroll,
-        onReportShown = { reportShown = it },
+        concept, state, today, isToday = true, nav = nav, scroll = scroll, reportFirst = evening,
         onAnchor = { step, y -> anchors[step] = y },
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)), style = MaterialTheme.typography.labelLarge, color = p.muted)
-                Text("Day ${Stats.dayNumber(state, today)} in the field", style = MaterialTheme.typography.headlineSmall)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)), style = MaterialTheme.typography.labelLarge, color = p.muted)
+            Text("Day ${Stats.dayNumber(state, today)} in the field", style = MaterialTheme.typography.headlineSmall)
+            // One counter in the header: the day, with the streak beneath it rather than a second badge.
+            if (streak > 0) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    GlyphIcon(Glyph.FLAME, concept.category.accent(p.dark), 14.dp)
+                    Text(if (streak == 1) "1-day streak" else "$streak-day streak", style = MaterialTheme.typography.labelLarge, color = p.muted)
+                }
             }
-            if (streak > 0) Pill("🔥 $streak", concept.category.accent(p.dark))
         }
-        TodayPath(Progress.todayPath(state, Store.library, today, concept.id), concept.category.accent(p.dark)) { step ->
+        TodayStepper(Progress.todayPath(state, Store.library, today, concept.id), Spacing.due(state, Store.library, today).size) { step ->
             if (step == Step.REVIEW) {
-                nav.tab(Tab.REVIEW)
+                nav.review()
             } else {
                 anchors[step]?.let { y -> scope.launch { scroll.animateScrollTo((y - with(density) { 12.dp.roundToPx() }).coerceAtLeast(0)) } }
             }
         }
         if (notificationsOff) {
             Banner(
-                "🔕",
+                Glyph.BELL_OFF,
                 "Notifications are off",
                 "Your morning concept and evening field report can't reach you until notifications are back on for Mindfield.",
                 "Turn on", turnOnNotifications,
@@ -188,16 +181,16 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
             )
         } else if (blocked) {
             Banner(
-                "🔕",
+                Glyph.BELL_OFF,
                 "Your reminders seem to be blocked",
-                "Two mornings passed without the daily notification. Phones with strict battery savers stop apps' alarms: in the list that opens, find Mindfield and choose \u201cDon't optimise\u201d.",
+                "Two mornings passed without the daily notification. Phones with strict battery savers stop apps' alarms: in the list that opens, find Mindfield and choose “Don't optimise”.",
                 "Open settings", { Health.openBatterySettings(context) },
                 "Not now", { Health.snoozeBanner(context); blocked = false },
             )
         }
         if (saveFailed) {
             Banner(
-                "💾",
+                Glyph.DISK,
                 "Couldn't save your latest changes",
                 "Your phone's storage may be full. Free up some space, then try again; until they're saved, closing the app could lose them.",
                 "Try again", { Store.retrySave() },
@@ -206,7 +199,7 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
         }
         if (journalReset) {
             Banner(
-                "🗂",
+                Glyph.FOLDER,
                 "Your saved journal couldn't be read",
                 "Mindfield started afresh and kept the damaged file on this phone. If it was backed up to Google, linking the same account brings your notes back.",
                 "Link Google", { nav.settings(SettingsSheet.GOOGLE) },
@@ -215,74 +208,58 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
         }
         if (Health.backupStale(cloud, System.currentTimeMillis())) {
             Banner(
-                "☁️",
+                Glyph.CLOUD,
                 "Google backup is paused",
                 cloud.message ?: "Your journal hasn't been backed up for a few days.",
                 "Fix", { nav.settings(SettingsSheet.GOOGLE) },
                 null, null,
             )
         }
-        if (due > 0) {
-            Panel(onClick = { nav.tab(Tab.REVIEW) }, padding = 14.dp) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("🃏", fontSize = 20.sp)
-                    Column(Modifier.weight(1f)) {
-                        Text(if (due == 1) "1 quick review waiting" else "$due quick reviews waiting", style = MaterialTheme.typography.titleSmall)
-                        Text("Recalling beats rereading. About a minute.", style = MaterialTheme.typography.bodySmall, color = p.muted)
-                    }
-                    Text("→", style = MaterialTheme.typography.titleMedium, color = p.muted)
-                }
-            }
-        }
-    }
-    // Always within reach, so logging never means scrolling to the bottom.
-    val accent = concept.category.accent(p.dark)
-    AnimatedVisibility(!reportShown && !readingDown, Modifier.align(Alignment.BottomEnd), enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut() + scaleOut(targetScale = 0.8f)) {
-    Text(
-        if (loggedToday) "✓ Logged · add more" else "📓  Log today",
-        Modifier
-            .padding(16.dp)
-            .clip(RoundedCornerShape(50))
-            .background(if (loggedToday) p.surface else accent)
-            .border(1.dp, if (loggedToday) p.line else accent, RoundedCornerShape(50))
-            .clickable(role = Role.Button) { nav.log(LogRequest(concept.id)) }
-            .padding(horizontal = 20.dp, vertical = 13.dp),
-        color = if (loggedToday) p.ink else onColor(accent),
-        style = MaterialTheme.typography.titleSmall,
-    )
-    }
     }
 }
 
 /**
- * Today's path: the day's steps, ticked off as they're done; tap one to jump to it. Seeing what's
- * done and what's left helps people finish (the goal-gradient effect, Kivetz et al. 2006).
+ * Today's path as a stepper: Predict, Plan, Report (and Review when cards are due), ticked off as
+ * they're done; tap a step to jump to it. Seeing what's done and what's left helps people finish
+ * (the goal-gradient effect, Kivetz et al. 2006).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TodayPath(steps: List<PathStep>, accent: Color, onStep: (Step) -> Unit) {
+fun TodayStepper(steps: List<PathStep>, due: Int, onStep: (Step) -> Unit) {
     val p = palette
-    val done = steps.count { it.done }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            if (done == steps.size) "Today's path · all done ✓" else "Today's path · $done of ${steps.size} done",
-            style = MaterialTheme.typography.labelLarge, color = if (done == steps.size) accent else p.muted,
-        )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            steps.forEachIndexed { i, s ->
-                val shape = RoundedCornerShape(50)
-                Text(
-                    (if (s.done) "✓ " else "${i + 1}  ") + s.step.label,
-                    Modifier
-                        .clip(shape)
-                        .background(if (s.done) accent else p.surface)
-                        .border(1.dp, if (s.done) accent else p.line, shape)
-                        .clickable(role = Role.Button) { onStep(s.step) }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    color = if (s.done) onColor(accent) else p.ink,
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
+    val view = LocalView.current
+    Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.Top) {
+        steps.forEachIndexed { i, s ->
+            if (i > 0) {
+                // The line between two steps fills in once the step before it is done.
+                Box(
+                    Modifier.weight(1f).padding(top = 15.dp).height(2.dp).clip(RoundedCornerShape(1.dp))
+                        .background(if (steps[i - 1].done) p.brand else p.line),
                 )
+            }
+            val label = if (s.step == Step.REVIEW && due > 0) "Review $due" else s.step.label
+            Column(
+                Modifier
+                    .widthIn(min = 56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(role = Role.Button) { view.tick(); onStep(s.step) }
+                    .semantics { stateDescription = if (s.done) "done" else "to do" }
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Box(
+                    Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(if (s.done) p.brand else p.surface)
+                        .border(1.5.dp, if (s.done) p.brand else p.line, CircleShape)
+                        .clearAndSetSemantics { },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (s.done) GlyphIcon(Glyph.CHECK, onColor(p.brand), 15.dp)
+                    else Text("${i + 1}", style = MaterialTheme.typography.labelLarge, color = p.muted)
+                }
+                Text(label, style = MaterialTheme.typography.labelLarge, color = if (s.done) p.ink else p.muted, maxLines = 1)
             }
         }
     }
@@ -290,11 +267,11 @@ fun TodayPath(steps: List<PathStep>, accent: Color, onStep: (Step) -> Unit) {
 
 /** A notice that needs attention, with up to two actions. */
 @Composable
-fun Banner(emoji: String, title: String, text: String, action: String, onAction: () -> Unit, second: String?, onSecond: (() -> Unit)?) {
+fun Banner(icon: Glyph, title: String, text: String, action: String, onAction: () -> Unit, second: String?, onSecond: (() -> Unit)?) {
     val p = palette
     Panel(border = p.bad.copy(alpha = 0.45f), background = p.bad.copy(alpha = if (p.dark) 0.12f else 0.06f), padding = 14.dp) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(emoji, fontSize = 20.sp)
+            GlyphIcon(icon, p.bad, 20.dp, Modifier.padding(top = 1.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall)
                 Text(text, style = MaterialTheme.typography.bodySmall, color = p.muted)
@@ -309,19 +286,29 @@ fun Banner(emoji: String, title: String, text: String, action: String, onAction:
 
 @Composable
 fun ConceptScreen(concept: Concept, state: AppState, today: LocalDate, nav: Nav, onBack: () -> Unit) {
-    val p = palette
     val isToday = state.assignments[today]?.conceptId == concept.id
-    ConceptPage(concept, state, today, isToday = isToday, nav = nav) {
-        Row(
-            Modifier.clip(RoundedCornerShape(50)).clickable(role = Role.Button, onClick = onBack).padding(horizontal = 4.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("←  Back", style = MaterialTheme.typography.labelLarge, color = p.muted)
-        }
+    ConceptPage(concept, state, today, isToday = isToday, nav = nav) { BackRow(onBack) }
+}
+
+/** "Back", top left, on screens shown over the tabs. */
+@Composable
+fun BackRow(onBack: () -> Unit) {
+    val p = palette
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).clickable(role = Role.Button, onClick = onBack).padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        GlyphIcon(Glyph.ARROW_LEFT, p.muted, 16.dp)
+        Text("Back", style = MaterialTheme.typography.labelLarge, color = p.muted)
     }
 }
 
-/** One concept, top to bottom: the plate, predict-first, the study, the mission and the report. */
+/**
+ * One concept, top to bottom: the plate, predict-first, what it is and how to spot it, the study,
+ * the real-world case (folded), the mission and the report. With [reportFirst] (Today, in the
+ * evening) the report comes straight after the header.
+ */
 @Composable
 fun ConceptPage(
     concept: Concept,
@@ -330,59 +317,75 @@ fun ConceptPage(
     isToday: Boolean,
     nav: Nav,
     scroll: ScrollState = rememberScrollState(),
-    onReportShown: (Boolean) -> Unit = {},
+    reportFirst: Boolean = false,
     onAnchor: (Step, Int) -> Unit = { _, _ -> },
     header: @Composable () -> Unit,
 ) {
     val p = palette
-    val accent = concept.category.accent(p.dark)
     val guess = state.guesses[concept.id]
+    val report: @Composable () -> Unit = {
+        Box(Modifier.onGloballyPositioned { onAnchor(Step.REPORT, it.positionInParent().y.toInt()) }) {
+            FieldReport(concept, state, today, isToday, nav, evening = reportFirst)
+        }
+    }
     Column(
         Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 18.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         header()
+        if (reportFirst) report()
         HeroCard(concept)
         Box(Modifier.onGloballyPositioned { onAnchor(Step.PREDICT, it.positionInParent().y.toInt()) }) {
             PredictCard(concept, guess?.choice)
         }
-        Section("What's going on", "💡") { Body(concept.what) }
+        Section("What's going on", Glyph.BULB) {
+            Body(concept.what)
+            SubBlock("Spot it in the wild", Glyph.SEARCH, concept.category.accent(p.dark)) { Text(concept.spot, style = MaterialTheme.typography.bodyMedium) }
+        }
         StudySection(concept, unlocked = guess != null)
         if (guess != null) RealWorldSection(concept)
-        Section("Spot it in the wild", "🔍") { Body(concept.spot) }
         Box(Modifier.onGloballyPositioned { onAnchor(Step.PLAN, it.positionInParent().y.toInt()) }) {
             MissionSection(concept, state, today, isToday)
         }
-        Section("Watch out", "⚠️") { Body(concept.guard) }
-        Box(
-            Modifier.onGloballyPositioned {
-                onReportShown(it.boundsInWindow().height > 0f)
-                onAnchor(Step.REPORT, it.positionInParent().y.toInt())
-            },
-        ) {
-            FieldReport(concept, state, today, isToday, nav)
-        }
+        if (!reportFirst) report()
         SeeAlso(concept, state, nav)
-        ShareCard(concept)
-        Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Source", style = MaterialTheme.typography.labelMedium, color = p.faint)
-            Text(concept.source, style = MaterialTheme.typography.bodySmall, color = p.muted)
-            Text("${concept.numberLabel} · ${concept.category.label}", style = MaterialTheme.typography.bodySmall, color = accent)
-        }
-        // Room for the floating "Log today" button.
-        Spacer(Modifier.size(80.dp))
+        SourcesRow(concept)
+        Spacer(Modifier.size(24.dp))
     }
 }
 
-/** Teach it to someone: explaining an idea is one of the best ways to keep it. */
+/** A titled block inside a card, on a soft wash of [color]. */
 @Composable
-private fun ShareCard(concept: Concept) {
+fun SubBlock(title: String, icon: Glyph, color: Color, content: @Composable () -> Unit) {
     val p = palette
-    val context = LocalContext.current
-    Panel {
-        SectionLabel("Teach it to someone", "💬")
-        Text("Explaining an idea to a friend is one of the surest ways to remember it.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
-        SoftButton("Share this concept", color = concept.category.accent(p.dark)) { shareText(context, concept.title, Texts.share(concept)) }
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = if (p.dark) 0.14f else 0.08f)).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        SectionLabel(title, icon, color = color)
+        content()
+    }
+}
+
+/** The sources, folded into one line at the foot of the page; tap to read them. */
+@Composable
+private fun SourcesRow(concept: Concept) {
+    val p = palette
+    var open by rememberSaveable(concept.id) { mutableStateOf(false) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(role = Role.Button, onClickLabel = if (open) "Hide sources" else "Show sources") { open = !open }
+            .semantics { stateDescription = if (open) "expanded" else "collapsed" }
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Sources · ${concept.numberLabel} · ${concept.category.label}", style = MaterialTheme.typography.labelMedium, color = p.faint, modifier = Modifier.weight(1f, fill = false))
+            GlyphIcon(if (open) Glyph.CHEVRON_DOWN else Glyph.CHEVRON_RIGHT, p.faint, 12.dp)
+        }
+        if (open) Text(concept.source, style = MaterialTheme.typography.bodySmall, color = p.muted)
     }
 }
 
@@ -395,9 +398,13 @@ fun shareText(context: android.content.Context, subject: String, text: String) {
         .onFailure { android.widget.Toast.makeText(context, "Couldn't open sharing.", android.widget.Toast.LENGTH_SHORT).show() }
 }
 
-/** The specimen plate: the concept's colour, its emblem and its one-line hook. */
+/**
+ * The specimen plate: the concept's colour, its emblem and its one-line hook, with a share button
+ * (explaining an idea to someone is one of the surest ways to keep it).
+ */
 @Composable
 fun HeroCard(concept: Concept) {
+    val context = LocalContext.current
     val shape = RoundedCornerShape(28.dp)
     Column(
         Modifier
@@ -430,15 +437,26 @@ fun HeroCard(concept: Concept) {
         Text(concept.hook, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.92f))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             EvidenceBadge(concept.evidence, onPlate = true)
-            Text(Palettes.emoji(concept.category) + " " + concept.category.short, style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.8f))
+            Text(concept.category.short, style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.weight(1f))
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.16f))
+                    .clickable(role = Role.Button, onClickLabel = "Share") { shareText(context, concept.title, Texts.share(concept)) }
+                    .semantics { contentDescription = "Share this concept" },
+                contentAlignment = Alignment.Center,
+            ) {
+                GlyphIcon(Glyph.SHARE, Color.White, 18.dp)
+            }
         }
     }
 }
 
 @Composable
-fun Section(title: String, emoji: String, border: Color? = null, content: @Composable () -> Unit) {
+fun Section(title: String, icon: Glyph, border: Color? = null, content: @Composable () -> Unit) {
     Panel(border = border) {
-        SectionLabel(title, emoji)
+        SectionLabel(title, icon)
         content()
     }
 }
@@ -454,7 +472,7 @@ fun PredictCard(concept: Concept, chosen: Int?) {
     val accent = concept.category.accent(p.dark)
     val order = remember(concept.id) { concept.predict.order(concept.id) }
     Panel(border = if (chosen == null) accent.copy(alpha = 0.45f) else null) {
-        SectionLabel("Predict first", "🔮", color = accent)
+        SectionLabel("Predict first", Glyph.SEARCH, color = accent)
         Text(concept.predict.question, style = Quote)
         if (chosen == null) {
             Text("Guess before you read the study. Even a wrong guess helps the answer stick.", style = MaterialTheme.typography.bodySmall, color = p.muted)
@@ -523,18 +541,17 @@ fun OptionRow(letter: Char, text: String, state: OptionState, accent: Color, onC
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        val mark = when (state) {
-            OptionState.RIGHT -> "✓"
-            OptionState.WRONG -> "✗"
-            else -> letter.toString()
-        }
         val markColor = when (state) {
             OptionState.RIGHT -> p.good
             OptionState.WRONG -> p.bad
             else -> accent
         }
         Box(Modifier.size(28.dp).clip(CircleShape).background(markColor.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-            Text(mark, style = MaterialTheme.typography.labelLarge, color = markColor)
+            when (state) {
+                OptionState.RIGHT -> GlyphIcon(Glyph.CHECK, markColor, 14.dp)
+                OptionState.WRONG -> Text("×", style = MaterialTheme.typography.titleMedium, color = markColor)
+                else -> Text(letter.toString(), style = MaterialTheme.typography.labelLarge, color = markColor)
+            }
         }
         Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
     }
@@ -543,13 +560,16 @@ fun OptionRow(letter: Char, text: String, state: OptionState, accent: Color, onC
 @Composable
 private fun StudySection(concept: Concept, unlocked: Boolean) {
     val p = palette
-    Section("The study", "🧪") {
+    Section("The study", Glyph.FLASK) {
         if (!unlocked) {
             Box(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.raised).padding(16.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("🔒  Make your prediction above to unlock the study.", style = MaterialTheme.typography.bodyMedium, color = p.muted, textAlign = TextAlign.Center)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GlyphIcon(Glyph.LOCK, p.muted, 16.dp)
+                    Text("Make your prediction above to unlock the study.", style = MaterialTheme.typography.bodyMedium, color = p.muted, textAlign = TextAlign.Center)
+                }
             }
         } else {
             AnimatedVisibility(visible = true, enter = fadeIn(tween(400)) + expandVertically(tween(400))) {
@@ -572,13 +592,24 @@ private fun StudySection(concept: Concept, unlocked: Boolean) {
     }
 }
 
-/** The idea at work outside the lab, opened with the study so it can't give the prediction away. */
+/**
+ * The idea at work outside the lab, opened with the study so it can't give the prediction away.
+ * It starts folded, with its opening lines as a teaser, so Today isn't one long scroll.
+ */
 @Composable
 private fun RealWorldSection(concept: Concept) {
     val p = palette
     val accent = concept.category.accent(p.dark)
-    AnimatedVisibility(visible = true, enter = fadeIn(tween(400)) + expandVertically(tween(400))) {
-        Section("In the real world", "🌍") {
+    var open by rememberSaveable(concept.id) { mutableStateOf(false) }
+    Panel(onClick = { open = !open }, onClickLabel = if (open) "Fold the real-world case" else "Read the real-world case", stateDescription = if (open) "expanded" else "collapsed") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { SectionLabel("In the real world", Glyph.GLOBE) }
+            GlyphIcon(if (open) Glyph.CHEVRON_DOWN else Glyph.CHEVRON_RIGHT, p.muted, 14.dp)
+        }
+        if (!open) {
+            Text(concept.caseStory, style = MaterialTheme.typography.bodyLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text("Read the case and its nuance", style = MaterialTheme.typography.labelLarge, color = accent)
+        } else {
             Body(concept.caseStory)
             concept.caseNuance?.let { nuance ->
                 Column(
@@ -598,7 +629,7 @@ private fun RealWorldSection(concept: Concept) {
 private fun MissionSection(concept: Concept, state: AppState, today: LocalDate, isToday: Boolean) {
     val p = palette
     val accent = concept.category.accent(p.dark)
-    Section(if (isToday) "Today's mission" else "Mission", "🎯", border = accent.copy(alpha = 0.5f)) {
+    Section(if (isToday) "Today's mission" else "Mission", Glyph.TARGET, border = accent.copy(alpha = 0.5f)) {
         Body(concept.use)
         if (isToday) {
             val saved = state.plans[today]?.text.orEmpty()
@@ -624,7 +655,7 @@ private fun MissionSection(concept: Concept, state: AppState, today: LocalDate, 
                 }
             } else if (saved.isEmpty()) {
                 Text("Make it an if-then plan: people who decide when and where follow through far more often.", style = MaterialTheme.typography.bodySmall, color = p.muted)
-                SoftButton("✍️  Make an if-then plan", color = accent) { text = ""; editing = true }
+                SoftButton("Make an if-then plan", color = accent) { text = ""; editing = true }
             } else {
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha = 0.10f)).clickable { text = saved; editing = true }.padding(14.dp),
@@ -636,6 +667,13 @@ private fun MissionSection(concept: Concept, state: AppState, today: LocalDate, 
                     }
                     Text("Edit", style = MaterialTheme.typography.labelLarge, color = p.muted)
                 }
+            }
+        }
+        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GlyphIcon(Glyph.WARNING, p.muted, 15.dp, Modifier.padding(top = 3.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("WATCH OUT", style = MaterialTheme.typography.labelMedium, color = p.muted)
+                Text(concept.guard, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
@@ -652,11 +690,18 @@ fun fieldColors(accent: Color) = OutlinedTextFieldDefaults.colors(
 
 /** The day's field report: how did it show up? Four one-tap answers, then a note if you like. */
 @Composable
-private fun FieldReport(concept: Concept, state: AppState, today: LocalDate, isToday: Boolean, nav: Nav) {
+private fun FieldReport(concept: Concept, state: AppState, today: LocalDate, isToday: Boolean, nav: Nav, evening: Boolean = false) {
     val p = palette
     val accent = concept.category.accent(p.dark)
     val entries = state.entriesFor(concept.id).let { all -> if (isToday) all.filter { it.day == today } else all }.sortedByDescending { it.createdAt }
-    Section(if (isToday) "Tonight's field report" else "Your sightings", "📓") {
+    Section(if (isToday) "Tonight's field report" else "Your sightings", Glyph.NOTEBOOK, border = if (evening) accent.copy(alpha = 0.5f) else null) {
+        if (evening) {
+            // Above the concept in the evening: say which one, and what you planned.
+            Text(concept.title, style = MaterialTheme.typography.titleSmall, color = accent)
+            state.plans[today]?.text?.takeIf { it.isNotBlank() }?.let { plan ->
+                Text("You planned: “$plan”", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+            }
+        }
         Text(
             if (isToday) "How did it show up in your day?" else if (entries.isEmpty()) "Seen it in the wild? Log a sighting." else "${entries.size} logged so far.",
             style = MaterialTheme.typography.titleMedium,
@@ -695,7 +740,7 @@ fun ModeButton(mode: Mode, accent: Color, modifier: Modifier = Modifier, selecte
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
-        Text(mode.emoji, fontSize = 22.sp)
+        GlyphIcon(mode.glyph, if (selected) onColor(accent) else accent, 22.dp)
         Text(mode.label, style = MaterialTheme.typography.labelLarge, color = if (selected) onColor(accent) else p.ink, maxLines = 2, textAlign = TextAlign.Center)
     }
 }
@@ -710,7 +755,7 @@ fun EntryRow(entry: Entry, showConcept: Boolean, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.size(36.dp).clip(CircleShape).background(accent.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-            Text(entry.mode.emoji, fontSize = 17.sp)
+            GlyphIcon(entry.mode.glyph, accent, 17.dp)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -730,13 +775,13 @@ private fun SeeAlso(concept: Concept, state: AppState, nav: Nav) {
     if (concept.related.isEmpty()) return
     val p = palette
     val showAll = state.settings.showAll
-    Section("See also", "🧭") {
+    Section("See also", Glyph.COMPASS) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             concept.related.mapNotNull { Store.library[it] }.forEach { r ->
                 val open = showAll || r.id in state.unlocked
                 val color = r.category.accent(p.dark)
                 if (open) Pill(r.title, color, onClick = { nav.openConcept(r.id) })
-                else Pill("🔒 ${r.category.short}", p.faint)
+                else Pill("Locked · ${r.category.short}", p.faint)
             }
         }
     }
@@ -871,7 +916,7 @@ private fun LogSheetContent(req: LogRequest, state: AppState, today: LocalDate, 
                     Outcome.entries.forEach { o -> ChoiceChip(o.label, outcome == o, accent) { outcome = if (outcome == o) null else o } }
                 }
             }
-            PrimaryButton(if (edit != null) "Save changes" else "Save to journal", accent) {
+            PrimaryButton(if (edit != null) "Save changes" else "Save to journal", p.brand) {
                 if (edit != null) {
                     Store.edit(edit.copy(conceptId = conceptId, mode = mode, note = note, outcome = outcome), original = edit)
                 } else {

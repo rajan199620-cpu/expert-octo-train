@@ -55,7 +55,7 @@ fun AppSheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnSc
 
 /** A row that opens a settings sheet: the topic, what it's set to now, and a chevron. */
 @Composable
-fun SheetRow(title: String, summary: String, onClick: () -> Unit) {
+fun SheetRow(title: String, summary: String, icon: Glyph? = null, onClick: () -> Unit) {
     val p = palette
     Row(
         Modifier
@@ -64,17 +64,21 @@ fun SheetRow(title: String, summary: String, onClick: () -> Unit) {
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 6.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (icon != null) GlyphIcon(icon, p.muted, 20.dp)
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
             Text(summary, style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        Text("›", Modifier.padding(start = 12.dp), style = MaterialTheme.typography.headlineSmall, color = p.brand)
+        GlyphIcon(Glyph.CHEVRON_RIGHT, p.brand, 16.dp)
     }
 }
 
 /** The settings sheets, by name, so a notification or a banner can open the right one. */
 object SettingsSheet {
+    /** The list of topics, from the gear on the You tab. */
+    const val MENU = "menu"
     const val NOTIFICATIONS = "notifications"
     const val GOAL = "goal"
     const val FOCUS = "focus"

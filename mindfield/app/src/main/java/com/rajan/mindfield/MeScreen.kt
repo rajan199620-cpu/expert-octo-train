@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -80,7 +81,6 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
     val streak = remember(days, today) { Progress.streak(days, today) }
     val longest = remember(days, today) { Stats.longestStreak(days, today) }
     val goal = Progress.weekGoal(days, today, state.settings.weeklyGoal)
-    val predictions = remember(state.guesses) { Stats.predictions(state, library) }
     val modes = remember(state.entries) { Stats.modeCounts(state) }
     val life = remember(state.entries) { Stats.lifeList(state) }
     val todayColor = state.assignments[today]?.conceptId?.let { library[it] }?.category?.accent(p.dark) ?: p.brand
@@ -91,11 +91,24 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
         // Who and how far.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(54.dp).clip(CircleShape).background(todayColor), contentAlignment = Alignment.Center) {
-                Text(cloud.email?.firstOrNull()?.uppercase() ?: "🔍", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                val initial = cloud.email?.firstOrNull()?.uppercase()
+                if (initial != null) Text(initial, style = MaterialTheme.typography.headlineSmall, color = onColor(todayColor))
+                else GlyphIcon(Glyph.SEARCH, onColor(todayColor), 24.dp)
             }
             Column(Modifier.weight(1f)) {
                 Text("Your field guide", style = MaterialTheme.typography.headlineSmall)
                 Text(cloud.email ?: "Not linked to Google yet", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+            }
+            // Settings live behind the gear rather than at the foot of the page.
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button) { onSheet(SettingsSheet.MENU) }
+                    .semantics { contentDescription = "Settings" },
+                contentAlignment = Alignment.Center,
+            ) {
+                GlyphIcon(Glyph.GEAR, p.muted, 24.dp)
             }
         }
         Panel {
@@ -111,29 +124,23 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
                     if (streak.restThisWeek && streak.days >= 2) ", and this week's has been used." else ".",
                 style = MaterialTheme.typography.bodySmall, color = p.faint,
             )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile("Discovered", "${Stats.discovered(state, library)}", "of ${library.size}", Modifier.weight(1f))
-            StatTile("Seen in the wild", "${life.size}", "concepts", Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile("Field notes", "${state.liveEntries.size}", "written", Modifier.weight(1f))
-            StatTile(
-                "Predictions",
-                if (predictions.made == 0) "–" else "${predictions.percent}%",
-                if (predictions.made == 0) "none yet" else "right · ${predictions.surprised} ${if (predictions.surprised == 1) "surprise" else "surprises"}",
-                Modifier.weight(1f),
-            )
+            Box(Modifier.fillMaxWidth().height(1.dp).background(p.line))
+            // All-time totals, once: the month card has this month's, How you compare has predictions.
+            Row {
+                SmallStat("Discovered", "${Stats.discovered(state, library)}", "of ${library.size}", Modifier.weight(1f))
+                SmallStat("In the wild", "${life.size}", if (life.size == 1) "concept" else "concepts", Modifier.weight(1f))
+                SmallStat("Field notes", "${state.liveEntries.size}", "written", Modifier.weight(1f))
+            }
         }
         MonthReviewCard(state, today, todayColor, nav)
         CompareCard(state, today)
         if (state.liveEntries.isNotEmpty()) {
             Panel {
-                SectionLabel("How it shows up", "🔭")
+                SectionLabel("How it shows up", Glyph.BARS)
                 val colors = listOf(Category.MEMORY, Category.SELF, Category.HABITS, Category.GROUPS).map { it.accent(p.dark) }
                 SplitBar(Mode.entries.mapIndexed { i, m -> (modes[m] ?: 0) to colors[i] })
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Mode.entries.forEachIndexed { i, m -> Legend("${m.emoji} ${m.short}", modes[m] ?: 0, colors[i]) }
+                    Mode.entries.forEachIndexed { i, m -> Legend(m.short, modes[m] ?: 0, colors[i]) }
                 }
                 val used = Stats.outcomes(state)
                 if (used.total > 0) {
@@ -146,11 +153,11 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
         }
         if (life.size >= 3) {
             Panel {
-                SectionLabel("Where you notice psychology", "🧭")
+                SectionLabel("Where you notice psychology", Glyph.COMPASS)
                 RadarChart(Stats.categoryCounts(state, library))
             }
             Panel {
-                SectionLabel("Most spotted", "🏆")
+                SectionLabel("Most spotted", Glyph.STAR)
                 Stats.topConcepts(state).forEachIndexed { i, (id, n) ->
                     val c = library[id] ?: return@forEachIndexed
                     Row(
@@ -161,36 +168,19 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
                         Text("${i + 1}", style = MaterialTheme.typography.titleMedium, color = p.faint)
                         Emblem(c, Modifier.size(34.dp), plate = true)
                         Text(c.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        Text("👀 $n", style = MaterialTheme.typography.labelLarge, color = c.category.accent(p.dark))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            GlyphIcon(Glyph.EYE, c.category.accent(p.dark), 14.dp)
+                            Text("$n", style = MaterialTheme.typography.labelLarge, color = c.category.accent(p.dark))
+                        }
                     }
                 }
             }
         }
         Panel {
-            SectionLabel("Last 12 weeks", "🗓")
+            SectionLabel("Last 12 weeks", Glyph.CALENDAR)
             Heatmap(Stats.heatmap(state, today), today, todayColor)
         }
 
-
-        Text("Settings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 10.dp))
-        // One row per topic, each opening its own sheet, instead of six long cards to scroll past.
-        Panel(padding = 10.dp) {
-            val s = state.settings
-            val is24 = DateFormat.is24HourFormat(LocalContext.current)
-            SheetRow("Notifications", notificationSummary(s.morningOn, s.morningMinute, s.eveningOn, s.eveningMinute, s.spotCheckOn, is24)) {
-                onSheet(SettingsSheet.NOTIFICATIONS)
-            }
-            SheetRow("Weekly goal", if (s.weeklyGoal == 0) "Off" else "${s.weeklyGoal} days a week with a field report") { onSheet(SettingsSheet.GOAL) }
-            SheetRow("Focus areas", if (s.focus.isEmpty()) "Everything" else s.focus.sortedBy { it.ordinal }.joinToString(" · ") { it.short }) {
-                onSheet(SettingsSheet.FOCUS)
-            }
-            SheetRow("Appearance & guide", "${s.theme.label} · ${if (s.showAll) "showing every concept" else "undiscovered concepts sealed"}") {
-                onSheet(SettingsSheet.APPEARANCE)
-            }
-            SheetRow("Google account", cloud.email?.let { "Linked to $it" } ?: "Not linked: keep your journal safe") { onSheet(SettingsSheet.GOOGLE) }
-            SheetRow("Backup file", "Save everything to a file, or merge one back in") { onSheet(SettingsSheet.BACKUP) }
-            SheetRow("About the evidence", "Strength labels, and how the app makes ideas stick") { onSheet(SettingsSheet.ABOUT) }
-        }
         Text(
             "Mindfield ${BuildInfo.version(LocalContext.current)}",
             style = MaterialTheme.typography.labelSmall, color = p.faint, modifier = Modifier.padding(horizontal = 6.dp),
@@ -199,6 +189,7 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
     }
     val close = { onSheet(null) }
     when (sheet) {
+        SettingsSheet.MENU -> AppSheet("Settings", close) { SettingsMenu(state, cloud, onSheet) }
         SettingsSheet.NOTIFICATIONS -> AppSheet("Notifications", close) { NotificationSettings(state) }
         SettingsSheet.GOAL -> AppSheet("Weekly goal", close) { GoalSettings(state) }
         SettingsSheet.FOCUS -> AppSheet("Focus areas", close) { FocusSettings(state) }
@@ -206,6 +197,28 @@ fun MeScreen(state: AppState, today: LocalDate, nav: Nav, sheet: String?, onShee
         SettingsSheet.GOOGLE -> AppSheet("Google account", close) { GoogleCard(cloud) }
         SettingsSheet.BACKUP -> AppSheet("Backup file", close) { BackupCard() }
         SettingsSheet.ABOUT -> AppSheet("About the evidence", close) { AboutCard() }
+    }
+}
+
+/** One row per settings topic, each opening its own sheet. */
+@Composable
+private fun SettingsMenu(state: AppState, cloud: CloudState, onSheet: (String?) -> Unit) {
+    Panel(padding = 10.dp) {
+        val s = state.settings
+        val is24 = DateFormat.is24HourFormat(LocalContext.current)
+        SheetRow("Notifications", notificationSummary(s.morningOn, s.morningMinute, s.eveningOn, s.eveningMinute, s.spotCheckOn, is24), Glyph.BELL) {
+            onSheet(SettingsSheet.NOTIFICATIONS)
+        }
+        SheetRow("Weekly goal", if (s.weeklyGoal == 0) "Off" else "${s.weeklyGoal} days a week with a field report", Glyph.CALENDAR) { onSheet(SettingsSheet.GOAL) }
+        SheetRow("Focus areas", if (s.focus.isEmpty()) "Everything" else s.focus.sortedBy { it.ordinal }.joinToString(" · ") { it.short }, Glyph.TARGET) {
+            onSheet(SettingsSheet.FOCUS)
+        }
+        SheetRow("Appearance & guide", "${s.theme.label} · ${if (s.showAll) "showing every concept" else "undiscovered concepts sealed"}", Glyph.PALETTE) {
+            onSheet(SettingsSheet.APPEARANCE)
+        }
+        SheetRow("Google account", cloud.email?.let { "Linked to $it" } ?: "Not linked: keep your journal safe", Glyph.CLOUD) { onSheet(SettingsSheet.GOOGLE) }
+        SheetRow("Backup file", "Save everything to a file, or merge one back in", Glyph.DISK) { onSheet(SettingsSheet.BACKUP) }
+        SheetRow("About the evidence", "Strength labels, and how the app makes ideas stick", Glyph.FLASK) { onSheet(SettingsSheet.ABOUT) }
     }
 }
 
@@ -230,7 +243,7 @@ private fun MonthReviewCard(state: AppState, today: LocalDate, color: Color, nav
     Panel {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                SectionLabel(if (m.inProgress) "This month so far" else "Month in review", "🗓")
+                SectionLabel(if (m.inProgress) "This month so far" else "Month in review", Glyph.CALENDAR)
                 Text(if (m.inProgress) "$name so far" else "$name in the field", style = MaterialTheme.typography.titleLarge)
             }
             // Older months to the left, newer to the right, like a calendar.
@@ -261,7 +274,7 @@ private fun MonthReviewCard(state: AppState, today: LocalDate, color: Color, nav
             add("Discovered" to "${m.discovered}" + if (m.mythsMet > 0) " · ${m.mythsMet} ${if (m.mythsMet == 1) "myth" else "myths"}" else "")
             add("Seen in the wild" to "${m.sightings}")
             if (m.predictions > 0) add("Predictions" to "${m.predictionsRight} of ${m.predictions} right")
-            m.topArea?.let { add("Noticed most" to "${Palettes.emoji(it)} ${it.short}") }
+            m.topArea?.let { add("Noticed most" to it.short) }
         }
         stats.chunked(2).forEach { pair ->
             Row(Modifier.fillMaxWidth()) {
@@ -311,7 +324,7 @@ private fun CompareCard(state: AppState, today: LocalDate) {
     val p = palette
     val s = remember(state, today) { Progress.standing(state, Store.library, today) }
     Panel {
-        SectionLabel("How you compare", "📏")
+        SectionLabel("How you compare", Glyph.SCALE)
         Text(Progress.predictionLine(s), style = MaterialTheme.typography.bodyLarge)
         if (s.predicted >= 5) {
             Text(
@@ -356,11 +369,11 @@ private fun BigStat(label: String, value: String, modifier: Modifier) {
 }
 
 @Composable
-private fun StatTile(label: String, value: String, sub: String, modifier: Modifier) {
+private fun SmallStat(label: String, value: String, sub: String, modifier: Modifier) {
     val p = palette
-    Panel(modifier, padding = 16.dp) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = p.muted)
-        Text(value, style = MaterialTheme.typography.headlineMedium)
+    Column(modifier) {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = p.muted, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.titleLarge)
         Text(sub, style = MaterialTheme.typography.bodySmall, color = p.faint)
     }
 }
@@ -410,7 +423,7 @@ private fun NotificationSettings(state: AppState) {
     // Android delivers inexact reminders up to about an hour late; only say "at" when it's on the minute.
     val at = if (Scheduler.exact(context)) "At" else "Around"
     Panel {
-        SectionLabel("Notifications", "🔔")
+        SectionLabel("Notifications", Glyph.BELL)
         if (!allowed) {
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.bad.copy(alpha = 0.10f)).padding(12.dp),
@@ -440,7 +453,7 @@ private fun NotificationSettings(state: AppState) {
         }
         SettingRow(
             "Run in the background",
-            if (unrestricted) "Allowed ✓ Battery saving won't stop your reminders." else "Battery optimisation is on. On some phones (Xiaomi, OnePlus, Samsung, Oppo, Vivo…) it stops daily reminders. Tap, find Mindfield and choose \u201cDon't optimise\u201d.",
+            if (unrestricted) "Allowed. Battery saving won't stop your reminders." else "Battery optimisation is on. On some phones (Xiaomi, OnePlus, Samsung, Oppo, Vivo…) it stops daily reminders. Tap, find Mindfield and choose \u201cDon't optimise\u201d.",
             null,
         ) { if (!unrestricted) Health.openBatterySettings(context) }
         SettingRow(
@@ -457,14 +470,14 @@ private fun FocusSettings(state: AppState) {
     val p = palette
     val focus = state.settings.focus
     Panel {
-        SectionLabel("Focus areas", "🎯")
+        SectionLabel("Focus areas", Glyph.TARGET)
         Text(
             "Pick areas to see more of: two days in three come from them, the third keeps some variety. Leave all off to explore everything. Changes apply from tomorrow.",
             style = MaterialTheme.typography.bodySmall, color = p.muted,
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Category.entries.forEach { c ->
-                ChoiceChip("${Palettes.emoji(c)} ${c.short}", c in focus, c.accent(p.dark)) {
+                ChoiceChip(c.short, c in focus, c.accent(p.dark), dot = true) {
                     Store.settings { it.copy(focus = if (c in it.focus) it.focus - c else it.focus + c) }
                 }
             }
@@ -477,7 +490,7 @@ private fun FocusSettings(state: AppState) {
 private fun AppearanceSettings(state: AppState) {
     val p = palette
     Panel {
-        SectionLabel("Appearance & guide", "🎨")
+        SectionLabel("Appearance & guide", Glyph.PALETTE)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ThemeMode.entries.forEach { t -> ChoiceChip(t.label, state.settings.theme == t, p.brand) { Store.settings { it.copy(theme = t) } } }
         }
@@ -499,7 +512,7 @@ fun GoogleCard(cloud: CloudState, compact: Boolean = false) {
         GoogleSync.onConsentResult(context, result.resultCode, result.data)
     }
     Panel {
-        SectionLabel("Google account", "☁️")
+        SectionLabel("Google account", Glyph.CLOUD)
         if (cloud.email != null) {
             Text("Linked to ${cloud.email}", style = MaterialTheme.typography.titleSmall)
             Text(
@@ -619,7 +632,7 @@ private fun BackupCard() {
         }
     }
     Panel {
-        SectionLabel("Backup file", "💾")
+        SectionLabel("Backup file", Glyph.DISK)
         Text(
             "Save everything to a file you choose, or merge one back in. Restoring never deletes what's already here. Android's own phone backup also keeps a copy of the app's data in your Google account, if backup is on in your phone's settings.",
             style = MaterialTheme.typography.bodySmall, color = p.muted,
@@ -638,7 +651,7 @@ private fun AboutCard() {
     val p = palette
     var open by remember { mutableStateOf(false) }
     Panel(onClick = { open = !open }) {
-        SectionLabel("About the evidence", "🧪")
+        SectionLabel("About the evidence", Glyph.FLASK)
         Text("Why every concept has a strength label", style = MaterialTheme.typography.titleSmall)
         Evidence.entries.forEach { e ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -73,7 +73,11 @@ import com.rajan.mindfield.core.ThemeMode
 import java.time.Duration
 import java.time.LocalDate
 
-enum class Tab(val label: String) { TODAY("Today"), GUIDE("Guide"), REVIEW("Review"), JOURNAL("Journal"), ME("You") }
+/** Four tabs. Review opens over the tab you're on, from Today's path or the Guide: a minute's task, not a place. */
+enum class Tab(val label: String) { TODAY("Today"), GUIDE("Guide"), JOURNAL("Journal"), ME("You") }
+
+/** The review screen, shown over the tabs. */
+private object ReviewRoute
 
 /** Opens the field-report sheet: for a concept, optionally pre-set to a mode, or editing an entry. */
 data class LogRequest(val conceptId: String, val mode: Mode? = null, val edit: Entry? = null)
@@ -85,6 +89,8 @@ class Nav(
     val tab: (Tab) -> Unit,
     /** Opens a settings sheet on the You tab (see [SettingsSheet]). */
     val settings: (String) -> Unit = {},
+    /** Opens the review screen. */
+    val review: () -> Unit = {},
 )
 
 class MainActivity : ComponentActivity() {
@@ -94,6 +100,8 @@ class MainActivity : ComponentActivity() {
     private var today by mutableStateOf(LocalDate.now())
     /** The settings sheet open on the You tab, if any. */
     private var settingsSheet by mutableStateOf<String?>(null)
+    /** Whether the review screen is open over the tabs. */
+    private var reviewOpen by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,6 +113,7 @@ class MainActivity : ComponentActivity() {
         Scheduler.ensureAll(this)
         tab = savedInstanceState?.getString(KEY_TAB)?.let { n -> Tab.entries.firstOrNull { it.name == n } } ?: Tab.TODAY
         concept = savedInstanceState?.getString(KEY_CONCEPT)
+        reviewOpen = savedInstanceState?.getBoolean(KEY_REVIEW) ?: false
         // A turned phone, a theme change or the system reclaiming the app keeps an open sheet and its draft.
         settingsSheet = savedInstanceState?.getString(KEY_SHEET)
         logRequest = savedInstanceState?.let { restoreLog(it) }
@@ -150,15 +159,18 @@ class MainActivity : ComponentActivity() {
                         today = today,
                         openConcept = concept,
                         logRequest = logRequest,
+                        reviewOpen = reviewOpen,
                         settingsSheet = settingsSheet,
                         onSettingsSheet = { settingsSheet = it },
                         nav = Nav(
                             openConcept = { concept = it },
                             log = { logRequest = it },
-                            tab = { tab = it; concept = null; settingsSheet = null },
-                            settings = { tab = Tab.ME; concept = null; settingsSheet = it },
+                            tab = { tab = it; concept = null; settingsSheet = null; reviewOpen = false },
+                            settings = { tab = Tab.ME; concept = null; settingsSheet = it; reviewOpen = false },
+                            review = { concept = null; reviewOpen = true },
                         ),
                         onCloseConcept = { concept = null },
+                        onCloseReview = { reviewOpen = false },
                         onCloseLog = { logRequest = null },
                     )
                 }
@@ -204,6 +216,7 @@ class MainActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         outState.putString(KEY_TAB, tab.name)
         concept?.let { outState.putString(KEY_CONCEPT, it) }
+        outState.putBoolean(KEY_REVIEW, reviewOpen)
         settingsSheet?.let { outState.putString(KEY_SHEET, it) }
         logRequest?.let { r ->
             outState.putString(KEY_LOG_CONCEPT, r.conceptId)
@@ -221,26 +234,28 @@ class MainActivity : ComponentActivity() {
 
     private fun handle(intent: Intent?) {
         when (intent?.action) {
-            ACTION_TODAY -> { tab = Tab.TODAY; concept = null }
+            ACTION_TODAY -> { tab = Tab.TODAY; concept = null; reviewOpen = false }
             ACTION_LOG, ACTION_SHORTCUT_LOG -> {
                 // A report is being written: a notification or the widget mustn't throw it away.
                 if (logRequest != null) return
                 tab = Tab.TODAY
                 concept = null
+                reviewOpen = false
                 if (Store.state.value.settings.onboarded) {
                     val id = intent.getStringExtra(Notifier.EXTRA_CONCEPT)?.takeIf { Store.library.contains(it) } ?: Store.todayConcept().id
                     logRequest = LogRequest(id)
                 }
             }
-            ACTION_JOURNAL -> { tab = Tab.JOURNAL; concept = null }
-            ACTION_ACCOUNT -> { tab = Tab.ME; concept = null; settingsSheet = SettingsSheet.GOOGLE }
-            ACTION_SHORTCUT_REVIEW -> { tab = Tab.REVIEW; concept = null }
+            ACTION_JOURNAL -> { tab = Tab.JOURNAL; concept = null; reviewOpen = false }
+            ACTION_ACCOUNT -> { tab = Tab.ME; concept = null; reviewOpen = false; settingsSheet = SettingsSheet.GOOGLE }
+            ACTION_SHORTCUT_REVIEW -> { tab = Tab.TODAY; concept = null; reviewOpen = true }
         }
     }
 
     companion object {
         private const val KEY_TAB = "tab"
         private const val KEY_CONCEPT = "concept"
+        private const val KEY_REVIEW = "review"
         private const val KEY_SHEET = "sheet"
         private const val KEY_LOG_CONCEPT = "log_concept"
         private const val KEY_LOG_MODE = "log_mode"
@@ -261,18 +276,22 @@ private fun Root(
     today: LocalDate,
     openConcept: String?,
     logRequest: LogRequest?,
+    reviewOpen: Boolean,
     settingsSheet: String?,
     onSettingsSheet: (String?) -> Unit,
     nav: Nav,
     onCloseConcept: () -> Unit,
+    onCloseReview: () -> Unit,
     onCloseLog: () -> Unit,
 ) {
     val p = palette
     val state by Store.state.collectAsStateWithLifecycle()
     val todayConcept = state.assignments[today]?.conceptId?.let { Store.library[it] }
     val tint = todayConcept?.category?.accent(p.dark) ?: p.brand
-    // Back from Guide, Review, Journal or You goes to Today, the start screen, rather than out of the app.
-    BackHandler(enabled = tab != Tab.TODAY && openConcept == null && logRequest == null) { nav.tab(Tab.TODAY) }
+    // Back from Guide, Journal or You goes to Today, the start screen, rather than out of the app.
+    BackHandler(enabled = tab != Tab.TODAY && openConcept == null && !reviewOpen && logRequest == null) { nav.tab(Tab.TODAY) }
+    // Review closes back to the tab it was opened from; a concept page opened from it closes first.
+    BackHandler(enabled = reviewOpen && openConcept == null && logRequest == null) { onCloseReview() }
     BackHandler(enabled = openConcept != null && logRequest == null) { onCloseConcept() }
     BackHandler(enabled = logRequest != null) { onCloseLog() }
 
@@ -288,7 +307,7 @@ private fun Root(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                val screen: Any = openConcept ?: tab
+                val screen: Any = openConcept ?: if (reviewOpen) ReviewRoute else tab
                 AnimatedContent(
                     targetState = screen,
                     // Comfortable line lengths on tablets, unfolded phones and in landscape.
@@ -300,9 +319,9 @@ private fun Root(
                     saved.SaveableStateProvider(screenKey(target)) {
                         when (target) {
                             is String -> Store.library[target]?.let { ConceptScreen(it, state, today, nav, onBack = onCloseConcept) }
+                            ReviewRoute -> ReviewScreen(state, today, nav, onClose = onCloseReview)
                             Tab.TODAY -> TodayScreen(state, today, nav)
-                            Tab.GUIDE -> GuideScreen(state, nav)
-                            Tab.REVIEW -> ReviewScreen(state, today, nav)
+                            Tab.GUIDE -> GuideScreen(state, today, nav)
                             Tab.JOURNAL -> JournalScreen(state, today, nav)
                             Tab.ME -> MeScreen(state, today, nav, settingsSheet, onSettingsSheet)
                             else -> Unit
@@ -329,7 +348,11 @@ private fun Root(
 }
 
 /** A stable name for each screen, for the transition and for keeping its state. */
-private fun screenKey(screen: Any): String = if (screen is Tab) screen.name else "concept:$screen"
+private fun screenKey(screen: Any): String = when (screen) {
+    is Tab -> screen.name
+    ReviewRoute -> "review"
+    else -> "concept:$screen"
+}
 
 /** The bottom bar; the selected tab sits in a soft pill of today's colour. */
 @Composable
@@ -363,7 +386,7 @@ private fun TabBar(selected: Tab, tint: Color, onTab: (Tab) -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 TabIcon(t, color)
-                // Five labels share the width: let them grow with the system font, but only so far.
+                // Four labels share the width: let them grow with the system font, but only so far.
                 val scale = LocalDensity.current.fontScale
                 val style = MaterialTheme.typography.labelSmall
                 Text(
@@ -406,11 +429,6 @@ private fun TabIcon(tab: Tab, color: Color) {
                 // An open book.
                 drawRoundRect(color, Offset(s * 0.08f, s * 0.2f), Size(s * 0.4f, s * 0.62f), CornerRadius(s * 0.06f), style = stroke)
                 drawRoundRect(color, Offset(s * 0.52f, s * 0.2f), Size(s * 0.4f, s * 0.62f), CornerRadius(s * 0.06f), style = stroke)
-            }
-            Tab.REVIEW -> {
-                // Two stacked cards.
-                drawRoundRect(color.copy(alpha = 0.55f), Offset(s * 0.22f, s * 0.1f), Size(s * 0.6f, s * 0.5f), CornerRadius(s * 0.08f), style = stroke)
-                drawRoundRect(color, Offset(s * 0.12f, s * 0.36f), Size(s * 0.6f, s * 0.5f), CornerRadius(s * 0.08f), style = stroke)
             }
             Tab.JOURNAL -> {
                 // A notebook with lines.

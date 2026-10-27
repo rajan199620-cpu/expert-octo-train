@@ -3,6 +3,8 @@ package com.rajan.mindfield
 import android.app.Application
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -100,8 +102,11 @@ class LargeTextScreensTest {
     @Test
     fun `every screen opens and its controls are reachable`() {
         Seed.weeks(30)
+        Seed.at(java.time.LocalDate.now(Seed.zone), 10)
         launch()
         shot("10-today")
+        // The stepper fits the narrow screen at 150% text: every step's label is on screen.
+        for (label in listOf("Predict", "Plan", "Report")) compose.onNodeWithText(label).assertIsDisplayed()
         val c = Store.todayConcept()
         compose.onNodeWithText(c.predict.options[c.predict.answer]).performScrollTo().performClick()
         scrollTo("Make an if-then plan", substring = true)
@@ -118,7 +123,8 @@ class LargeTextScreensTest {
 
         tab("Guide")
         shot("20-guide")
-        tab("Review")
+        compose.onNodeWithText("Review & practice").performClick()
+        compose.waitForIdle()
         shot("21-review")
         compose.onNodeWithText("Start review").performScrollTo().performClick()
         compose.waitForIdle()
@@ -128,8 +134,9 @@ class LargeTextScreensTest {
         shot("23-journal")
         tab("You")
         shot("24-you")
-        scrollTo("Settings")
-        shot("25-settings")
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        captureScreenRoboImage("build/outputs/roborazzi/large-25-settings.png")
         scrollTo("Backup file")
         compose.onAllNodesWithText("Backup file").onFirst().performClick()
         compose.waitForIdle()

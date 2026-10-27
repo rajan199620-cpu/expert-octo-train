@@ -44,6 +44,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
@@ -80,7 +90,7 @@ private const val SPOTTED = "spotted"
 
 /** The collection: every concept as a specimen card; undiscovered ones stay sealed until their day. */
 @Composable
-fun GuideScreen(state: AppState, nav: Nav) {
+fun GuideScreen(state: AppState, today: LocalDate, nav: Nav) {
     val p = palette
     val library = Store.library
     var query by rememberSaveable { mutableStateOf("") }
@@ -124,12 +134,13 @@ fun GuideScreen(state: AppState, nav: Nav) {
                     shape = RoundedCornerShape(16.dp),
                     colors = fieldColors(p.brand),
                 )
+                ReviewEntry(state, today, nav)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ChoiceChip("All", filter == null, p.brand) { filter = null }
-                    ChoiceChip("👀 Spotted", filter == SPOTTED, p.brand) { filter = if (filter == SPOTTED) null else SPOTTED }
-                    ChoiceChip("💥 Myths", filter == MYTHS, p.bad) { filter = if (filter == MYTHS) null else MYTHS }
+                    ChoiceChip("Spotted", filter == SPOTTED, p.brand, icon = Glyph.EYE) { filter = if (filter == SPOTTED) null else SPOTTED }
+                    ChoiceChip("Myths", filter == MYTHS, p.bad, icon = Glyph.BURST) { filter = if (filter == MYTHS) null else MYTHS }
                     Category.entries.forEach { c ->
-                        ChoiceChip("${Palettes.emoji(c)} ${c.short}", filter == c.key, c.accent(p.dark)) { filter = if (filter == c.key) null else c.key }
+                        ChoiceChip(c.short, filter == c.key, c.accent(p.dark), dot = true) { filter = if (filter == c.key) null else c.key }
                     }
                 }
                 if (filter != null && filter != MYTHS && filter != SPOTTED) {
@@ -158,7 +169,15 @@ private fun SpecimenTile(concept: Concept, sightings: Int, isNew: Boolean, onCli
     val p = palette
     val shape = RoundedCornerShape(20.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape).background(p.surface).border(1.dp, p.line, shape).clickable(role = Role.Button, onClick = onClick),
+        Modifier.fillMaxWidth().clip(shape).background(p.surface).border(1.dp, p.line, shape).clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                stateDescription = when {
+                    sightings == 1 -> "spotted once"
+                    sightings > 1 -> "spotted $sightings times"
+                    isNew -> "new"
+                    else -> "not spotted yet"
+                }
+            },
     ) {
         Box(
             Modifier.fillMaxWidth().height(104.dp).background(Brush.linearGradient(listOf(Palettes.plate(concept.category), Palettes.plateEnd(concept.category)))),
@@ -166,11 +185,7 @@ private fun SpecimenTile(concept: Concept, sightings: Int, isNew: Boolean, onCli
             Emblem(concept, Modifier.size(78.dp).align(Alignment.Center))
             Text(concept.numberLabel, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.75f), modifier = Modifier.padding(10.dp))
             if (sightings > 0) {
-                Text(
-                    "👀 $sightings",
-                    Modifier.align(Alignment.TopEnd).padding(8.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.22f)).padding(horizontal = 8.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelSmall, color = Color.White,
-                )
+                SpottedStamp(sightings, Modifier.align(Alignment.BottomEnd).padding(8.dp))
             } else if (isNew) {
                 Text(
                     "NEW",
@@ -193,14 +208,71 @@ private fun SpecimenTile(concept: Concept, sightings: Int, isNew: Boolean, onCli
 private fun SealedTile(concept: Concept) {
     val p = palette
     val shape = RoundedCornerShape(20.dp)
-    Column(Modifier.fillMaxWidth().clip(shape).background(p.raised.copy(alpha = 0.6f)).border(1.dp, p.line, shape)) {
+    val dash = p.faint.copy(alpha = 0.55f)
+    Column(
+        Modifier.fillMaxWidth().clip(shape).drawBehind {
+            // A dashed outline: a space in the collection still to fill.
+            val inset = 1.dp.toPx()
+            drawRoundRect(
+                dash,
+                topLeft = Offset(inset, inset),
+                size = Size(size.width - 2 * inset, size.height - 2 * inset),
+                cornerRadius = CornerRadius(20.dp.toPx()),
+                style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))),
+            )
+        },
+    ) {
         Box(Modifier.fillMaxWidth().height(104.dp), contentAlignment = Alignment.Center) {
-            Text("?", style = MaterialTheme.typography.displayMedium, color = p.faint.copy(alpha = 0.6f))
+            Box(Modifier.size(64.dp).drawBehind {
+                drawCircle(dash, size.minDimension / 2 - 1.dp.toPx(), style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))))
+            }, contentAlignment = Alignment.Center) {
+                Text("?", style = MaterialTheme.typography.headlineMedium, color = p.faint)
+            }
             Text(concept.numberLabel, style = MaterialTheme.typography.labelSmall, color = p.faint, modifier = Modifier.align(Alignment.TopStart).padding(10.dp))
         }
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Undiscovered", style = MaterialTheme.typography.titleSmall, color = p.faint)
             Text(concept.category.short, style = MaterialTheme.typography.labelSmall, color = concept.category.accent(p.dark).copy(alpha = 0.7f))
+        }
+    }
+}
+
+/** A field-guide stamp on a specimen you've seen in the wild: a ring, tilted, with the count. */
+@Composable
+private fun SpottedStamp(count: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .rotate(-8f)
+            .border(1.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(50))
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.16f))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        GlyphIcon(Glyph.EYE, Color.White, 12.dp)
+        Text(if (count == 1) "SPOTTED" else "SPOTTED ×$count", style = MaterialTheme.typography.labelSmall, color = Color.White)
+    }
+}
+
+/** The way into review and practice, at the top of the Guide (review is no longer a tab of its own). */
+@Composable
+private fun ReviewEntry(state: AppState, today: LocalDate, nav: Nav) {
+    val p = palette
+    val due = remember(state.cards, state.unlocked, today) { Spacing.due(state, Store.library, today).size }
+    val known = state.unlocked.isNotEmpty()
+    if (!known) return
+    Panel(onClick = nav.review, padding = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GlyphIcon(Glyph.CARDS, p.brand, 22.dp)
+            Column(Modifier.weight(1f)) {
+                Text("Review & practice", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    if (due > 0) "${if (due == 1) "1 card" else "$due cards"} ready now · about a minute" else "Nothing due. Practise any five you've met.",
+                    style = MaterialTheme.typography.bodySmall, color = p.muted,
+                )
+            }
+            GlyphIcon(Glyph.CHEVRON_RIGHT, p.brand, 16.dp)
         }
     }
 }
@@ -242,7 +314,7 @@ private val RoundSaver = listSaver<Round?, Any>(
 
 /** Spaced retrieval: each concept comes back after 1, 3, 7, 16, 35 and 90 days. */
 @Composable
-fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
+fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Unit) {
     val p = palette
     val library = Store.library
     var round by rememberSaveable(stateSaver = RoundSaver) { mutableStateOf<Round?>(null) }
@@ -257,10 +329,11 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
         if (current == null) {
             val due = Spacing.due(state, library, today)
             val cards = Spacing.cards(state, library)
+            BackRow(onClose)
             Headline("Review", "Quick questions on concepts you've met, timed to come back just as you'd start to forget.")
             if (due.isNotEmpty()) {
                 Panel {
-                    SectionLabel("Ready now", "🃏")
+                    SectionLabel("Ready now", Glyph.CARDS)
                     Text(if (due.size == 1) "1 card to review" else "${due.size} cards to review", style = MaterialTheme.typography.headlineSmall)
                     Text("Name the concept from an everyday story, or recall what the study found.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
                     PrimaryButton("Start review", p.brand) {
@@ -270,7 +343,7 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
                 }
             } else {
                 Panel {
-                    SectionLabel("All caught up", "✅")
+                    SectionLabel("All caught up", Glyph.CHECK)
                     val next = Spacing.nextDue(state, library, today)
                     Text(
                         when {
@@ -290,7 +363,10 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
                     }
                 }
             }
-            if (cards.isNotEmpty()) RetentionPanel(cards)
+            if (cards.isNotEmpty()) {
+                ComingUp(cards, today)
+                RetentionPanel(cards)
+            }
         } else if (index >= current.cards.size) {
             Headline(if (current.practice) "Practice done" else "Review done")
             Panel {
@@ -304,7 +380,7 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav) {
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Spacer(Modifier.size(4.dp))
-                PrimaryButton("Done", p.brand) { round = null }
+                PrimaryButton("Done", p.brand) { round = null; onClose() }
             }
         } else {
             val card = current.cards[index]
@@ -351,7 +427,7 @@ private fun QuestionView(
     }
     ProgressBar((index + if (answered != null) 1 else 0) / total.toFloat(), p.brand)
     Panel {
-        SectionLabel(if (q.kind == Question.Kind.NAME_IT) "Name the concept" else "Remember the study", if (q.kind == Question.Kind.NAME_IT) "🔍" else "🧪", color = accent)
+        SectionLabel(if (q.kind == Question.Kind.NAME_IT) "Name the concept" else "Remember the study", if (q.kind == Question.Kind.NAME_IT) Glyph.SEARCH else Glyph.FLASK, color = accent)
         if (q.kind == Question.Kind.RECALL) Text(concept.title, style = MaterialTheme.typography.titleSmall, color = concept.category.accent(p.dark))
         Text(q.prompt, style = Quote)
         q.options.forEachIndexed { i, text ->
@@ -375,7 +451,7 @@ private fun QuestionView(
             )
             Text(concept.title, style = MaterialTheme.typography.headlineSmall)
             Text(concept.hook, style = MaterialTheme.typography.bodyMedium)
-            Text("Open the concept →", style = MaterialTheme.typography.labelLarge, color = concept.category.accent(p.dark), modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpen).padding(vertical = 4.dp))
+            Text("Open the concept", style = MaterialTheme.typography.labelLarge, color = concept.category.accent(p.dark), modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpen).padding(vertical = 4.dp))
         }
         PrimaryButton(if (index + 1 == total) "Finish" else "Next", p.brand, onClick = onNext)
     }
@@ -396,7 +472,7 @@ private fun RetentionPanel(cards: List<Card>) {
     val growing = cards.count { it.box in 2..3 }
     val strong = cards.count { it.box >= 4 }
     Panel {
-        SectionLabel("How well they're sticking", "🌱")
+        SectionLabel("How well they're sticking", Glyph.SPROUT)
         SplitBar(
             listOf(fresh to p.faint, growing to Palettes.evidence(com.rajan.mindfield.core.Evidence.GOOD, p.dark), strong to p.good),
         )
@@ -409,6 +485,34 @@ private fun RetentionPanel(cards: List<Card>) {
         if (reviewed.isNotEmpty()) {
             val rate = (reviewed.sumOf { it.right } * 100.0 / reviewed.sumOf { it.right + it.wrong }.coerceAtLeast(1)).roundToInt()
             Text("You've answered $rate% of review questions correctly.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+        }
+    }
+}
+
+/** The next seven days of reviews, so the spacing is visible rather than explained. */
+@Composable
+private fun ComingUp(cards: List<Card>, today: LocalDate) {
+    val p = palette
+    val week = (1L..7L).map { d -> today.plusDays(d).let { day -> day to cards.count { it.due == day } } }
+    val most = week.maxOf { it.second }.coerceAtLeast(1)
+    Panel {
+        SectionLabel("Coming up", Glyph.CALENDAR)
+        Row(Modifier.fillMaxWidth().height(76.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+            week.forEach { (day, n) ->
+                val name = day.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH)
+                Column(
+                    Modifier.weight(1f).clearAndSetSemantics { contentDescription = "$name: ${if (n == 1) "1 card" else "$n cards"}" },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(if (n > 0) "$n" else "", style = MaterialTheme.typography.labelSmall, color = p.muted)
+                    Box(
+                        Modifier.fillMaxWidth().height((4 + 32f * n / most).dp).clip(RoundedCornerShape(4.dp))
+                            .background(if (n > 0) p.brand.copy(alpha = 0.75f) else p.raised),
+                    )
+                    Text(day.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.ENGLISH), style = MaterialTheme.typography.labelSmall, color = p.faint)
+                }
+            }
         }
     }
 }
@@ -485,7 +589,7 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
             if (looks.isNotEmpty() && filter == null && q.isEmpty()) {
                 item {
                     Panel(border = p.brand.copy(alpha = 0.35f)) {
-                        SectionLabel("On this day", "🕰", color = p.brand)
+                        SectionLabel("On this day", Glyph.CLOCK, color = p.brand)
                         looks.forEach { (label, e) ->
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text("$label · ${Store.library[e.conceptId]?.title.orEmpty()}", style = MaterialTheme.typography.labelLarge, color = p.muted)
@@ -510,7 +614,7 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
                     }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ChoiceChip("All", filter == null, p.brand) { filter = null }
-                        Mode.entries.forEach { m -> ChoiceChip("${m.emoji} ${m.short}", filter == m, p.brand) { filter = if (filter == m) null else m } }
+                        Mode.entries.forEach { m -> ChoiceChip(m.short, filter == m, p.brand, icon = m.glyph) { filter = if (filter == m) null else m } }
                     }
                 }
             }
@@ -551,7 +655,7 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
         }
         if (todayConcept != null) {
             Text(
-                "＋  Log",
+                "+  Log",
                 Modifier
                     .align(Alignment.BottomEnd)
                     .padding(18.dp)

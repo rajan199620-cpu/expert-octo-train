@@ -2,6 +2,10 @@ package com.rajan.mindfield
 
 import android.app.Application
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -75,6 +79,30 @@ class ScreensTest {
         compose.waitForIdle()
     }
 
+    /** Ten in the morning today: Today shows its morning layout whatever time CI runs. */
+    private fun morning() = Seed.at(LocalDate.now(Seed.zone), 10)
+
+    /** Opens review from the Guide (it's no longer a tab). */
+    private fun openReview() {
+        tab("Guide")
+        compose.onNodeWithText("Review & practice").performClick()
+        compose.waitForIdle()
+    }
+
+    /** Opens a settings topic: the gear on the You tab, then the topic's row. */
+    private fun openSettings(row: String) {
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        openSheet(row)
+    }
+
+    private fun step(label: String) = compose.onNode(hasText(label) and hasStateDescriptionIn("done", "to do"))
+
+    private fun hasStateDescriptionIn(vararg values: String) =
+        SemanticsMatcher("state is one of ${values.toList()}") { it.config.getOrNull(SemanticsProperties.StateDescription) in values }
+
+    private fun stateIs(value: String) = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value)
+
     /** Plain scrolling columns compose every child, so scroll the node itself; lazy lists need the list to search. */
     private fun scrollTo(text: String, substring: Boolean = false) {
         val nodes = compose.onAllNodesWithText(text, substring = substring)
@@ -94,7 +122,7 @@ class ScreensTest {
         compose.onNodeWithText("How a day works").assertExists()
         shot("02-how-it-works")
         compose.onNodeWithText("Next").performClick()
-        compose.onNodeWithText("🧩 Thinking traps").performClick()
+        compose.onNodeWithText("Thinking traps").performClick()
         shot("03-focus")
         compose.onNodeWithText("Next").performClick()
         compose.onNodeWithText("When should it reach you?").assertExists()
@@ -114,12 +142,15 @@ class ScreensTest {
     @Test
     fun `today - predict unlocks the study, the plan saves, and the field report logs`() {
         Seed.weeks(35)
+        morning()
         launch()
         val c = Store.todayConcept()
         shot("10-today")
         // Today opens at the top, on the concept itself.
         compose.onAllNodesWithText(c.title).onFirst().assertIsDisplayed()
-        compose.onNodeWithText("🔒  Make your prediction above to unlock the study.").assertExists()
+        compose.onNodeWithText("Make your prediction above to unlock the study.").assertExists()
+        // The floating "Log today" button is gone: the report's own buttons do that job.
+        compose.onAllNodesWithText("Log today", substring = true).assertCountEquals(0)
         // The real-world case opens with the study, so it can't give the answer away.
         compose.onAllNodesWithText("In the real world".uppercase()).assertCountEquals(0)
         // Guess right.
@@ -130,8 +161,12 @@ class ScreensTest {
         shot("11-today-predicted")
         scrollTo("The study".uppercase())
         shot("12-today-study")
+        // The real-world case starts folded, with a teaser; tapping opens it, nuance and all.
         scrollTo("In the real world".uppercase())
+        compose.onAllNodesWithText("The nuance").assertCountEquals(0)
         shot("12b-today-real-world")
+        compose.onNodeWithText("Read the case and its nuance").performClick()
+        compose.waitForIdle()
         if (c.caseNuance != null) {
             scrollTo("The nuance")
             shot("12c-today-nuance")
@@ -175,7 +210,7 @@ class ScreensTest {
         tab("Guide")
         compose.onNodeWithText("Field guide").assertExists()
         shot("20-guide")
-        compose.onNodeWithText("💥 Myths").performScrollTo().performClick()
+        compose.onNodeWithText("Myths").performScrollTo().performClick()
         compose.waitForIdle()
         shot("21-guide-myths")
         compose.onNodeWithText("All").performClick()
@@ -184,15 +219,15 @@ class ScreensTest {
         val c = Store.library[Store.state.value.assignments.toSortedMap().values.first().conceptId]!!
         compose.onAllNodesWithText(c.title).onFirst().performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("←  Back").assertExists()
+        compose.onNodeWithText("Back").assertExists()
         shot("22-concept-page")
-        compose.onNodeWithText("←  Back").performClick()
+        compose.onNodeWithText("Back").performClick()
 
         tab("Journal")
         compose.onNodeWithText("Field journal").assertExists()
         shot("23-journal")
 
-        tab("Review")
+        openReview()
         shot("24-review")
         val answer = Seed.firstReviewAnswer()
         compose.onNodeWithText("Start review").performClick()
@@ -207,9 +242,11 @@ class ScreensTest {
         shot("27-you")
         scrollTo("Where you notice psychology".uppercase())
         shot("28-you-insights")
-        scrollTo("Settings")
-        shot("29-settings")
-        // Each settings topic opens in its own sheet, over the You screen.
+        // Settings sit behind the gear: a list of topics, each opening its own sheet.
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Backup file").assertExists()
+        captureScreenRoboImage("build/outputs/roborazzi/29-settings.png")
         openSheet("Google account")
         compose.onNodeWithText("Connect Google account").assertExists()
         captureScreenRoboImage("build/outputs/roborazzi/30-settings-google.png")
@@ -237,9 +274,9 @@ class ScreensTest {
         val c = Store.library[Store.state.value.assignments.toSortedMap().values.first().conceptId]!!
         compose.onAllNodesWithText(c.title).onFirst().performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("←  Back").assertExists()
+        compose.onNodeWithText("Back").assertExists()
         back()
-        compose.onNodeWithText("←  Back").assertDoesNotExist()
+        compose.onNodeWithText("Back").assertDoesNotExist()
         compose.onNodeWithText("Field guide").assertExists()
         back()
         compose.onNodeWithText("in the field", substring = true).assertExists()
@@ -277,36 +314,159 @@ class ScreensTest {
         compose.onAllNodesWithText("›").onFirst().performClick() // the month arrow comes before the settings rows' chevrons
         compose.waitForIdle()
         // Weekly goal: change it in its sheet; the row and the week line follow.
-        openSheet("Weekly goal")
+        openSettings("Weekly goal")
         compose.onNodeWithText("3 days").performClick()
         compose.waitForIdle()
         assertEquals(3, Store.state.value.settings.weeklyGoal)
         captureScreenRoboImage("build/outputs/roborazzi/35-settings-goal.png")
         compose.onNodeWithText("Done").performScrollTo().performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("3 days a week with a field report").assertExists()
         compose.onNodeWithText("of 7 days this week", substring = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("3 days a week with a field report").assertExists()
     }
 
     @Test
-    fun `today's path ticks off as you go and jumps to each step`() {
+    fun `today's path is a stepper that ticks off as you go and jumps to each step`() {
         Seed.weeks(35)
+        morning()
         launch()
         val c = Store.todayConcept()
-        compose.onNodeWithText("Today's path", substring = true).assertExists()
-        compose.onNodeWithText("1  Predict").assertExists()
+        step("Predict").assert(stateIs("to do"))
         compose.onNodeWithText(c.predict.options[c.predict.answer]).performScrollTo().performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("✓ Predict").performScrollTo().assertExists()
+        step("Predict").performScrollTo().assert(stateIs("done"))
         // Tapping a step scrolls the page to it.
-        compose.onNodeWithText("3  Report").performScrollTo().performClick()
+        step("Report").performClick()
         compose.mainClock.advanceTimeBy(2_000)
         compose.waitForIdle()
         compose.onNodeWithText("How did it show up in your day?").assertIsDisplayed()
         shot("16-today-path-report")
         Store.log(c.id, Mode.SPOTTED, "On the bus")
         compose.waitForIdle()
-        compose.onAllNodesWithText("✓ Report").onFirst().assertExists()
+        step("Report").assert(stateIs("done"))
+    }
+
+    @Test
+    fun `the review step opens review over Today, and Back returns`() {
+        Seed.weeks(35)
+        morning()
+        launch()
+        val due = com.rajan.mindfield.core.Spacing.due(Store.state.value, Store.library, Store.today()).size
+        assertTrue("the seed leaves reviews due", due > 0)
+        step("Review $due").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Start review").assertExists()
+        compose.onNodeWithText("Coming up".uppercase()).performScrollTo().assertExists()
+        back()
+        compose.onNodeWithText("Start review").assertDoesNotExist()
+        compose.onNodeWithText("in the field", substring = true).assertExists()
+        // Four tabs: Review is no longer one of them.
+        compose.onAllNodes(hasText("Review") and SemanticsMatcher.expectValue(SemanticsProperties.Role, androidx.compose.ui.semantics.Role.Tab)).assertCountEquals(0)
+    }
+
+    @Test
+    fun `in the evening the field report comes first, with your plan`() {
+        Seed.weeks(10)
+        val today = LocalDate.now(Seed.zone)
+        Seed.at(today, 21, 30)
+        Store.plan(today, "At dinner, I'll watch who talks first")
+        launch()
+        val c = Store.todayConcept()
+        compose.onNodeWithText("You planned:", substring = true).assertExists()
+        val report = compose.onNodeWithText("How did it show up in your day?").fetchSemanticsNode().boundsInRoot.top
+        val predict = compose.onNodeWithText("Predict first".uppercase()).fetchSemanticsNode().boundsInRoot.top
+        assertTrue("report ($report) above predict ($predict)", report < predict)
+        shot("17-today-evening")
+        // One tap files it from the top; the report stays where it is afterwards.
+        compose.onAllNodesWithText(Mode.SPOTTED.label).onFirst().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Save to journal").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(c.id, Store.state.value.entriesOn(today).single().conceptId)
+        val after = compose.onNodeWithText("How did it show up in your day?").fetchSemanticsNode().boundsInRoot.top
+        val predictAfter = compose.onNodeWithText("Predict first".uppercase()).fetchSemanticsNode().boundsInRoot.top
+        assertTrue(after < predictAfter)
+    }
+
+    @Test
+    fun `a minute before the evening report, Today keeps its morning order`() {
+        Seed.weeks(10)
+        Seed.at(LocalDate.now(Seed.zone), 20, 59)
+        launch()
+        compose.onNodeWithText("You planned:", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Predict first".uppercase()).assertExists()
+        scrollTo("How did it show up in your day?")
+        val report = compose.onNodeWithText("How did it show up in your day?").fetchSemanticsNode().boundsInRoot.top
+        val predict = compose.onNodeWithText("Predict first".uppercase()).fetchSemanticsNode().boundsInRoot.top
+        assertTrue(report > predict)
+    }
+
+    @Test
+    fun `the page is lighter - shared from the plate, sources folded`() {
+        Seed.weeks(10)
+        morning()
+        launch()
+        val c = Store.todayConcept()
+        compose.onNodeWithContentDescription("Share this concept").assertExists()
+        compose.onAllNodesWithText("Teach it to someone".uppercase()).assertCountEquals(0)
+        compose.onNodeWithText(c.source).assertDoesNotExist()
+        scrollTo("Sources ·", substring = true)
+        compose.onNodeWithText("Sources ·", substring = true).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(c.source).assertExists()
+        // Watch out now sits at the foot of the mission card.
+        compose.onNodeWithText(c.guard).assertExists()
+    }
+
+    @Test
+    fun `stress - every concept in the library renders on Today, studied and opened`() {
+        Seed.weeks(3)
+        morning()
+        launch()
+        val today = Store.today()
+        for (c in Store.library.all) {
+            Store.update { st ->
+                st.copy(
+                    assignments = st.assignments + (today to com.rajan.mindfield.core.Assignment(c.id, 1)),
+                    guesses = st.guesses + (c.id to com.rajan.mindfield.core.Guess(c.predict.answer, 1)),
+                )
+            }
+            compose.waitForIdle()
+            compose.onAllNodesWithText(c.title).onFirst().assertExists()
+            compose.onNodeWithText("Read the case and its nuance").performScrollTo().performClick()
+            compose.waitForIdle()
+            c.caseNuance?.let { compose.onNodeWithText(it).assertExists() }
+        }
+    }
+
+    @Test
+    fun `the guide stamps what you've spotted and outlines what's still to find`() {
+        Seed.weeks(20)
+        launch()
+        tab("Guide")
+        val spotted = compose.onAllNodes(SemanticsMatcher("spotted") { (it.config.getOrNull(SemanticsProperties.StateDescription) ?: "").startsWith("spotted") })
+        assertTrue(spotted.fetchSemanticsNodes().isNotEmpty())
+        compose.onAllNodesWithText("SPOTTED", substring = true).onFirst().assertExists()
+        scrollTo("Undiscovered")
+        compose.onAllNodesWithText("Undiscovered").onFirst().assertExists()
+        shot("20b-guide-stamps")
+    }
+
+    @Test
+    fun `the review shortcut opens review, and it survives turning the phone`() {
+        Seed.weeks(20)
+        morning()
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
+        scenario = ActivityScenario.launch(
+            android.content.Intent(app, MainActivity::class.java).setAction(MainActivity.ACTION_SHORTCUT_REVIEW),
+        )
+        compose.waitForIdle()
+        compose.onNodeWithText("Quick questions on concepts", substring = true).assertExists()
+        scenario!!.recreate()
+        compose.waitForIdle()
+        compose.onNodeWithText("Quick questions on concepts", substring = true).assertExists()
     }
 
     @Test
@@ -329,7 +489,7 @@ class ScreensTest {
         )
         launch()
         tab("You")
-        openSheet("Google account")
+        openSettings("Google account")
         compose.onNodeWithText("One-time setup (2 minutes)").performScrollTo()
         compose.onNodeWithText(GoogleSync.SHA1).assertExists()
         compose.onNodeWithText(GoogleSync.PACKAGE).assertExists()
@@ -346,7 +506,7 @@ class ScreensTest {
         GoogleSync.setStateForTests(CloudState(email = "rajan@example.com", lastSyncMs = System.currentTimeMillis()))
         launch()
         tab("You")
-        openSheet("Google account")
+        openSettings("Google account")
         compose.onAllNodesWithText("Linked to rajan@example.com").onFirst().assertExists()
         compose.onNodeWithText("Unlink").performScrollTo().performClick()
         compose.waitForIdle()
@@ -381,6 +541,7 @@ class ScreensTest {
     fun `dark mode`() {
         Seed.weeks(30)
         Store.settings { it.copy(theme = ThemeMode.DARK) }
+        morning()
         launch()
         shot("40-dark-today")
         tab("Guide")
@@ -419,7 +580,7 @@ class ScreensTest {
         launch()
         tab("Journal")
         compose.onNodeWithText("Field journal").assertExists()
-        compose.onNodeWithText("🎯 Used").performClick()
+        compose.onNodeWithText("Used").performClick()
         compose.waitForIdle()
         shot("44-journal-3000")
         scrollTo("Show older notes", substring = true)
@@ -434,6 +595,7 @@ class ScreensTest {
     @Test
     fun `a field report being written survives turning the phone, and Back asks before throwing it away`() {
         Seed.weeks(5)
+        morning()
         launch()
         val c = Store.todayConcept()
         val note = "Saw it twice on the bus."
@@ -458,7 +620,7 @@ class ScreensTest {
     fun `a review round in progress survives a trip to another tab`() {
         Seed.weeks(40)
         launch()
-        tab("Review")
+        openReview()
         val answer = Seed.firstReviewAnswer()
         compose.onNodeWithText("Start review").performClick()
         compose.waitForIdle()
@@ -467,7 +629,7 @@ class ScreensTest {
         compose.onNodeWithText("✓ Right").assertExists()
         tab("Journal")
         compose.onNodeWithText("Field journal").assertExists()
-        tab("Review")
+        openReview()
         compose.onNodeWithText("✓ Right").assertExists()
         compose.onAllNodesWithText("1 of ", substring = true).onFirst().assertExists()
     }

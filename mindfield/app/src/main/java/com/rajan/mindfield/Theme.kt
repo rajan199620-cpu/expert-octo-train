@@ -55,6 +55,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -118,25 +120,24 @@ val LocalPalette = staticCompositionLocalOf { LightPalette }
 
 /** Each corner of psychology has its own colour, like the tabs of a field guide. */
 object Palettes {
-    private data class Tones(val light: Long, val dark: Long, val plate: Long, val plateEnd: Long, val emoji: String)
+    private data class Tones(val light: Long, val dark: Long, val plate: Long, val plateEnd: Long)
 
     private val sets = mapOf(
-        Category.MEMORY to Tones(0xFF3D6FA3, 0xFF8DBBEA, 0xFF1D3757, 0xFF2F5C8C, "👁"),
-        Category.SELF to Tones(0xFF8A4C9C, 0xFFD6A1EA, 0xFF3A1F45, 0xFF6B3B7E, "👤"),
-        Category.THINKING to Tones(0xFF4A55B5, 0xFFA3ABF7, 0xFF20255C, 0xFF3A44A0, "🧩"),
-        Category.INFLUENCE to Tones(0xFFB04A33, 0xFFF2967E, 0xFF55200F, 0xFFA3442D, "📣"),
-        Category.FEELINGS to Tones(0xFFB43E66, 0xFFF59AB8, 0xFF561731, 0xFF9E3559, "🌊"),
-        Category.CONNECTION to Tones(0xFF9E5A0E, 0xFFF6B25E, 0xFF553006, 0xFFA2600F, "🤝"),
-        Category.DECISIONS to Tones(0xFF1A7670, 0xFF67D4C9, 0xFF0C3936, 0xFF18706A, "⚖️"),
-        Category.HABITS to Tones(0xFF3F7329, 0xFFA2D987, 0xFF213E18, 0xFF3F7029, "🔁"),
-        Category.GROUPS to Tones(0xFF806408, 0xFFEBCB62, 0xFF463707, 0xFF8A6E12, "👥"),
+        Category.MEMORY to Tones(0xFF3D6FA3, 0xFF8DBBEA, 0xFF1D3757, 0xFF2F5C8C),
+        Category.SELF to Tones(0xFF8A4C9C, 0xFFD6A1EA, 0xFF3A1F45, 0xFF6B3B7E),
+        Category.THINKING to Tones(0xFF4A55B5, 0xFFA3ABF7, 0xFF20255C, 0xFF3A44A0),
+        Category.INFLUENCE to Tones(0xFFB04A33, 0xFFF2967E, 0xFF55200F, 0xFFA3442D),
+        Category.FEELINGS to Tones(0xFFB43E66, 0xFFF59AB8, 0xFF561731, 0xFF9E3559),
+        Category.CONNECTION to Tones(0xFF9E5A0E, 0xFFF6B25E, 0xFF553006, 0xFFA2600F),
+        Category.DECISIONS to Tones(0xFF1A7670, 0xFF67D4C9, 0xFF0C3936, 0xFF18706A),
+        Category.HABITS to Tones(0xFF3F7329, 0xFFA2D987, 0xFF213E18, 0xFF3F7029),
+        Category.GROUPS to Tones(0xFF806408, 0xFFEBCB62, 0xFF463707, 0xFF8A6E12),
     )
 
     fun accent(c: Category, dark: Boolean): Color = Color(sets.getValue(c).let { if (dark) it.dark else it.light })
     fun plate(c: Category): Color = Color(sets.getValue(c).plate)
     fun plateEnd(c: Category): Color = Color(sets.getValue(c).plateEnd)
     fun glow(c: Category): Color = Color(sets.getValue(c).dark)
-    fun emoji(c: Category): String = sets.getValue(c).emoji
 
     fun evidence(e: Evidence, dark: Boolean): Color = when (e) {
         Evidence.SOLID -> if (dark) Color(0xFF7FD3A0) else Color(0xFF2A7449)
@@ -225,6 +226,8 @@ fun Panel(
     border: Color? = null,
     background: Color? = null,
     onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
+    stateDescription: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = palette
@@ -234,18 +237,19 @@ fun Panel(
             .clip(shape)
             .background(background ?: p.surface)
             .border(1.dp, border ?: p.line, shape)
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClickLabel = onClickLabel, onClick = onClick) else Modifier)
+            .then(if (stateDescription != null) Modifier.semantics { this.stateDescription = stateDescription } else Modifier)
             .padding(padding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
 }
 
-/** Small uppercase label above a section, with an emoji marker. */
+/** Small uppercase label above a section, with a line icon. */
 @Composable
-fun SectionLabel(text: String, emoji: String? = null, color: Color = palette.muted) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (emoji != null) Text(emoji, fontSize = 13.sp)
+fun SectionLabel(text: String, icon: Glyph? = null, color: Color = palette.muted) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        if (icon != null) GlyphIcon(icon, color, 15.dp)
         Text(text.uppercase(), style = MaterialTheme.typography.labelMedium, color = color)
     }
 }
@@ -351,23 +355,29 @@ fun SoftButton(text: String, modifier: Modifier = Modifier, color: Color = palet
     }
 }
 
-/** A selectable chip; selected chips fill with their colour, and a screen reader says whether it's on. */
+/**
+ * A selectable chip; selected chips fill with their colour, and a screen reader says whether it's on.
+ * It can lead with a line icon, or with a dot of its colour (the nine areas).
+ */
 @Composable
-fun ChoiceChip(text: String, selected: Boolean, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun ChoiceChip(text: String, selected: Boolean, color: Color, modifier: Modifier = Modifier, icon: Glyph? = null, dot: Boolean = false, onClick: () -> Unit) {
     val p = palette
     val shape = RoundedCornerShape(50)
-    Text(
-        text,
+    val ink = if (selected) onColor(color) else p.ink
+    Row(
         modifier
             .clip(shape)
             .background(if (selected) color else p.surface)
             .border(1.dp, if (selected) color else p.line, shape)
             .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
             .padding(horizontal = 14.dp, vertical = 9.dp),
-        color = if (selected) onColor(color) else p.ink,
-        style = MaterialTheme.typography.labelLarge,
-        maxLines = 1,
-    )
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (icon != null) GlyphIcon(icon, if (selected) ink else color, 15.dp)
+        if (dot) Box(Modifier.size(8.dp).clip(CircleShape).background(if (selected) ink else color))
+        Text(text, color = ink, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+    }
 }
 
 /** Seven dots for this week, Monday first. */
@@ -403,7 +413,7 @@ fun WeekDots(week: List<Pair<java.time.LocalDate, Boolean?>>, color: Color, modi
                         .border(1.dp, if (done == null) p.line else Color.Transparent, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (done == true) Text("✓", color = onColor(color), style = MaterialTheme.typography.labelMedium)
+                    if (done == true) GlyphIcon(Glyph.CHECK, onColor(color), 13.dp)
                 }
                 Text(
                     day.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.ENGLISH),

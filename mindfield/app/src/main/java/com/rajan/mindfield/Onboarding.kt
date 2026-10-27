@@ -104,12 +104,12 @@ fun Onboarding(onDone: () -> Unit) {
                         }
                         1 -> {
                             Headline("How a day works")
-                            DayStep("🌅", "Morning", "A new concept arrives. Predict the study's result before you read it: guessing first makes it stick.")
-                            DayStep("🔍", "During the day", "Spot it in other people and catch it in yourself. Try the day's mission, with an if-then plan.")
-                            DayStep("🌙", "Evening", "A one-tap field report from the notification: spotted it, caught myself, used it. Add a line if you like.")
-                            DayStep("🃏", "Later", "Quick reviews bring concepts back just as you'd start to forget.")
+                            DayStep(Glyph.SUN, "Morning", "A new concept arrives. Predict the study's result before you read it: guessing first makes it stick.")
+                            DayStep(Glyph.SEARCH, "During the day", "Spot it in other people and catch it in yourself. Try the day's mission, with an if-then plan.")
+                            DayStep(Glyph.MOON, "Evening", "A one-tap field report from the notification: spotted it, caught myself, used it. Add a line if you like.")
+                            DayStep(Glyph.CARDS, "Later", "Quick reviews bring concepts back just as you'd start to forget.")
                             Panel {
-                                SectionLabel("Honest evidence", "🧪")
+                                SectionLabel("Honest evidence", Glyph.FLASK)
                                 Evidence.entries.forEach { e ->
                                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                                         EvidenceBadge(e)
@@ -122,7 +122,7 @@ fun Onboarding(onDone: () -> Unit) {
                             Headline("Anything you'd like more of?", "Optional. Pick areas and two days in three will come from them. Skip to explore everything.")
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Category.entries.forEach { c ->
-                                    ChoiceChip("${Palettes.emoji(c)} ${c.label}", c in s.focus, c.accent(p.dark)) {
+                                    ChoiceChip(c.label, c in s.focus, c.accent(p.dark), dot = true) {
                                         Store.settings { it.copy(focus = if (c in it.focus) it.focus - c else it.focus + c) }
                                     }
                                 }
@@ -130,12 +130,12 @@ fun Onboarding(onDone: () -> Unit) {
                         }
                         3 -> {
                             Headline("When should it reach you?", "Two notifications a day, three with spot checks. Change them any time.")
-                            TimeChoice("🌅 Morning concept", s.morningMinute) { m -> Store.settings { it.copy(morningMinute = m) } }
-                            TimeChoice("🌙 Evening field report", s.eveningMinute) { m -> Store.settings { it.copy(eveningMinute = m) } }
+                            TimeChoice("Morning concept", s.morningMinute) { m -> Store.settings { it.copy(morningMinute = m) } }
+                            TimeChoice("Evening field report", s.eveningMinute) { m -> Store.settings { it.copy(eveningMinute = m) } }
                             Panel(onClick = { Store.settings { it.copy(spotCheckOn = !it.spotCheckOn) } }) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
-                                        Text("🔍 Surprise spot check", style = MaterialTheme.typography.titleMedium)
+                                        Text("Surprise spot check", style = MaterialTheme.typography.titleMedium)
                                         Text("Optional: one nudge at a random moment between noon and 6 pm. Seen it yet?", style = MaterialTheme.typography.bodySmall, color = p.muted)
                                     }
                                     Switch(checked = s.spotCheckOn, onCheckedChange = { on -> Store.settings { it.copy(spotCheckOn = on) } })
@@ -191,10 +191,10 @@ fun Onboarding(onDone: () -> Unit) {
 }
 
 @Composable
-private fun DayStep(emoji: String, title: String, text: String) {
+private fun DayStep(icon: Glyph, title: String, text: String) {
     val p = palette
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Box(Modifier.size(44.dp).clip(CircleShape).background(p.surface), contentAlignment = Alignment.Center) { Text(emoji, fontSize = 20.sp) }
+        Box(Modifier.size(44.dp).clip(CircleShape).background(p.surface), contentAlignment = Alignment.Center) { GlyphIcon(icon, p.brand, 20.dp) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(text, style = MaterialTheme.typography.bodyMedium, color = p.muted)
