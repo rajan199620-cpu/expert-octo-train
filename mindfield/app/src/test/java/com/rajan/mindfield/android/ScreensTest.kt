@@ -800,10 +800,7 @@ class ScreensTest {
         launch()
         tab("Journal")
         compose.onNodeWithText("Field journal").assertExists()
-        // The filters sit below the weekly review, lessons and "On this day". They're in a sideways
-        // row, so scroll the journal itself down to them (scrolling to the chip would move the row).
-        compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText("Used"))
-        compose.waitForIdle()
+        // The filters sit right under the header, above the weekly review, lessons and "On this day".
         compose.onNodeWithText("Used").assertIsDisplayed().performClick()
         compose.waitForIdle()
         compose.onNode(hasText("Used") and isOn()).assertExists()

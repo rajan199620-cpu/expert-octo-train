@@ -619,23 +619,7 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
                     }
                 }
             }
-            if (filter == null && q.isEmpty() && (Weekly.due(state, today) != null || Weekly.activePlan(state, today) != null)) {
-                item { WeeklyCard(state, today, nav) }
-            }
-            if (filter == null && q.isEmpty()) item { LessonsCard(state, nav) }
-            if (looks.isNotEmpty() && filter == null && q.isEmpty()) {
-                item {
-                    Panel(border = p.brand.copy(alpha = 0.35f)) {
-                        SectionLabel("On this day", Glyph.CLOCK, color = p.brand)
-                        looks.forEach { (label, e) ->
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("$label · ${Store.library[e.conceptId]?.title.orEmpty()}", style = MaterialTheme.typography.labelLarge, color = p.muted)
-                                Text("“${e.note}”", style = Quote.copy(fontSize = 16.sp))
-                            }
-                        }
-                    }
-                }
-            }
+            // Search and filters first: they're tools, and the cards below can make a long page.
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (all.size > 5) {
@@ -652,6 +636,23 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ChoiceChip("All", filter == null, p.brand) { filter = null }
                         Mode.entries.forEach { m -> ChoiceChip(m.short, filter == m, p.brand, icon = m.glyph) { filter = if (filter == m) null else m } }
+                    }
+                }
+            }
+            if (filter == null && q.isEmpty() && (Weekly.due(state, today) != null || Weekly.activePlan(state, today) != null)) {
+                item { WeeklyCard(state, today, nav) }
+            }
+            if (filter == null && q.isEmpty()) item { LessonsCard(state, nav) }
+            if (looks.isNotEmpty() && filter == null && q.isEmpty()) {
+                item {
+                    Panel(border = p.brand.copy(alpha = 0.35f)) {
+                        SectionLabel("On this day", Glyph.CLOCK, color = p.brand)
+                        looks.forEach { (label, e) ->
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("$label · ${Store.library[e.conceptId]?.title.orEmpty()}", style = MaterialTheme.typography.labelLarge, color = p.muted)
+                                Text("“${e.note}”", style = Quote.copy(fontSize = 16.sp))
+                            }
+                        }
                     }
                 }
             }

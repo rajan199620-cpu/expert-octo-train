@@ -221,8 +221,8 @@ Four tabs: Today, Guide, Journal and You. Icons are line drawings made in the ap
 - **Review** (over Today, from the stepper, the Guide or the app shortcut): spaced questions, the
   next seven days of reviews, and a "how well they're sticking" chart. A round in progress
   survives leaving it.
-- **Journal**: the weekly review card, My lessons, every field note, filters, search, "On this day" (a week,
-  a month, three and six months, a year ago), edit and delete.
+- **Journal**: search and filters at the top, then the weekly review card, My lessons, "On this
+  day" (a week, a month, three and six months, a year ago), and every field note to edit or delete.
 - **Weekly review** (over the Journal or Today): three short looks back and one if-then plan; a
   review left half-done is kept until you come back.
 - **You**: day count, streak, this week and all-time totals in one card, the month in review, how
