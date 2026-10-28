@@ -17,6 +17,13 @@ data class BlindSpot(
     val conceptId: String?,
     val conceptOthers: Int,
     val conceptSelf: Int,
+    /**
+     * Failing that, the area: each concept has its own day, so one concept is rarely spotted three
+     * times, while an area collects every concept in it.
+     */
+    val area: Category? = null,
+    val areaOthers: Int = 0,
+    val areaSelf: Int = 0,
 )
 
 /**
@@ -48,6 +55,8 @@ object Weekly {
     const val MIN_PERIOD_SIGHTINGS = 5
     /** Times a concept must be spotted in others before it's named as a blind spot. */
     const val MIN_CONCEPT_SPOTTED = 3
+    /** The same for an area, which gathers several concepts' sightings. */
+    const val MIN_AREA_SPOTTED = 4
     const val RECENT_DAYS = 28L
     /** An old note is brought back from about a month ago, and never from the last two weeks. */
     const val LOOK_BACK_DAYS = 28L
@@ -85,7 +94,7 @@ object Weekly {
     fun previousPlan(state: AppState, week: LocalDate): String? =
         state.reflections[week.minusWeeks(1)]?.plan?.takeIf { it.isNotBlank() }
 
-    fun blindSpot(state: AppState, today: LocalDate): BlindSpot? {
+    fun blindSpot(state: AppState, library: Library, today: LocalDate): BlindSpot? {
         val sightings = state.liveEntries.filter { (it.mode == Mode.SPOTTED || it.mode == Mode.MYSELF) && !it.day.isAfter(today) }
         val others = sightings.count { it.mode == Mode.SPOTTED }
         val self = sightings.size - others
@@ -94,15 +103,18 @@ object Weekly {
         fun percent(list: List<Entry>): Int? =
             if (list.size < MIN_PERIOD_SIGHTINGS) null else (list.count { it.mode == Mode.MYSELF } * 100.0 / list.size).roundToInt()
         val (recent, earlier) = sightings.partition { !it.day.isBefore(since) }
-        val byConcept = sightings.groupBy { it.conceptId }.mapValues { (_, l) -> l.count { it.mode == Mode.SPOTTED } to l.count { it.mode == Mode.MYSELF } }
-        // Never caught in yourself first, then the widest gap, then the most spotted.
-        val top = byConcept.entries
-            .filter { (_, c) -> c.first >= MIN_CONCEPT_SPOTTED && c.first > c.second * 2 }
-            .sortedWith(compareBy({ it.value.second != 0 }, { -(it.value.first - it.value.second) }, { -it.value.first }, { it.key }))
-            .firstOrNull()
+        fun <K : Comparable<K>> widest(groups: Map<K, List<Entry>>, min: Int): Pair<K, Pair<Int, Int>>? =
+            groups.mapValues { (_, l) -> l.count { it.mode == Mode.SPOTTED } to l.count { it.mode == Mode.MYSELF } }.entries
+                .filter { (_, c) -> c.first >= min && c.first > c.second * 2 }
+                // Never caught in yourself first, then the widest gap, then the most spotted.
+                .sortedWith(compareBy({ it.value.second != 0 }, { -(it.value.first - it.value.second) }, { -it.value.first }, { it.key }))
+                .firstOrNull()?.let { it.key to it.value }
+        val concept = widest(sightings.groupBy { it.conceptId }, MIN_CONCEPT_SPOTTED)
+        val area = if (concept != null) null else widest(sightings.mapNotNull { e -> library[e.conceptId]?.let { it.category to e } }.groupBy({ it.first }, { it.second }), MIN_AREA_SPOTTED)
         return BlindSpot(
             others, self, percent(recent), percent(earlier),
-            top?.key, top?.value?.first ?: 0, top?.value?.second ?: 0,
+            concept?.first, concept?.second?.first ?: 0, concept?.second?.second ?: 0,
+            area?.first, area?.second?.first ?: 0, area?.second?.second ?: 0,
         )
     }
 
@@ -129,11 +141,12 @@ object Weekly {
     /**
      * An older note to judge again: the one written closest to [LOOK_BACK_DAYS] ago (at least
      * [LOOK_BACK_MIN_DAYS] ago), the longer one on a tie, not one an earlier review brought back.
+     * Only sightings: a "not today" note has nothing in it to judge again.
      */
     fun lookBack(state: AppState, today: LocalDate): Entry? {
         val seen = state.reflections.values.mapNotNullTo(HashSet()) { it.noteId }
         return state.liveEntries
-            .filter { it.note.isNotBlank() && it.id !in seen && ChronoUnit.DAYS.between(it.day, today) >= LOOK_BACK_MIN_DAYS }
+            .filter { it.mode.isSighting && it.note.isNotBlank() && it.id !in seen && ChronoUnit.DAYS.between(it.day, today) >= LOOK_BACK_MIN_DAYS }
             .minWithOrNull(compareBy({ abs(ChronoUnit.DAYS.between(it.day, today) - LOOK_BACK_DAYS) }, { -it.note.length }, { it.id }))
     }
 }

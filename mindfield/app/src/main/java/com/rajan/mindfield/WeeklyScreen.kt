@@ -65,7 +65,7 @@ fun WeeklyScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Uni
         existing?.noteId?.let { id -> state.liveEntries.firstOrNull { it.id == id } } ?: Weekly.lookBack(state, today)
     }
     val moment = remember(state.entries, week) { Weekly.moment(state, week) }
-    val blind = remember(state.entries, today) { Weekly.blindSpot(state, today) }
+    val blind = remember(state.entries, today) { Weekly.blindSpot(state, Store.library, today) }
     val previous = Weekly.previousPlan(state, week)
     val looks = listOfNotNull(Look.BLIND_SPOT.takeIf { blind != null }, Look.AFTER_ACTION, Look.LOOK_BACK.takeIf { note != null })
 
@@ -154,6 +154,17 @@ private fun BlindSpotLook(b: BlindSpot, nav: Nav) {
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text("This week, when you see it in someone else, ask where you did the same.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+        }
+    } else if (b.area != null) {
+        val accent = b.area.accent(p.dark)
+        Panel(border = accent.copy(alpha = 0.5f)) {
+            SectionLabel("Look for it in you", Glyph.MIRROR, color = accent)
+            Text(b.area.label, style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Spotted in others ${times(b.areaOthers)} across this area, " + if (b.areaSelf == 0) "never caught in yourself." else "caught in yourself ${times(b.areaSelf)}.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text("This week, when you see one of these in someone else, ask where you did the same.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
         }
     }
 }

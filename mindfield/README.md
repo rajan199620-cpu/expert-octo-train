@@ -157,7 +157,8 @@ what the journal already holds, so the only writing is one sentence a week.
   card; the Sunday evening reminder brings a notification.
 - **1. Your blind spot:** how often you spotted concepts in others against caught them in
   yourself, the last four weeks against before, and the concept you've spotted most in others
-  and never in yourself. People see bias in others far more readily than in themselves (Pronin,
+  and never in yourself (or, since each concept has only its own day, the area where that's
+  true). People see bias in others far more readily than in themselves (Pronin,
   Lin & Ross 2002; Scopelliti et al. 2015). Shown only after 10 sightings, as fewer is noise, and
   framed as where to look, not as a score: you meet more people than yourself, so the gap is
   never zero.
@@ -166,8 +167,8 @@ what the journal already holds, so the only writing is one sentence a week.
   it?", and one if-then plan for next week. The question is "what happened, and what will you
   do?", never "why?": abstract "why" thinking feeds rumination, concrete thinking doesn't
   (Watkins 2008). If-then plans are the kind people carry out (Gollwitzer & Sheeran 2006).
-- **3. Looking back:** a note from about a month ago (never the last two weeks, never one
-  already brought back): still true, or do you see it differently? Your own words from then,
+- **3. Looking back:** a sighting's note from about a month ago (never the last two weeks, never
+  one already brought back): still true, or do you see it differently? Your own words from then,
   where memory would be rewritten by hindsight.
 - **Then:** the plan sits under today's path all week and on the Journal card; next Sunday asks
   whether you kept it. Reviews sync with Google and go into backups and the journal export.

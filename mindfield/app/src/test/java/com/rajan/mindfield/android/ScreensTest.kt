@@ -497,7 +497,7 @@ class ScreensTest {
         Store.reflect(week.minusWeeks(1), "When the stand-up starts, I'll listen before I answer.", null, null, null)
         val before = Store.state.value
         assertEquals(week, Weekly.due(before, sunday))
-        assertNotNull("five weeks of use is enough for a blind spot", Weekly.blindSpot(before, sunday))
+        assertNotNull("five weeks of use is enough for a blind spot", Weekly.blindSpot(before, Store.library, sunday))
         val old = Weekly.lookBack(before, sunday)
         assertNotNull(old)
         launch()
