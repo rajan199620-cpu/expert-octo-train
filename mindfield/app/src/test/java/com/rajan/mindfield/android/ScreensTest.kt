@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -799,9 +800,13 @@ class ScreensTest {
         launch()
         tab("Journal")
         compose.onNodeWithText("Field journal").assertExists()
-        // The filters sit below the weekly review, lessons and "On this day": scroll to them first.
-        scrollTo("Used")
-        compose.onNodeWithText("Used").performClick()
+        // The filters sit below the weekly review, lessons and "On this day". They're in a sideways
+        // row, so scroll the journal itself down to them (scrolling to the chip would move the row).
+        compose.onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText("Used"))
+        compose.waitForIdle()
+        compose.onNodeWithText("Used").assertIsDisplayed().performClick()
+        compose.waitForIdle()
+        compose.onNode(hasText("Used") and isOn()).assertExists()
         compose.waitForIdle()
         shot("44-journal-3000")
         scrollTo("Show older notes", substring = true)
