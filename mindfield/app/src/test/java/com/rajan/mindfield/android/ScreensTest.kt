@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -28,7 +29,11 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import com.rajan.mindfield.core.Curriculum
+import com.rajan.mindfield.core.Fsrs
 import com.rajan.mindfield.core.Kept
+import com.rajan.mindfield.core.Lessons
+import com.rajan.mindfield.core.Rating
+import com.rajan.mindfield.core.Spacing
 import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.ThemeMode
 import com.rajan.mindfield.core.Verdict
@@ -586,6 +591,101 @@ class ScreensTest {
         compose.waitForIdle()
         compose.onNodeWithText("This one has 1.", substring = true).assertExists()
         shot("45-weekly-not-yet")
+    }
+
+    private fun field(i: Int) = compose.onAllNodes(hasSetTextAction())[i]
+
+    private fun openLessons() {
+        tab("Journal")
+        scrollTo("MY LESSONS")
+        compose.onNodeWithText("MY LESSONS").performClick()
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `my lessons - write one, edit it, recall it in review the next day, delete it`() {
+        val today = LocalDate.now(Seed.zone)
+        Store.settings { it.copy(onboarded = true) }
+        Seed.at(today, 10)
+        val concept = Store.todayConcept()
+        launch()
+        openLessons()
+        compose.onNodeWithText("No lessons yet.").assertExists()
+        shot("50-lessons-empty")
+        tap("Add a lesson")
+        field(0).performTextInput("Agreed to a deadline in the meeting, then couldn't meet it.")
+        field(1).performTextInput("Ask for a day to check before committing.")
+        compose.waitForIdle()
+        shot("51-lesson-editor")
+        tap("Save lesson")
+        val saved = Store.state.value.liveLessons.single()
+        assertEquals("Ask for a day to check before committing.", saved.lesson)
+        assertEquals(today, saved.day)
+        compose.onNodeWithText("next review tomorrow", substring = true).assertExists()
+        // Edit: same lesson, new words, schedule untouched.
+        tap("“Ask for a day to check before committing.”")
+        field(1).performTextReplacement("Ask for a day to check my calendar before committing.")
+        tap("Save lesson")
+        assertEquals(saved.id, Store.state.value.liveLessons.single().id)
+        assertEquals("Ask for a day to check my calendar before committing.", Store.state.value.liveLessons.single().lesson)
+        shot("52-lessons-list")
+        back()
+        // In the Journal, the card shows it.
+        compose.onNodeWithText("1 lesson").assertExists()
+
+        // Tomorrow, with today's concept already reviewed, the lesson is the one card due.
+        Store.grade(concept.id, true)
+        scenario!!.close()
+        Seed.at(today.plusDays(1), 10)
+        launch()
+        openReview()
+        compose.onNodeWithText("And recall a lesson of your own", substring = true).assertExists()
+        tap("Start review")
+        compose.onNodeWithText("Agreed to a deadline in the meeting, then couldn't meet it.").assertExists()
+        compose.onNodeWithText("“Ask for a day to check my calendar before committing.”").assertDoesNotExist()
+        shot("53-lesson-review")
+        tap("Show my lesson")
+        compose.onNodeWithText("“Ask for a day to check my calendar before committing.”").assertExists()
+        shot("54-lesson-revealed")
+        tap("Remembered")
+        compose.onNodeWithText("Review done").assertExists()
+        val card = Store.state.value.cards.getValue(Lessons.cardId(saved.id))
+        assertEquals(Fsrs.W[2], card.stability!!, 1e-9)
+        assertEquals(today.plusDays(4), card.due)
+        tap("Done")
+
+        // Delete takes two taps, and takes the lesson out of review.
+        openLessons()
+        tap("“Ask for a day to check my calendar before committing.”")
+        tap("Delete")
+        assertEquals(1, Store.state.value.liveLessons.size)
+        tap("Tap again to delete")
+        assertTrue(Store.state.value.liveLessons.isEmpty())
+        compose.onNodeWithText("No lessons yet.").assertExists()
+        assertTrue(Spacing.cards(Store.state.value, Store.library).none { Lessons.isLesson(it.conceptId) })
+    }
+
+    @Test
+    fun `my lessons - a half-written lesson survives turning the phone, and a forgotten one returns tomorrow`() {
+        val today = LocalDate.now(Seed.zone)
+        Store.settings { it.copy(onboarded = true) }
+        Seed.at(today, 10)
+        Store.todayConcept()
+        launch()
+        openLessons()
+        tap("Add a lesson")
+        field(0).performTextInput("Replied to an angry email straight away.")
+        compose.waitForIdle()
+        scenario!!.recreate()
+        compose.waitForIdle()
+        compose.onNodeWithText("Replied to an angry email straight away.").assertExists()
+        field(1).performTextInput("Draft it, then send it after lunch.")
+        tap("Save lesson")
+        val lesson = Store.state.value.liveLessons.single()
+        // Reviewed tomorrow and forgotten: it comes back the day after, not weeks later.
+        Seed.at(today.plusDays(1), 9)
+        Store.grade(Lessons.cardId(lesson.id), Rating.AGAIN)
+        assertEquals(today.plusDays(2), Store.state.value.cards.getValue(Lessons.cardId(lesson.id)).due)
     }
 
     @Test

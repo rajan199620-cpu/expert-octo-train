@@ -106,7 +106,7 @@ class CurriculumTest {
 
 class SpacingTest {
     @Test
-    fun `right answers stretch the gap and a miss starts again`() {
+    fun `right answers stretch the gap and a miss brings it back tomorrow`() {
         var c = Spacing.newCard("anchoring", day0)
         assertEquals(day0.plusDays(1), c.due)
         var today = c.due
@@ -116,10 +116,14 @@ class SpacingTest {
             gaps += java.time.temporal.ChronoUnit.DAYS.between(today, c.due)
             today = c.due
         }
-        assertEquals(listOf(3L, 7L, 16L, 35L, 90L, 90L, 90L), gaps)
+        // FSRS-5 with its default parameters: 3 days, then about 11, 35, ... each gap longer than the last.
+        assertEquals(3L, gaps[0])
+        assertTrue(gaps.toString(), gaps[1] in 9L..13L && gaps[2] in 30L..40L)
+        assertTrue(gaps.toString(), gaps.zipWithNext().all { (a, b) -> b > a })
+        val before = c.stability!!
         c = Spacing.grade(c, false, today)
-        assertEquals(0, c.box)
         assertEquals(today.plusDays(1), c.due)
+        assertTrue(c.stability!! < before)
         assertEquals(7, c.right)
         assertEquals(1, c.wrong)
     }
@@ -313,11 +317,19 @@ class SyncTest {
         }
         ids.take(rnd.nextInt(0, ids.size + 1)).forEach { id ->
             s = s.copy(
-                cards = s.cards + (id to Card(id, rnd.nextInt(0, 6), day0.plusDays(rnd.nextLong(0, 90)), day0.plusDays(rnd.nextLong(-5, 5)), rnd.nextInt(0, 3), rnd.nextInt(0, 3))),
+                cards = s.cards + (id to Card(id, rnd.nextInt(0, 6), day0.plusDays(rnd.nextLong(0, 90)), day0.plusDays(rnd.nextLong(-5, 5)), rnd.nextInt(0, 3), rnd.nextInt(0, 3), rnd.nextDouble(0.1, 400.0).takeIf { rnd.nextBoolean() }, rnd.nextDouble(1.0, 10.0).takeIf { rnd.nextBoolean() })),
                 guesses = s.guesses + (id to Guess(rnd.nextInt(0, 3), rnd.nextLong(0, 4))),
             )
         }
         repeat(rnd.nextInt(0, 4)) { s = s.copy(plans = s.plans + (day0.plusDays(rnd.nextLong(0, 5)) to Plan("$tag plan", rnd.nextLong(0, 4)))) }
+        repeat(rnd.nextInt(0, 5)) { i ->
+            val id = "l${rnd.nextInt(0, 6)}"
+            s = s.upsert(Lesson(id, "$tag situation $i ✨\n\"q\"", "$tag lesson $i", day0.plusDays(rnd.nextLong(0, 30)), rnd.nextLong(0, 5), rnd.nextLong(0, 5), rnd.nextInt(5) == 0))
+            if (rnd.nextBoolean()) {
+                val c = Spacing.grade(Spacing.newCard(Lessons.cardId(id), day0), Rating.entries.random(rnd), day0.plusDays(rnd.nextLong(1, 4)))
+                s = s.copy(cards = s.cards + (c.conceptId to c))
+            }
+        }
         repeat(rnd.nextInt(0, 4)) {
             val r = Reflection("$tag plan", Kept.entries.random(rnd).takeIf { rnd.nextBoolean() }, "e${rnd.nextInt(0, 12)}".takeIf { rnd.nextBoolean() }, Verdict.entries.random(rnd).takeIf { rnd.nextBoolean() }, rnd.nextLong(0, 4))
             s = s.copy(reflections = s.reflections + (Progress.weekOf(day0.plusWeeks(rnd.nextLong(0, 3))) to r))
@@ -434,6 +446,7 @@ class SyncTest {
             assertEquals(s.entries.sortedBy { it.id }, back.entries.sortedBy { it.id })
             assertEquals(s.cards, back.cards)
             assertEquals(s.reflections, back.reflections)
+            assertEquals(s.lessons.sortedBy { it.id }, back.lessons.sortedBy { it.id })
             assertEquals(s.guesses, back.guesses)
             assertEquals(s.plans, back.plans)
         }

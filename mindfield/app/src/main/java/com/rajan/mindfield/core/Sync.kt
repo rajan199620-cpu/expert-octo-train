@@ -24,7 +24,7 @@ object Sync {
             minOf(a, b, compareBy<Assignment>({ !it.engaged }, { it.assignedAt }, { it.conceptId }))
         }
         val cards = pickEach(local.cards, other.cards) { a, b ->
-            maxOf(a, b, compareBy<Card>({ it.lastReviewed ?: LocalDate.MIN }, { it.right + it.wrong }, { it.box }, { it.due }, { it.right }))
+            maxOf(a, b, compareBy<Card>({ it.lastReviewed ?: LocalDate.MIN }, { it.right + it.wrong }, { it.box }, { it.due }, { it.right }, { it.stability ?: -1.0 }, { it.difficulty ?: -1.0 }))
         }
         val guesses = pickEach(local.guesses, other.guesses) { a, b ->
             minOf(a, b, compareBy<Guess>({ it.at }, { it.choice }))
@@ -40,7 +40,10 @@ object Sync {
         } else {
             local.settings
         }
-        return AppState(assignments, entries, cards, guesses, plans, settings, reflections)
+        val lessons = (local.lessons + other.lessons).groupBy { it.id }.values.map { copies ->
+            copies.maxWith(compareBy<Lesson>({ it.updatedAt }, { it.deleted }, { it.toString() }))
+        }.sortedWith(compareBy({ it.day }, { it.createdAt }, { it.id }))
+        return AppState(assignments, entries, cards, guesses, plans, settings, reflections, lessons)
     }
 
     /**
@@ -139,6 +142,10 @@ object Codec {
                         .put("last", c.lastReviewed?.toString() ?: JSONObject.NULL)
                         .put("right", c.right)
                         .put("wrong", c.wrong)
+                        .apply {
+                            c.stability?.let { put("stability", it) }
+                            c.difficulty?.let { put("difficulty", it) }
+                        }
                 },
             ),
         )
@@ -169,6 +176,21 @@ object Codec {
                         .put("note", r.noteId ?: JSONObject.NULL)
                         .put("verdict", r.verdict?.key ?: JSONObject.NULL)
                         .put("updated", r.updatedAt)
+                },
+            ),
+        )
+        root.put(
+            "lessons",
+            JSONArray(
+                state.lessons.map { l ->
+                    JSONObject()
+                        .put("id", l.id)
+                        .put("day", l.day.toString())
+                        .put("situation", l.situation)
+                        .put("lesson", l.lesson)
+                        .put("created", l.createdAt)
+                        .put("updated", l.updatedAt)
+                        .put("deleted", l.deleted)
                 },
             ),
         )
@@ -222,6 +244,9 @@ object Codec {
                 lastReviewed = o.day("last"),
                 right = o.optInt("right").coerceAtLeast(0),
                 wrong = o.optInt("wrong").coerceAtLeast(0),
+                // A damaged memory state is dropped; the card carries on from its gap.
+                stability = o.positive("stability"),
+                difficulty = o.positive("difficulty")?.coerceIn(1.0, 10.0),
             )
         }.associateBy { it.conceptId }
         val guesses = root.optJSONArray("guesses").objects().mapNotNull { o ->
@@ -243,8 +268,22 @@ object Codec {
                 updatedAt = o.optLong("updated"),
             )
         }.groupBy({ it.first }, { it.second }).mapValues { (_, all) -> all.maxWith(compareBy<Reflection>({ it.updatedAt }, { it.toString() })) }
-        return AppState(assignments, entries, cards, guesses, plans, settings, reflections)
+        val lessons = root.optJSONArray("lessons").objects().mapNotNull { o ->
+            Lesson(
+                id = o.optString("id").ifBlank { return@mapNotNull null },
+                situation = o.optString("situation"),
+                lesson = o.optString("lesson"),
+                day = o.day("day") ?: return@mapNotNull null,
+                createdAt = o.optLong("created"),
+                updatedAt = o.optLong("updated"),
+                deleted = o.optBoolean("deleted"),
+            )
+        }.groupBy { it.id }.values.map { it.maxBy { l -> l.updatedAt } }
+        return AppState(assignments, entries, cards, guesses, plans, settings, reflections, lessons)
     }
+
+    private fun JSONObject.positive(key: String): Double? =
+        if (!has(key) || isNull(key)) null else optDouble(key).takeIf { it.isFinite() && it > 0 }
 
     private fun JSONArray?.objects(): List<JSONObject> =
         if (this == null) emptyList() else (0 until length()).mapNotNull { optJSONObject(it) }

@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,9 +69,11 @@ import com.rajan.mindfield.core.AppState
 import com.rajan.mindfield.core.Card
 import com.rajan.mindfield.core.Category
 import com.rajan.mindfield.core.Concept
+import com.rajan.mindfield.core.Lessons
 import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.Question
 import com.rajan.mindfield.core.Quiz
+import com.rajan.mindfield.core.Rating
 import com.rajan.mindfield.core.Spacing
 import com.rajan.mindfield.core.Stats
 import com.rajan.mindfield.core.Texts
@@ -313,7 +316,10 @@ private val RoundSaver = listSaver<Round?, Any>(
     },
 )
 
-/** Spaced retrieval: each concept comes back after 1, 3, 7, 16, 35 and 90 days. */
+/**
+ * Spaced retrieval: concepts you've met and your own lessons, each back the day after, then when
+ * FSRS predicts your recall has fallen to 90% (see [com.rajan.mindfield.core.Fsrs]).
+ */
 @Composable
 fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Unit) {
     val p = palette
@@ -322,6 +328,7 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Uni
     var index by rememberSaveable { mutableIntStateOf(0) }
     var answered by rememberSaveable { mutableStateOf<Int?>(null) }
     var right by rememberSaveable { mutableIntStateOf(0) }
+    var revealed by rememberSaveable { mutableStateOf(false) }
     val current = round
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
@@ -331,15 +338,20 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Uni
             val due = Spacing.due(state, library, today)
             val cards = Spacing.cards(state, library)
             BackRow(onClose)
-            Headline("Review", "Quick questions on concepts you've met, timed to come back just as you'd start to forget.")
+            Headline("Review", "Concepts you've met and your own lessons, each timed to come back just as you'd start to forget.")
             if (due.isNotEmpty()) {
                 Panel {
                     SectionLabel("Ready now", Glyph.CARDS)
                     Text(if (due.size == 1) "1 card to review" else "${due.size} cards to review", style = MaterialTheme.typography.headlineSmall)
-                    Text("Name the concept from an everyday story, or recall what the study found.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+                    val lessonsDue = due.count { Lessons.isLesson(it.conceptId) }
+                    Text(
+                        "Name the concept from an everyday story, or recall what the study found." +
+                            if (lessonsDue > 0) " And recall ${if (lessonsDue == 1) "a lesson" else "$lessonsDue lessons"} of your own from what happened." else "",
+                        style = MaterialTheme.typography.bodyMedium, color = p.muted,
+                    )
                     PrimaryButton("Start review", p.brand) {
                         round = Round(due, practice = false, seed = today.toEpochDay() * 31)
-                        index = 0; answered = null; right = 0
+                        index = 0; answered = null; right = 0; revealed = false
                     }
                 }
             } else {
@@ -359,7 +371,7 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Uni
                             // A different handful each time, not the same five all day.
                             val seed = System.currentTimeMillis()
                             round = Round(cards.shuffled(kotlin.random.Random(seed)).take(5), practice = true, seed = seed)
-                            index = 0; answered = null; right = 0
+                            index = 0; answered = null; right = 0; revealed = false
                         }
                     }
                 }
@@ -385,19 +397,32 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Uni
             }
         } else {
             val card = current.cards[index]
-            val question = remember(card.conceptId, index, current) {
-                Quiz.question(card, library, state.unlocked.keys, seed = current.seed + index)
+            val lesson = Lessons.of(state, card.conceptId)
+            val concept = library[card.conceptId]
+            when {
+                lesson != null -> LessonQuestion(lesson, index, current.cards.size, revealed, onReveal = { revealed = true }, onRate = { rating ->
+                    if (rating != Rating.AGAIN) right++
+                    if (!current.practice) Store.grade(card.conceptId, rating)
+                    index++
+                    revealed = false
+                }, onQuit = { round = null })
+                concept != null -> {
+                    val question = remember(card.conceptId, index, current) {
+                        Quiz.question(card, library, state.unlocked.keys, seed = current.seed + index)
+                    }
+                    QuestionView(question, concept, index, current.cards.size, answered, onAnswer = { choice ->
+                        answered = choice
+                        val correct = choice == question.answer
+                        if (correct) right++
+                        if (!current.practice) Store.grade(card.conceptId, correct)
+                    }, onNext = {
+                        index++
+                        answered = null
+                    }, onOpen = { nav.openConcept(concept.id) }, onQuit = { round = null })
+                }
+                // A lesson deleted (here or on another phone) since the round began: skip it.
+                else -> LaunchedEffect(index) { index++; answered = null; revealed = false }
             }
-            val concept = library[card.conceptId]!!
-            QuestionView(question, concept, index, current.cards.size, answered, onAnswer = { choice ->
-                answered = choice
-                val correct = choice == question.answer
-                if (correct) right++
-                if (!current.practice) Store.grade(card.conceptId, correct)
-            }, onNext = {
-                index++
-                answered = null
-            }, onOpen = { nav.openConcept(concept.id) }, onQuit = { round = null })
         }
     }
 }
@@ -417,15 +442,7 @@ private fun QuestionView(
     val p = palette
     val view = LocalView.current
     val accent = if (answered == null) p.brand else concept.category.accent(p.dark)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("${index + 1} of $total", style = MaterialTheme.typography.labelLarge, color = p.muted, modifier = Modifier.weight(1f))
-        Box(
-            Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "End this round", onClick = onQuit),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("End", style = MaterialTheme.typography.labelLarge, color = p.muted, modifier = Modifier.padding(8.dp))
-        }
-    }
+    RoundHeader(index, total, onQuit)
     ProgressBar((index + if (answered != null) 1 else 0) / total.toFloat(), p.brand)
     Panel {
         SectionLabel(if (q.kind == Question.Kind.NAME_IT) "Name the concept" else "Remember the study", if (q.kind == Question.Kind.NAME_IT) Glyph.SEARCH else Glyph.FLASK, color = accent)
@@ -455,6 +472,21 @@ private fun QuestionView(
             Text("Open the concept", style = MaterialTheme.typography.labelLarge, color = concept.category.accent(p.dark), modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpen).padding(vertical = 4.dp))
         }
         PrimaryButton(if (index + 1 == total) "Finish" else "Next", p.brand, onClick = onNext)
+    }
+}
+
+/** "3 of 10", and a way to end the round. */
+@Composable
+fun RoundHeader(index: Int, total: Int, onQuit: () -> Unit) {
+    val p = palette
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("${index + 1} of $total", style = MaterialTheme.typography.labelLarge, color = p.muted, modifier = Modifier.weight(1f))
+        Box(
+            Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "End this round", onClick = onQuit),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("End", style = MaterialTheme.typography.labelLarge, color = p.muted, modifier = Modifier.padding(8.dp))
+        }
     }
 }
 
@@ -590,6 +622,7 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
             if (filter == null && q.isEmpty() && (Weekly.due(state, today) != null || Weekly.activePlan(state, today) != null)) {
                 item { WeeklyCard(state, today, nav) }
             }
+            if (filter == null && q.isEmpty()) item { LessonsCard(state, nav) }
             if (looks.isNotEmpty() && filter == null && q.isEmpty()) {
                 item {
                     Panel(border = p.brand.copy(alpha = 0.35f)) {

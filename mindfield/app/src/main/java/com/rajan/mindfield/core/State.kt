@@ -124,8 +124,12 @@ data class AppState(
     val settings: Settings = Settings(),
     /** Weekly reviews, by the Monday of the week each looks back on. */
     val reflections: Map<LocalDate, Reflection> = emptyMap(),
+    /** Your own lessons (see [Lesson]), deleted ones kept as tombstones. */
+    val lessons: List<Lesson> = emptyList(),
 ) {
     val liveEntries: List<Entry> by lazy { entries.filter { !it.deleted } }
+
+    val liveLessons: List<Lesson> by lazy { lessons.filter { !it.deleted } }
 
     /** Concepts you have been shown, with the first day each appeared. */
     val unlocked: Map<String, LocalDate> by lazy {
@@ -142,10 +146,10 @@ data class AppState(
     val isEmpty: Boolean get() = assignments.isEmpty() && entries.isEmpty() && guesses.isEmpty()
 
     /**
-     * Nothing made here yet: no notes, predictions, plans, reviews or weekly reviews. A new phone that has only been
+     * Nothing made here yet: no notes, predictions, plans, reviews, weekly reviews or lessons. A new phone that has only been
      * shown a concept or two is fresh; those days are placeholders a restored backup should replace.
      */
-    val isFresh: Boolean get() = entries.isEmpty() && guesses.isEmpty() && plans.isEmpty() && cards.isEmpty() && reflections.isEmpty()
+    val isFresh: Boolean get() = entries.isEmpty() && guesses.isEmpty() && plans.isEmpty() && cards.isEmpty() && reflections.isEmpty() && lessons.isEmpty()
 
     fun entriesFor(conceptId: String) = liveEntries.filter { it.conceptId == conceptId }
 
@@ -166,6 +170,11 @@ data class AppState(
         val a = assignments[day] ?: return this
         if (a.engaged || (conceptId != null && a.conceptId != conceptId)) return this
         return copy(assignments = assignments + (day to a.copy(engaged = true)))
+    }
+
+    fun upsert(lesson: Lesson): AppState {
+        val i = lessons.indexOfFirst { it.id == lesson.id }
+        return copy(lessons = if (i < 0) lessons + lesson else lessons.toMutableList().also { it[i] = lesson })
     }
 
     fun upsert(entry: Entry): AppState {

@@ -16,7 +16,7 @@ are in [`docs/screenshots`](docs/screenshots).
 | Evening notification | **Field report** in one tap from the notification: 👀 Spotted it · 🙋 Caught myself · 🎯 Used it. Then a reply box to add a line without opening the app | Low-friction logging (Daylio-style); linking ideas to your own life (self-reference effect) |
 | Optional, mid-day | A **surprise spot check** at a random time between noon and 6 pm | BeReal-style unpredictability keeps attention fresh; off by default (max 2 nudges/day otherwise) |
 | Sunday | **Weekly review**, five minutes, one sentence to write: your blind spot, one moment turned into an if-then plan for next week, and an old note judged again | Reflecting on your own experience beats more practice once there's experience to reflect on (Di Stefano et al., HBS 14-093); see "The weekly review" below |
-| Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", returning after 1, 3, 7, 16, 35, 90 days | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
+| Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", and your own lessons, each back the day after, then when the FSRS scheduler predicts recall has fallen to 90% (about 3, 11, 35, 100 days while you keep remembering) | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
 
 ## The library: 204 concepts, honestly labelled
 
@@ -176,6 +176,34 @@ what the journal already holds, so the only writing is one sentence a week.
   exercises barely beat neutral writing (Cregg & Cheavens 2021); brief expressive writing showed
   no effect on depression in a meta-analysis (Reinhold et al. 2018).
 
+## My lessons, and a smarter scheduler (October 2026)
+
+**My lessons** (Journal → My lessons): your own experiences and what you took from them.
+
+- Each lesson is two short fields in your own words: *what happened* and *the lesson*. Writing it
+  yourself makes it stick better than reading someone else's version (the generation effect:
+  Slamecka & Graf 1978; Bertsch et al. 2007).
+- Every lesson becomes a review card. Review shows what happened; you recall the lesson, then
+  check and rate yourself: Remembered, Hard to recall or Forgot. Recalling it from the situation it
+  came from is practice at using it there.
+- Lessons stay on your phone and in your Google backup and backup file (the repository and APK are
+  public, so nothing personal is built into the app). Edit any time; deleting takes two taps.
+  They're in the journal export too.
+
+**FSRS-5 scheduling** replaces the fixed 1, 3, 7, 16, 35, 90-day ladder, for concepts and lessons:
+
+- FSRS is the scheduler Anki uses (Ye, Su & Cao, KDD 2022; open-spaced-repetition). It tracks each
+  card's *stability* (days until recall drops to 90%) and *difficulty*, and brings the card back
+  when recall is predicted to reach 90%. On the open srs-benchmark of Anki users' reviews it
+  predicts recall better than fixed-interval schedules such as SM-2.
+- Remembered cards come back after about 3, 11, 35 and 100 days; hard ones sooner; a forgotten one
+  the next day. Anki relearns a lapse within minutes; Mindfield reviews once a day, so a lapse
+  always comes back tomorrow before it's spaced out again.
+- Cards from the old schedule carry on from the gap they had reached; nothing resets.
+- Limits: the parameters are FSRS-5's published defaults, not fitted to you (Anki can fit them
+  after hundreds of reviews). Multiple-choice questions can be guessed, so "right" means a bit less
+  than free recall; your lessons are free recall.
+
 ## Screens
 
 Four tabs: Today, Guide, Journal and You. Icons are line drawings made in the app, not emoji.
@@ -193,7 +221,7 @@ Four tabs: Today, Guide, Journal and You. Icons are line drawings made in the ap
 - **Review** (over Today, from the stepper, the Guide or the app shortcut): spaced questions, the
   next seven days of reviews, and a "how well they're sticking" chart. A round in progress
   survives leaving it.
-- **Journal**: the weekly review card, every field note, filters, search, "On this day" (a week,
+- **Journal**: the weekly review card, My lessons, every field note, filters, search, "On this day" (a week,
   a month, three and six months, a year ago), edit and delete.
 - **Weekly review** (over the Journal or Today): three short looks back and one if-then plan; a
   review left half-done is kept until you come back.

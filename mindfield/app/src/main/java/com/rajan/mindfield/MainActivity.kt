@@ -76,8 +76,8 @@ import java.time.LocalDate
 /** Four tabs. Review opens over the tab you're on, from Today's path or the Guide: a minute's task, not a place. */
 enum class Tab(val label: String) { TODAY("Today"), GUIDE("Guide"), JOURNAL("Journal"), ME("You") }
 
-/** Screens shown over the tabs: the review round, and the weekly review. */
-internal enum class Overlay { REVIEW, WEEKLY }
+/** Screens shown over the tabs: the review round, the weekly review and your lessons. */
+internal enum class Overlay { REVIEW, WEEKLY, LESSONS }
 
 /** Opens the field-report sheet: for a concept, optionally pre-set to a mode, or editing an entry. */
 data class LogRequest(val conceptId: String, val mode: Mode? = null, val edit: Entry? = null)
@@ -93,6 +93,8 @@ class Nav(
     val review: () -> Unit = {},
     /** Opens the weekly review. */
     val weekly: () -> Unit = {},
+    /** Opens your lessons. */
+    val lessons: () -> Unit = {},
 )
 
 class MainActivity : ComponentActivity() {
@@ -171,6 +173,7 @@ class MainActivity : ComponentActivity() {
                             settings = { tab = Tab.ME; concept = null; settingsSheet = it; overlay = null },
                             review = { concept = null; overlay = Overlay.REVIEW },
                             weekly = { concept = null; overlay = Overlay.WEEKLY },
+                            lessons = { concept = null; overlay = Overlay.LESSONS },
                         ),
                         onCloseConcept = { concept = null },
                         onCloseOverlay = { overlay = null },
@@ -326,6 +329,7 @@ private fun Root(
                             is String -> Store.library[target]?.let { ConceptScreen(it, state, today, nav, onBack = onCloseConcept) }
                             Overlay.REVIEW -> ReviewScreen(state, today, nav, onClose = onCloseOverlay)
                             Overlay.WEEKLY -> WeeklyScreen(state, today, nav, onClose = onCloseOverlay)
+                            Overlay.LESSONS -> LessonsScreen(state, today, onClose = onCloseOverlay)
                             Tab.TODAY -> TodayScreen(state, today, nav)
                             Tab.GUIDE -> GuideScreen(state, today, nav)
                             Tab.JOURNAL -> JournalScreen(state, today, nav)
@@ -358,6 +362,7 @@ private fun screenKey(screen: Any): String = when (screen) {
     is Tab -> screen.name
     Overlay.REVIEW -> "review"
     Overlay.WEEKLY -> "weekly"
+    Overlay.LESSONS -> "lessons"
     else -> "concept:$screen"
 }
 

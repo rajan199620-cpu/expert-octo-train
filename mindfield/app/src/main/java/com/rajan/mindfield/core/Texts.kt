@@ -57,6 +57,15 @@ object Texts {
             if (e.note.isNotBlank()) append("\n").append(e.note.lines().joinToString("\n") { "  $it" })
             append("\n")
         }
+        val lessons = state.liveLessons.sortedWith(compareByDescending<Lesson> { it.day }.thenBy { it.createdAt })
+        if (lessons.isNotEmpty()) {
+            append("\n# My lessons\n")
+            for (l in lessons) {
+                append("\n## ").append(l.day.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH))).append("\n")
+                if (l.situation.isNotBlank()) append("What happened: ").append(l.situation).append("\n")
+                append("Lesson: ").append(l.lesson).append("\n")
+            }
+        }
         val reviews = state.reflections.entries.filter { it.value.plan.isNotBlank() || it.value.verdict != null || it.value.kept != null }.sortedByDescending { it.key }
         if (reviews.isNotEmpty()) {
             append("\n# Weekly reviews\n")

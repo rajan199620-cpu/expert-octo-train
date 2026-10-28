@@ -8,10 +8,13 @@ import com.rajan.mindfield.core.Curriculum
 import com.rajan.mindfield.core.Entry
 import com.rajan.mindfield.core.Guess
 import com.rajan.mindfield.core.Kept
+import com.rajan.mindfield.core.Lesson
+import com.rajan.mindfield.core.Lessons
 import com.rajan.mindfield.core.Library
 import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.Outcome
 import com.rajan.mindfield.core.Plan
+import com.rajan.mindfield.core.Rating
 import com.rajan.mindfield.core.Reflection
 import com.rajan.mindfield.core.Settings
 import com.rajan.mindfield.core.Spacing
@@ -186,10 +189,36 @@ object Store {
         else s.copy(reflections = s.reflections + (week to next.copy(updatedAt = Versions.next(old?.updatedAt, millis()))))
     }
 
-    fun grade(conceptId: String, correct: Boolean) = update { s ->
-        val unlockedOn = s.unlocked[conceptId] ?: return@update s
-        val card = s.cards[conceptId] ?: Spacing.newCard(conceptId, unlockedOn)
-        s.copy(cards = s.cards + (conceptId to Spacing.grade(card, correct, today())))
+    /** Records a review of a card (a concept's or a lesson's), moving it along its schedule. */
+    fun grade(cardId: String, rating: Rating) = update { s ->
+        val start = s.unlocked[cardId] ?: Lessons.of(s, cardId)?.day ?: return@update s
+        val card = s.cards[cardId] ?: Spacing.newCard(cardId, start)
+        s.copy(cards = s.cards + (cardId to Spacing.grade(card, rating, today())))
+    }
+
+    fun grade(conceptId: String, correct: Boolean) = grade(conceptId, if (correct) Rating.GOOD else Rating.AGAIN)
+
+    /** Adds a lesson of your own; its first review is tomorrow. */
+    fun addLesson(situation: String, lesson: String): Lesson? {
+        val text = lesson.trim()
+        if (text.isEmpty()) return null
+        val now = millis()
+        val l = Lesson(UUID.randomUUID().toString(), situation.trim(), text, today(), now, now)
+        update { it.upsert(l) }
+        return l
+    }
+
+    /** Edits a lesson's words; its review schedule carries on. A lesson deleted meanwhile stays deleted. */
+    fun editLesson(id: String, situation: String, lesson: String) = update { s ->
+        val l = s.lessons.firstOrNull { it.id == id } ?: return@update s
+        val text = lesson.trim()
+        if (l.deleted || text.isEmpty() || (l.situation == situation.trim() && l.lesson == text)) return@update s
+        s.upsert(l.copy(situation = situation.trim(), lesson = text, updatedAt = Versions.next(l.updatedAt, millis())))
+    }
+
+    fun deleteLesson(id: String) = update { s ->
+        val l = s.lessons.firstOrNull { it.id == id } ?: return@update s
+        if (l.deleted) s else s.upsert(l.copy(deleted = true, situation = "", lesson = "", updatedAt = Versions.next(l.updatedAt, millis())))
     }
 
     fun settings(change: (Settings) -> Settings) = update { it.copy(settings = change(it.settings)) }

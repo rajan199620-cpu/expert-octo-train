@@ -167,4 +167,20 @@ class LargeTextScreensTest {
         compose.onNodeWithText("Finish review").performScrollTo().assertIsDisplayed()
         shot("weekly-look-back")
     }
+
+    @Test
+    fun `my lessons fit a small phone at 150% text`() {
+        Store.settings { it.copy(onboarded = true) }
+        Store.todayConcept()
+        Store.addLesson("Agreed to a deadline in the meeting, then couldn't meet it.", "Ask for a day to check before committing.")
+        launch()
+        tab("Journal")
+        scrollTo("MY LESSONS")
+        compose.onNodeWithText("MY LESSONS").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Add a lesson").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Save lesson").performScrollTo().assertIsDisplayed()
+        shot("lessons-editor")
+    }
 }
