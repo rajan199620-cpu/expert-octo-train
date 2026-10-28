@@ -147,4 +147,24 @@ class LargeTextScreensTest {
         scrollTo("How you compare".uppercase())
         shot("27-you-compare")
     }
+
+    @Test
+    fun `the weekly review fits a small phone at 150% text`() {
+        val sunday = java.time.LocalDate.now(Seed.zone).minusDays(1).with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY))
+        Seed.weeks(35, until = sunday.plusDays(1))
+        Seed.at(sunday, 19)
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
+        scenario = ActivityScenario.launch(android.content.Intent(app, MainActivity::class.java).setAction(MainActivity.ACTION_WEEKLY))
+        compose.waitForIdle()
+        compose.onNodeWithText("Your blind spot").assertIsDisplayed()
+        shot("weekly-blind-spot")
+        compose.onNodeWithText("Next").performScrollTo().assertIsDisplayed().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("One moment, one change").assertIsDisplayed()
+        shot("weekly-plan")
+        compose.onNodeWithText("Next").performScrollTo().assertIsDisplayed().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Finish review").performScrollTo().assertIsDisplayed()
+        shot("weekly-look-back")
+    }
 }

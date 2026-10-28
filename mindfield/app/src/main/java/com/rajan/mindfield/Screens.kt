@@ -74,6 +74,7 @@ import com.rajan.mindfield.core.Quiz
 import com.rajan.mindfield.core.Spacing
 import com.rajan.mindfield.core.Stats
 import com.rajan.mindfield.core.Texts
+import com.rajan.mindfield.core.Weekly
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -585,6 +586,9 @@ fun JournalScreen(state: AppState, today: LocalDate, nav: Nav) {
                         })
                     }
                 }
+            }
+            if (filter == null && q.isEmpty() && (Weekly.due(state, today) != null || Weekly.activePlan(state, today) != null)) {
+                item { WeeklyCard(state, today, nav) }
             }
             if (looks.isNotEmpty() && filter == null && q.isEmpty()) {
                 item {

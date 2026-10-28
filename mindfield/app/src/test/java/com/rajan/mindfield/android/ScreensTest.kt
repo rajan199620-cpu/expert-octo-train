@@ -28,11 +28,15 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import com.rajan.mindfield.core.Curriculum
+import com.rajan.mindfield.core.Kept
 import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.ThemeMode
+import com.rajan.mindfield.core.Verdict
+import com.rajan.mindfield.core.Weekly
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -41,7 +45,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
 
 /**
  * Drives the real app on the JVM and saves screenshots (CI commits them to
@@ -469,6 +475,117 @@ class ScreensTest {
         scenario!!.recreate()
         compose.waitForIdle()
         compose.onNodeWithText("Quick questions on concepts", substring = true).assertExists()
+    }
+
+    /** The latest Sunday before today, with five weeks of use up to and including it, at 7 pm. */
+    private fun sundayWithWeeks(): LocalDate {
+        val sunday = LocalDate.now(Seed.zone).minusDays(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+        Seed.weeks(35, until = sunday.plusDays(1))
+        Seed.at(sunday, 19)
+        return sunday
+    }
+
+    private fun tap(text: String) {
+        compose.onNodeWithText(text).performScrollTo().performClick()
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `weekly review - Sunday asks on Today, three looks, one plan, then the plan is on Today`() {
+        val sunday = sundayWithWeeks()
+        val week = Weekly.weekFor(sunday)
+        Store.reflect(week.minusWeeks(1), "When the stand-up starts, I'll listen before I answer.", null, null, null)
+        val before = Store.state.value
+        assertEquals(week, Weekly.due(before, sunday))
+        assertNotNull("five weeks of use is enough for a blind spot", Weekly.blindSpot(before, sunday))
+        val old = Weekly.lookBack(before, sunday)
+        assertNotNull(old)
+        launch()
+        compose.onNodeWithText("Your week, in five minutes").assertExists()
+        compose.onNodeWithText("This week: “When the stand-up starts", substring = true).assertExists()
+        shot("40-weekly-today")
+        tap("Your week, in five minutes")
+        compose.onNodeWithText("Your blind spot").assertExists()
+        compose.onNodeWithText("in others").assertExists()
+        compose.onNodeWithText("1 of 3", substring = true).assertExists()
+        shot("41-weekly-blind-spot")
+        tap("Next")
+        compose.onNodeWithText("One moment, one change").assertExists()
+        compose.onNodeWithText("“When the stand-up starts, I'll listen before I answer.”").assertExists()
+        tap("Partly")
+        compose.onNode(hasSetTextAction()).performScrollTo().performTextInput("When I disagree in a meeting, I'll ask what would change my mind.")
+        compose.waitForIdle()
+        shot("42-weekly-plan")
+        tap("Next")
+        compose.onNodeWithText("Looking back").assertExists()
+        compose.onNodeWithText("“${old!!.note}”").assertExists()
+        tap("I see it differently now")
+        shot("43-weekly-look-back")
+        // Nothing is saved until the end.
+        assertEquals(null, Store.state.value.reflections[week])
+        tap("Finish review")
+        val saved = Store.state.value.reflections.getValue(week)
+        assertEquals("When I disagree in a meeting, I'll ask what would change my mind.", saved.plan)
+        assertEquals(Kept.PARTLY, saved.kept)
+        assertEquals(Verdict.CHANGED, saved.verdict)
+        assertEquals(old.id, saved.noteId)
+        // Back on Today: the ask is gone and next week's plan has taken last week's place.
+        compose.onNodeWithText("Your week, in five minutes").assertDoesNotExist()
+        compose.onNodeWithText("This week: “When I disagree", substring = true).assertExists()
+        assertEquals(null, Weekly.due(Store.state.value, sunday))
+        shot("44-weekly-plan-on-today")
+        // Opened again, it starts from the top: the same review to edit, the same old note, and an unchanged save saves nothing.
+        tap("This week: “When I disagree in a meeting, I'll ask what would change my mind.”")
+        compose.onNodeWithText("Your blind spot").assertExists()
+        tap("Next")
+        compose.onNodeWithText("When I disagree in a meeting, I'll ask what would change my mind.").assertExists()
+        tap("Next")
+        compose.onNodeWithText("“${old.note}”").assertExists()
+        tap("Save")
+        assertEquals(saved, Store.state.value.reflections.getValue(week))
+        // In the Journal, all week, the plan stays within reach.
+        tab("Journal")
+        compose.onNodeWithText("This week: “When I disagree", substring = true).assertExists()
+    }
+
+    @Test
+    fun `weekly review - a half-done review survives turning the phone, and Back leaves it unsaved`() {
+        val sunday = sundayWithWeeks()
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
+        scenario = ActivityScenario.launch(
+            android.content.Intent(app, MainActivity::class.java).setAction(MainActivity.ACTION_WEEKLY),
+        )
+        compose.waitForIdle()
+        tap("Next")
+        compose.onNode(hasSetTextAction()).performScrollTo().performTextInput("When I'm tired, I'll wait a minute before replying.")
+        compose.waitForIdle()
+        scenario!!.recreate()
+        compose.waitForIdle()
+        compose.onNodeWithText("One moment, one change").assertExists()
+        compose.onNodeWithText("When I'm tired, I'll wait a minute before replying.").assertExists()
+        back()
+        // The notification opened it over the Journal, so Back lands there; nothing was saved.
+        compose.onNodeWithText("Field journal").assertExists()
+        assertTrue(Store.state.value.reflections.isEmpty())
+        compose.onNodeWithText("Your week, in five minutes").assertExists()
+    }
+
+    @Test
+    fun `weekly review - a week without enough reports says so, and asks nowhere`() {
+        val sunday = LocalDate.now(Seed.zone).minusDays(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+        Store.settings { it.copy(onboarded = true) }
+        Seed.at(sunday, 19)
+        Store.log(Store.todayConcept().id, Mode.SPOTTED, "Only one this week.")
+        launch()
+        compose.onNodeWithText("Your week, in five minutes").assertDoesNotExist()
+        compose.onNodeWithText("This week:", substring = true).assertDoesNotExist()
+        tab("Journal")
+        compose.onNodeWithText("Weekly review", substring = true, ignoreCase = true).assertDoesNotExist()
+        scenario!!.close()
+        scenario = ActivityScenario.launch(android.content.Intent(app, MainActivity::class.java).setAction(MainActivity.ACTION_WEEKLY))
+        compose.waitForIdle()
+        compose.onNodeWithText("This one has 1.", substring = true).assertExists()
+        shot("45-weekly-not-yet")
     }
 
     @Test

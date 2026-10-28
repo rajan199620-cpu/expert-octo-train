@@ -57,6 +57,19 @@ object Texts {
             if (e.note.isNotBlank()) append("\n").append(e.note.lines().joinToString("\n") { "  $it" })
             append("\n")
         }
+        val reviews = state.reflections.entries.filter { it.value.plan.isNotBlank() || it.value.verdict != null || it.value.kept != null }.sortedByDescending { it.key }
+        if (reviews.isNotEmpty()) {
+            append("\n# Weekly reviews\n")
+            for ((week, r) in reviews) {
+                append("\n## Week of ").append(week.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH))).append("\n")
+                r.kept?.let { append("Kept the plan before it: ").append(it.label.lowercase()).append("\n") }
+                if (r.plan.isNotBlank()) append("Plan for the week after: ").append(r.plan).append("\n")
+                r.verdict?.let { v ->
+                    val note = state.liveEntries.firstOrNull { it.id == r.noteId }
+                    append("Looked back").append(note?.let { " at a note from " + it.day.format(DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH)) } ?: "").append(": ").append(v.label.lowercase()).append("\n")
+                }
+            }
+        }
     }
 }
 

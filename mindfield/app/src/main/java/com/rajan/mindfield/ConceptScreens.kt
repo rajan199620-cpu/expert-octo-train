@@ -100,6 +100,7 @@ import com.rajan.mindfield.core.Outcome
 import com.rajan.mindfield.core.Spacing
 import com.rajan.mindfield.core.Stats
 import com.rajan.mindfield.core.Texts
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -111,6 +112,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.rajan.mindfield.core.Progress
 import com.rajan.mindfield.core.Step
+import com.rajan.mindfield.core.Weekly
 import com.rajan.mindfield.core.PathStep
 
 // --- Today -------------------------------------------------------------------------------------
@@ -170,6 +172,12 @@ fun TodayScreen(state: AppState, today: LocalDate, nav: Nav) {
             } else {
                 anchors[step]?.let { y -> scope.launch { scroll.animateScrollTo((y - with(density) { 12.dp.roundToPx() }).coerceAtLeast(0)) } }
             }
+        }
+        // The weekly review asks on Sunday and, if it's still waiting, Monday; the rest of the week, its plan.
+        if (Weekly.due(state, today) != null && today.dayOfWeek.let { it == DayOfWeek.SUNDAY || it == DayOfWeek.MONDAY }) {
+            WeeklyCard(state, today, nav)
+        } else {
+            WeeklyPlanLine(state, today, nav)
         }
         if (notificationsOff) {
             Banner(

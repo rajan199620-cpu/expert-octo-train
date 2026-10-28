@@ -42,10 +42,10 @@ object Seed {
         "Didn't come up, but I thought about it while scrolling.",
     )
 
-    /** [days] of use ending yesterday: concepts, guesses, plans, notes and reviews. */
-    fun weeks(days: Int = 35, seed: Int = 7, onboarded: Boolean = true) {
+    /** [days] of use ending the day before [until] (by default, yesterday): concepts, guesses, plans, notes and reviews. */
+    fun weeks(days: Int = 35, seed: Int = 7, onboarded: Boolean = true, until: LocalDate = LocalDate.now(zone)) {
         val rnd = Random(seed)
-        val today = LocalDate.now(zone)
+        val today = until
         Store.settings { it.copy(onboarded = onboarded) }
         for (d in days downTo 1) {
             val day = today.minusDays(d.toLong())

@@ -32,12 +32,15 @@ object Sync {
         val plans = pickEach(local.plans, other.plans) { a, b ->
             maxOf(a, b, compareBy<Plan>({ it.updatedAt }, { it.text }))
         }
+        val reflections = pickEach(local.reflections, other.reflections) { a, b ->
+            maxOf(a, b, compareBy<Reflection>({ it.updatedAt }, { it.toString() }))
+        }
         val settings = if (local.isEmpty && !other.isEmpty) {
             other.settings.copy(onboarded = local.settings.onboarded)
         } else {
             local.settings
         }
-        return AppState(assignments, entries, cards, guesses, plans, settings)
+        return AppState(assignments, entries, cards, guesses, plans, settings, reflections)
     }
 
     /**
@@ -155,6 +158,20 @@ object Codec {
                 },
             ),
         )
+        root.put(
+            "reflections",
+            JSONArray(
+                state.reflections.entries.sortedBy { it.key }.map { (week, r) ->
+                    JSONObject()
+                        .put("week", week.toString())
+                        .put("plan", r.plan)
+                        .put("kept", r.kept?.key ?: JSONObject.NULL)
+                        .put("note", r.noteId ?: JSONObject.NULL)
+                        .put("verdict", r.verdict?.key ?: JSONObject.NULL)
+                        .put("updated", r.updatedAt)
+                },
+            ),
+        )
         return if (pretty) root.toString(1) else root.toString()
     }
 
@@ -215,7 +232,18 @@ object Codec {
             val day = o.day("day") ?: return@mapNotNull null
             day to Plan(o.optString("text"), o.optLong("updated"))
         }.toMap()
-        return AppState(assignments, entries, cards, guesses, plans, settings)
+        // A week is kept under its Monday, whatever day a damaged or hand-edited file says.
+        val reflections = root.optJSONArray("reflections").objects().mapNotNull { o ->
+            val week = o.day("week")?.let { Progress.weekOf(it) } ?: return@mapNotNull null
+            week to Reflection(
+                plan = o.optString("plan"),
+                kept = if (o.isNull("kept")) null else Kept.of(o.optString("kept")),
+                noteId = if (o.isNull("note")) null else o.optString("note").ifBlank { null },
+                verdict = if (o.isNull("verdict")) null else Verdict.of(o.optString("verdict")),
+                updatedAt = o.optLong("updated"),
+            )
+        }.groupBy({ it.first }, { it.second }).mapValues { (_, all) -> all.maxWith(compareBy<Reflection>({ it.updatedAt }, { it.toString() })) }
+        return AppState(assignments, entries, cards, guesses, plans, settings, reflections)
     }
 
     private fun JSONArray?.objects(): List<JSONObject> =

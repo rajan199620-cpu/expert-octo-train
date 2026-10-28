@@ -7,13 +7,16 @@ import com.rajan.mindfield.core.Concept
 import com.rajan.mindfield.core.Curriculum
 import com.rajan.mindfield.core.Entry
 import com.rajan.mindfield.core.Guess
+import com.rajan.mindfield.core.Kept
 import com.rajan.mindfield.core.Library
 import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.Outcome
 import com.rajan.mindfield.core.Plan
+import com.rajan.mindfield.core.Reflection
 import com.rajan.mindfield.core.Settings
 import com.rajan.mindfield.core.Spacing
 import com.rajan.mindfield.core.SystemZoneClock
+import com.rajan.mindfield.core.Verdict
 import com.rajan.mindfield.core.Versions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -173,6 +176,14 @@ object Store {
     fun plan(day: LocalDate, text: String) = update { s ->
         val t = text.trim()
         if (t == s.plans[day]?.text.orEmpty()) s else s.copy(plans = s.plans + (day to Plan(t, Versions.next(s.plans[day]?.updatedAt, millis())))).engaged(day)
+    }
+
+    /** Saves the weekly review of [week] (its Monday); saving it again unchanged changes nothing. */
+    fun reflect(week: LocalDate, plan: String, kept: Kept?, noteId: String?, verdict: Verdict?) = update { s ->
+        val old = s.reflections[week]
+        val next = Reflection(plan.trim(), kept, noteId, verdict, 0)
+        if (old != null && old.copy(updatedAt = 0) == next) s
+        else s.copy(reflections = s.reflections + (week to next.copy(updatedAt = Versions.next(old?.updatedAt, millis()))))
     }
 
     fun grade(conceptId: String, correct: Boolean) = update { s ->

@@ -318,6 +318,10 @@ class SyncTest {
             )
         }
         repeat(rnd.nextInt(0, 4)) { s = s.copy(plans = s.plans + (day0.plusDays(rnd.nextLong(0, 5)) to Plan("$tag plan", rnd.nextLong(0, 4)))) }
+        repeat(rnd.nextInt(0, 4)) {
+            val r = Reflection("$tag plan", Kept.entries.random(rnd).takeIf { rnd.nextBoolean() }, "e${rnd.nextInt(0, 12)}".takeIf { rnd.nextBoolean() }, Verdict.entries.random(rnd).takeIf { rnd.nextBoolean() }, rnd.nextLong(0, 4))
+            s = s.copy(reflections = s.reflections + (Progress.weekOf(day0.plusWeeks(rnd.nextLong(0, 3))) to r))
+        }
         return s
     }
 
@@ -429,6 +433,7 @@ class SyncTest {
             assertEquals(s.assignments, back.assignments)
             assertEquals(s.entries.sortedBy { it.id }, back.entries.sortedBy { it.id })
             assertEquals(s.cards, back.cards)
+            assertEquals(s.reflections, back.reflections)
             assertEquals(s.guesses, back.guesses)
             assertEquals(s.plans, back.plans)
         }

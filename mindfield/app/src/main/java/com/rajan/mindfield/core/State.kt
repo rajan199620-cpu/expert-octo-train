@@ -54,6 +54,40 @@ data class Guess(val choice: Int, val at: Long)
 /** An if-then plan for today's mission ("At the 3 pm meeting, I'll ..."). */
 data class Plan(val text: String, val updatedAt: Long)
 
+/** Whether last week's plan was kept, asked at the next weekly review. */
+enum class Kept(val key: String, val label: String) {
+    YES("yes", "Yes"),
+    PARTLY("partly", "Partly"),
+    NO("no", "No");
+
+    companion object {
+        fun of(key: String?): Kept? = entries.firstOrNull { it.key == key }
+    }
+}
+
+/** What you made of an old note when a weekly review brought it back. */
+enum class Verdict(val key: String, val label: String) {
+    STILL_TRUE("still", "Still true"),
+    CHANGED("changed", "I see it differently now");
+
+    companion object {
+        fun of(key: String?): Verdict? = entries.firstOrNull { it.key == key }
+    }
+}
+
+/**
+ * A weekly review, kept under the Monday of the week it looks back on: an if-then plan for the
+ * week after, whether the previous plan was kept, and what you made of the old note it brought
+ * back ([noteId]).
+ */
+data class Reflection(
+    val plan: String,
+    val kept: Kept?,
+    val noteId: String?,
+    val verdict: Verdict?,
+    val updatedAt: Long,
+)
+
 enum class ThemeMode(val key: String, val label: String) {
     SYSTEM("system", "Phone setting"),
     LIGHT("light", "Light"),
@@ -88,6 +122,8 @@ data class AppState(
     val guesses: Map<String, Guess> = emptyMap(),
     val plans: Map<LocalDate, Plan> = emptyMap(),
     val settings: Settings = Settings(),
+    /** Weekly reviews, by the Monday of the week each looks back on. */
+    val reflections: Map<LocalDate, Reflection> = emptyMap(),
 ) {
     val liveEntries: List<Entry> by lazy { entries.filter { !it.deleted } }
 
@@ -106,10 +142,10 @@ data class AppState(
     val isEmpty: Boolean get() = assignments.isEmpty() && entries.isEmpty() && guesses.isEmpty()
 
     /**
-     * Nothing made here yet: no notes, predictions, plans or reviews. A new phone that has only been
+     * Nothing made here yet: no notes, predictions, plans, reviews or weekly reviews. A new phone that has only been
      * shown a concept or two is fresh; those days are placeholders a restored backup should replace.
      */
-    val isFresh: Boolean get() = entries.isEmpty() && guesses.isEmpty() && plans.isEmpty() && cards.isEmpty()
+    val isFresh: Boolean get() = entries.isEmpty() && guesses.isEmpty() && plans.isEmpty() && cards.isEmpty() && reflections.isEmpty()
 
     fun entriesFor(conceptId: String) = liveEntries.filter { it.conceptId == conceptId }
 

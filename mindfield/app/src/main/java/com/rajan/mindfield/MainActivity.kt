@@ -76,8 +76,8 @@ import java.time.LocalDate
 /** Four tabs. Review opens over the tab you're on, from Today's path or the Guide: a minute's task, not a place. */
 enum class Tab(val label: String) { TODAY("Today"), GUIDE("Guide"), JOURNAL("Journal"), ME("You") }
 
-/** The review screen, shown over the tabs. */
-private object ReviewRoute
+/** Screens shown over the tabs: the review round, and the weekly review. */
+internal enum class Overlay { REVIEW, WEEKLY }
 
 /** Opens the field-report sheet: for a concept, optionally pre-set to a mode, or editing an entry. */
 data class LogRequest(val conceptId: String, val mode: Mode? = null, val edit: Entry? = null)
@@ -91,6 +91,8 @@ class Nav(
     val settings: (String) -> Unit = {},
     /** Opens the review screen. */
     val review: () -> Unit = {},
+    /** Opens the weekly review. */
+    val weekly: () -> Unit = {},
 )
 
 class MainActivity : ComponentActivity() {
@@ -100,8 +102,8 @@ class MainActivity : ComponentActivity() {
     private var today by mutableStateOf(LocalDate.now())
     /** The settings sheet open on the You tab, if any. */
     private var settingsSheet by mutableStateOf<String?>(null)
-    /** Whether the review screen is open over the tabs. */
-    private var reviewOpen by mutableStateOf(false)
+    /** The screen open over the tabs, if any. */
+    private var overlay by mutableStateOf<Overlay?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,7 +115,7 @@ class MainActivity : ComponentActivity() {
         Scheduler.ensureAll(this)
         tab = savedInstanceState?.getString(KEY_TAB)?.let { n -> Tab.entries.firstOrNull { it.name == n } } ?: Tab.TODAY
         concept = savedInstanceState?.getString(KEY_CONCEPT)
-        reviewOpen = savedInstanceState?.getBoolean(KEY_REVIEW) ?: false
+        overlay = savedInstanceState?.getString(KEY_OVERLAY)?.let { n -> Overlay.entries.firstOrNull { it.name == n } }
         // A turned phone, a theme change or the system reclaiming the app keeps an open sheet and its draft.
         settingsSheet = savedInstanceState?.getString(KEY_SHEET)
         logRequest = savedInstanceState?.let { restoreLog(it) }
@@ -159,18 +161,19 @@ class MainActivity : ComponentActivity() {
                         today = today,
                         openConcept = concept,
                         logRequest = logRequest,
-                        reviewOpen = reviewOpen,
+                        overlay = overlay,
                         settingsSheet = settingsSheet,
                         onSettingsSheet = { settingsSheet = it },
                         nav = Nav(
                             openConcept = { concept = it },
                             log = { logRequest = it },
-                            tab = { tab = it; concept = null; settingsSheet = null; reviewOpen = false },
-                            settings = { tab = Tab.ME; concept = null; settingsSheet = it; reviewOpen = false },
-                            review = { concept = null; reviewOpen = true },
+                            tab = { tab = it; concept = null; settingsSheet = null; overlay = null },
+                            settings = { tab = Tab.ME; concept = null; settingsSheet = it; overlay = null },
+                            review = { concept = null; overlay = Overlay.REVIEW },
+                            weekly = { concept = null; overlay = Overlay.WEEKLY },
                         ),
                         onCloseConcept = { concept = null },
-                        onCloseReview = { reviewOpen = false },
+                        onCloseOverlay = { overlay = null },
                         onCloseLog = { logRequest = null },
                     )
                 }
@@ -216,7 +219,7 @@ class MainActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         outState.putString(KEY_TAB, tab.name)
         concept?.let { outState.putString(KEY_CONCEPT, it) }
-        outState.putBoolean(KEY_REVIEW, reviewOpen)
+        overlay?.let { outState.putString(KEY_OVERLAY, it.name) }
         settingsSheet?.let { outState.putString(KEY_SHEET, it) }
         logRequest?.let { r ->
             outState.putString(KEY_LOG_CONCEPT, r.conceptId)
@@ -234,28 +237,29 @@ class MainActivity : ComponentActivity() {
 
     private fun handle(intent: Intent?) {
         when (intent?.action) {
-            ACTION_TODAY -> { tab = Tab.TODAY; concept = null; reviewOpen = false }
+            ACTION_TODAY -> { tab = Tab.TODAY; concept = null; overlay = null }
             ACTION_LOG, ACTION_SHORTCUT_LOG -> {
                 // A report is being written: a notification or the widget mustn't throw it away.
                 if (logRequest != null) return
                 tab = Tab.TODAY
                 concept = null
-                reviewOpen = false
+                overlay = null
                 if (Store.state.value.settings.onboarded) {
                     val id = intent.getStringExtra(Notifier.EXTRA_CONCEPT)?.takeIf { Store.library.contains(it) } ?: Store.todayConcept().id
                     logRequest = LogRequest(id)
                 }
             }
-            ACTION_JOURNAL -> { tab = Tab.JOURNAL; concept = null; reviewOpen = false }
-            ACTION_ACCOUNT -> { tab = Tab.ME; concept = null; reviewOpen = false; settingsSheet = SettingsSheet.GOOGLE }
-            ACTION_SHORTCUT_REVIEW -> { tab = Tab.TODAY; concept = null; reviewOpen = true }
+            ACTION_JOURNAL -> { tab = Tab.JOURNAL; concept = null; overlay = null }
+            ACTION_ACCOUNT -> { tab = Tab.ME; concept = null; overlay = null; settingsSheet = SettingsSheet.GOOGLE }
+            ACTION_SHORTCUT_REVIEW -> { tab = Tab.TODAY; concept = null; overlay = Overlay.REVIEW }
+            ACTION_WEEKLY -> { tab = Tab.JOURNAL; concept = null; overlay = Overlay.WEEKLY }
         }
     }
 
     companion object {
         private const val KEY_TAB = "tab"
         private const val KEY_CONCEPT = "concept"
-        private const val KEY_REVIEW = "review"
+        private const val KEY_OVERLAY = "overlay"
         private const val KEY_SHEET = "sheet"
         private const val KEY_LOG_CONCEPT = "log_concept"
         private const val KEY_LOG_MODE = "log_mode"
@@ -266,6 +270,7 @@ class MainActivity : ComponentActivity() {
         const val ACTION_ACCOUNT = "com.rajan.mindfield.OPEN_ACCOUNT"
         const val ACTION_SHORTCUT_LOG = "com.rajan.mindfield.OPEN_LOG"
         const val ACTION_SHORTCUT_REVIEW = "com.rajan.mindfield.OPEN_REVIEW"
+        const val ACTION_WEEKLY = "com.rajan.mindfield.OPEN_WEEKLY"
     }
 }
 
@@ -276,12 +281,12 @@ private fun Root(
     today: LocalDate,
     openConcept: String?,
     logRequest: LogRequest?,
-    reviewOpen: Boolean,
+    overlay: Overlay?,
     settingsSheet: String?,
     onSettingsSheet: (String?) -> Unit,
     nav: Nav,
     onCloseConcept: () -> Unit,
-    onCloseReview: () -> Unit,
+    onCloseOverlay: () -> Unit,
     onCloseLog: () -> Unit,
 ) {
     val p = palette
@@ -289,9 +294,9 @@ private fun Root(
     val todayConcept = state.assignments[today]?.conceptId?.let { Store.library[it] }
     val tint = todayConcept?.category?.accent(p.dark) ?: p.brand
     // Back from Guide, Journal or You goes to Today, the start screen, rather than out of the app.
-    BackHandler(enabled = tab != Tab.TODAY && openConcept == null && !reviewOpen && logRequest == null) { nav.tab(Tab.TODAY) }
+    BackHandler(enabled = tab != Tab.TODAY && openConcept == null && overlay == null && logRequest == null) { nav.tab(Tab.TODAY) }
     // Review closes back to the tab it was opened from; a concept page opened from it closes first.
-    BackHandler(enabled = reviewOpen && openConcept == null && logRequest == null) { onCloseReview() }
+    BackHandler(enabled = overlay != null && openConcept == null && logRequest == null) { onCloseOverlay() }
     BackHandler(enabled = openConcept != null && logRequest == null) { onCloseConcept() }
     BackHandler(enabled = logRequest != null) { onCloseLog() }
 
@@ -307,7 +312,7 @@ private fun Root(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                val screen: Any = openConcept ?: if (reviewOpen) ReviewRoute else tab
+                val screen: Any = openConcept ?: overlay ?: tab
                 AnimatedContent(
                     targetState = screen,
                     // Comfortable line lengths on tablets, unfolded phones and in landscape.
@@ -319,7 +324,8 @@ private fun Root(
                     saved.SaveableStateProvider(screenKey(target)) {
                         when (target) {
                             is String -> Store.library[target]?.let { ConceptScreen(it, state, today, nav, onBack = onCloseConcept) }
-                            ReviewRoute -> ReviewScreen(state, today, nav, onClose = onCloseReview)
+                            Overlay.REVIEW -> ReviewScreen(state, today, nav, onClose = onCloseOverlay)
+                            Overlay.WEEKLY -> WeeklyScreen(state, today, nav, onClose = onCloseOverlay)
                             Tab.TODAY -> TodayScreen(state, today, nav)
                             Tab.GUIDE -> GuideScreen(state, today, nav)
                             Tab.JOURNAL -> JournalScreen(state, today, nav)
@@ -350,7 +356,8 @@ private fun Root(
 /** A stable name for each screen, for the transition and for keeping its state. */
 private fun screenKey(screen: Any): String = when (screen) {
     is Tab -> screen.name
-    ReviewRoute -> "review"
+    Overlay.REVIEW -> "review"
+    Overlay.WEEKLY -> "weekly"
     else -> "concept:$screen"
 }
 

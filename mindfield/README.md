@@ -15,6 +15,7 @@ are in [`docs/screenshots`](docs/screenshots).
 | | **Today's mission** + an **if-then plan** box ("When …, I'll …") | Implementation intentions (Gollwitzer & Sheeran 2006, d = 0.65) |
 | Evening notification | **Field report** in one tap from the notification: 👀 Spotted it · 🙋 Caught myself · 🎯 Used it. Then a reply box to add a line without opening the app | Low-friction logging (Daylio-style); linking ideas to your own life (self-reference effect) |
 | Optional, mid-day | A **surprise spot check** at a random time between noon and 6 pm | BeReal-style unpredictability keeps attention fresh; off by default (max 2 nudges/day otherwise) |
+| Sunday | **Weekly review**, five minutes, one sentence to write: your blind spot, one moment turned into an if-then plan for next week, and an old note judged again | Reflecting on your own experience beats more practice once there's experience to reflect on (Di Stefano et al., HBS 14-093); see "The weekly review" below |
 | Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", returning after 1, 3, 7, 16, 35, 90 days | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
 
 ## The library: 204 concepts, honestly labelled
@@ -144,6 +145,36 @@ research behind it:
   instead of six long cards at the foot of the page. The sign-in notification and the "backup
   paused" banner open the Google sheet directly.
 
+## The weekly review (October 2026)
+
+A "reflection section" done the way the research supports, not as a blank journal. It reflects on
+what the journal already holds, so the only writing is one sentence a week.
+
+- **When:** Sunday, once the week has at least two field reports (reflection helps once there's
+  experience to reflect on: Di Stefano, Gino, Pisano & Staats, "Learning by Thinking"; in their
+  field study, 15 minutes of reflection at the end of the day beat 15 more minutes of work). If it's
+  missed, it waits through the next week. On Sunday and Monday Today asks; the Journal keeps a
+  card; the Sunday evening reminder brings a notification.
+- **1. Your blind spot:** how often you spotted concepts in others against caught them in
+  yourself, the last four weeks against before, and the concept you've spotted most in others
+  and never in yourself. People see bias in others far more readily than in themselves (Pronin,
+  Lin & Ross 2002; Scopelliti et al. 2015). Shown only after 10 sightings, as fewer is noise, and
+  framed as where to look, not as a score: you meet more people than yourself, so the gap is
+  never zero.
+- **2. One moment, one change:** the week's moment to learn from (something you tried that
+  backfired, then mixed, then a time you caught yourself), last week's plan with "Did you keep
+  it?", and one if-then plan for next week. The question is "what happened, and what will you
+  do?", never "why?": abstract "why" thinking feeds rumination, concrete thinking doesn't
+  (Watkins 2008). If-then plans are the kind people carry out (Gollwitzer & Sheeran 2006).
+- **3. Looking back:** a note from about a month ago (never the last two weeks, never one
+  already brought back): still true, or do you see it differently? Your own words from then,
+  where memory would be rewritten by hindsight.
+- **Then:** the plan sits under today's path all week and on the Journal card; next Sunday asks
+  whether you kept it. Reviews sync with Google and go into backups and the journal export.
+- **Left out on purpose:** mood ratings, gratitude lists and free "why" prompts. Gratitude
+  exercises barely beat neutral writing (Cregg & Cheavens 2021); brief expressive writing showed
+  no effect on depression in a meta-analysis (Reinhold et al. 2018).
+
 ## Screens
 
 Four tabs: Today, Guide, Journal and You. Icons are line drawings made in the app, not emoji.
@@ -152,7 +183,8 @@ Four tabs: Today, Guide, Journal and You. Icons are line drawings made in the ap
   the specimen plate (each concept has its own generative emblem in its area's colour, and a
   share button), predict first, what's going on with how to spot it, the study, the real-world
   case (folded, with a teaser), the mission with its if-then plan and "watch out", the field
-  report, see also, and the sources folded into one line. From the evening report's time until
+  report, see also, and the sources folded into one line. This week's plan from the weekly review
+  sits under the path. From the evening report's time until
   midnight the field report moves to the top, with the concept's name and your plan.
 - **Guide**: the collection. Spotted concepts carry a stamp; undiscovered ones are dashed
   outlines until their day (or turn on "show undiscovered"). Search, filter by area, myths, or
@@ -160,8 +192,10 @@ Four tabs: Today, Guide, Journal and You. Icons are line drawings made in the ap
 - **Review** (over Today, from the stepper, the Guide or the app shortcut): spaced questions, the
   next seven days of reviews, and a "how well they're sticking" chart. A round in progress
   survives leaving it.
-- **Journal**: every field note, filters, search, "On this day" (a week, a month, three and six
-  months, a year ago), edit and delete.
+- **Journal**: the weekly review card, every field note, filters, search, "On this day" (a week,
+  a month, three and six months, a year ago), edit and delete.
+- **Weekly review** (over the Journal or Today): three short looks back and one if-then plan; a
+  review left half-done is kept until you come back.
 - **You**: day count, streak, this week and all-time totals in one card, the month in review, how
   you compare, how concepts show up (spotted/in me/used), where you notice psychology (radar by
   area), most spotted, how deliberate uses went, a 12-week heatmap. Settings sit behind the gear.

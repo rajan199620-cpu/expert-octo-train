@@ -439,4 +439,42 @@ class RemindersTest {
         Store.reloadForTests(app)
         assertTrue(Store.journalReset.value)
     }
+
+    private fun weeklyNudges() = notifications.allNotifications.filter { title(it) == "Your weekly review is ready" }
+
+    @Test
+    fun `the weekly review is offered on Sunday evening only, opens the review, and goes once done`() {
+        val sunday = today.minusDays(1).with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY))
+        Seed.weeks(14, until = sunday.plusDays(1))
+        // Saturday evening, and Sunday's small hours (still Saturday's evening), are too early.
+        Seed.at(sunday.minusDays(1), 21)
+        fire(Scheduler.ACTION_EVENING)
+        Seed.at(sunday, 1)
+        fire(Scheduler.ACTION_EVENING)
+        assertTrue(weeklyNudges().isEmpty())
+        // Sunday evening: offered even though the day's report is already in, so the field report itself stays quiet.
+        Seed.at(sunday, 21)
+        fire(Scheduler.ACTION_EVENING)
+        val n = weeklyNudges().single()
+        assertEquals(MainActivity.ACTION_WEEKLY, shadowOf(n.contentIntent).savedIntent.action)
+        assertTrue(notifications.allNotifications.none { title(it).startsWith("Field report") })
+        // Finishing the review (here, or on another phone and synced) takes it away.
+        Store.reflect(com.rajan.mindfield.core.Weekly.weekFor(sunday), "When I'm tired, I'll pause.", null, null, null)
+        assertTrue(weeklyNudges().isEmpty())
+        // Done, it isn't offered again that evening; and a late alarm early on Monday never offers one.
+        fire(Scheduler.ACTION_EVENING)
+        Seed.at(sunday.plusDays(1), 2)
+        fire(Scheduler.ACTION_EVENING)
+        assertTrue(weeklyNudges().isEmpty())
+    }
+
+    @Test
+    fun `a week with too little to look back on gets no weekly nudge`() {
+        val sunday = today.minusDays(1).with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY))
+        Seed.at(sunday, 9)
+        Store.log(Store.todayConcept().id, Mode.SPOTTED)
+        Seed.at(sunday, 21)
+        fire(Scheduler.ACTION_EVENING)
+        assertTrue(weeklyNudges().isEmpty())
+    }
 }

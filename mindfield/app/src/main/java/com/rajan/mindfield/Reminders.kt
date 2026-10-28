@@ -24,6 +24,8 @@ import com.rajan.mindfield.core.Mode
 import com.rajan.mindfield.core.Schedule
 import com.rajan.mindfield.core.Settings
 import com.rajan.mindfield.core.Spacing
+import com.rajan.mindfield.core.Weekly
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -42,6 +44,8 @@ object Effects {
         // Reporting the evening's concept from the app clears its nudges if they're still showing.
         val day = FieldDay.current(Store.now())
         if (!before.reportedOn(day) && after.reportedOn(day)) Notifier.clearNudges(context)
+        // The weekly review done (here or synced from another phone): its reminder has done its job.
+        if (Weekly.due(before, today) != null && Weekly.due(after, today) == null) Notifier.cancelWeekly(context)
         GoogleSync.backupSoon(context)
     }
 }
@@ -178,6 +182,7 @@ object Notifier {
     const val ID_BACKUP = 4
     const val ID_EVENING = 2
     const val ID_SPOT = 3
+    const val ID_WEEKLY = 5
 
     const val ACTION_LOG = "com.rajan.mindfield.LOG"
     const val ACTION_NOTE = "com.rajan.mindfield.NOTE"
@@ -328,12 +333,13 @@ object Notifier {
         return if (store.state.value.reportedOn(day)) null else day to concept
     }
 
-    /** The field report. Skipped once the day's concept is logged, and gone by 4 am. */
+    /** The field report. Skipped once the day's concept is logged, and gone by 4 am. On Sundays, the weekly review too. */
     fun evening(context: Context) {
         channels(context)
         if (!canShow(context, CH_REPORT)) return
         val store = Store.init(context)
         val now = store.now()
+        weekly(context, store, now)
         val (day, c) = nudgeConcept(store, now) ?: return
         val plan = store.state.value.plans[day]?.text?.takeIf { it.isNotBlank() }
         val text = if (plan != null) "You planned: \u201c$plan\u201d. How did it go?" else "How did it show up today? One tap logs it."
@@ -347,6 +353,31 @@ object Notifier {
             b.addAction(Notification.Action.Builder(null as Icon?, "${mode.emoji} ${mode.short}", logIntent(context, c.id, mode)).build())
         }
         post(context, ID_EVENING, b.build())
+    }
+
+    /**
+     * "Your weekly review is ready", with the Sunday evening report: only on a Sunday (not a late
+     * alarm in the small hours of Monday), and only once the week has enough reports to look back on.
+     */
+    private fun weekly(context: Context, store: Store, now: ZonedDateTime) {
+        val day = now.toLocalDate()
+        if (day.dayOfWeek != DayOfWeek.SUNDAY || now.hour < FieldDay.NIGHT_ENDS_HOUR) return
+        if (Weekly.due(store.state.value, day) == null) return
+        val text = "Five minutes on your week: where your blind spot is, and one plan for next week."
+        val n = Notification.Builder(context, CH_REPORT)
+            .setSmallIcon(R.drawable.ic_stat_mindfield)
+            .setAutoCancel(true)
+            .setContentTitle("Your weekly review is ready")
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setContentIntent(open(context, 23, MainActivity.ACTION_WEEKLY))
+            .setTimeoutAfter(Duration.between(now, FieldDay.expires(now)).toMillis())
+            .build()
+        post(context, ID_WEEKLY, n)
+    }
+
+    fun cancelWeekly(context: Context) {
+        runCatching { context.getSystemService(NotificationManager::class.java)?.cancel(ID_WEEKLY) }
     }
 
     fun spot(context: Context) {
