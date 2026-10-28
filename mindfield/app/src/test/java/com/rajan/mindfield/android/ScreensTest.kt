@@ -476,10 +476,10 @@ class ScreensTest {
             android.content.Intent(app, MainActivity::class.java).setAction(MainActivity.ACTION_SHORTCUT_REVIEW),
         )
         compose.waitForIdle()
-        compose.onNodeWithText("Quick questions on concepts", substring = true).assertExists()
+        compose.onNodeWithText("Concepts you've met and your own lessons", substring = true).assertExists()
         scenario!!.recreate()
         compose.waitForIdle()
-        compose.onNodeWithText("Quick questions on concepts", substring = true).assertExists()
+        compose.onNodeWithText("Concepts you've met and your own lessons", substring = true).assertExists()
     }
 
     /** The latest Sunday before today, with five weeks of use up to and including it, at 7 pm. */
@@ -597,8 +597,8 @@ class ScreensTest {
 
     private fun openLessons() {
         tab("Journal")
-        scrollTo("MY LESSONS")
-        compose.onNodeWithText("MY LESSONS").performClick()
+        scrollTo("My lessons")
+        compose.onNodeWithText("My lessons").performClick()
         compose.waitForIdle()
     }
 
@@ -799,6 +799,8 @@ class ScreensTest {
         launch()
         tab("Journal")
         compose.onNodeWithText("Field journal").assertExists()
+        // The filters sit below the weekly review, lessons and "On this day": scroll to them first.
+        scrollTo("Used")
         compose.onNodeWithText("Used").performClick()
         compose.waitForIdle()
         shot("44-journal-3000")

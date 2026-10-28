@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -165,20 +166,26 @@ private fun LessonRow(lesson: Lesson, card: Card?, today: LocalDate, editing: Bo
     }
 }
 
-/** The Journal's way into your lessons. */
+/** The Journal's way into your lessons: one slim row, so the notes and filters stay near the top. */
 @Composable
 fun LessonsCard(state: AppState, nav: Nav) {
     val p = palette
     val lessons = state.liveLessons
-    Panel(onClick = nav.lessons, onClickLabel = "Open my lessons") {
-        SectionLabel("My lessons", Glyph.BULB, color = p.brand)
-        if (lessons.isEmpty()) {
-            Text("Your own experiences, and what you took from them", style = MaterialTheme.typography.titleMedium)
-            Text("Write one in your own words; it comes back in review so it sticks.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
-        } else {
-            val latest = lessons.maxWith(compareBy<Lesson>({ it.day }, { it.createdAt }))
-            Text(if (lessons.size == 1) "1 lesson" else "${lessons.size} lessons", style = MaterialTheme.typography.titleMedium)
-            Text("Latest: “${latest.lesson}”", style = MaterialTheme.typography.bodyMedium, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    Panel(onClick = nav.lessons, onClickLabel = "Open my lessons", padding = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GlyphIcon(Glyph.BULB, p.brand, 22.dp)
+            Column(Modifier.weight(1f)) {
+                Text("My lessons", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    when (lessons.size) {
+                        0 -> "Your own experiences and what you took from them, back in review so they stick"
+                        1 -> "1 lesson"
+                        else -> "${lessons.size} lessons"
+                    },
+                    style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            GlyphIcon(Glyph.CHEVRON_RIGHT, p.brand, 16.dp)
         }
     }
 }
