@@ -690,6 +690,106 @@ class ScreensTest {
     }
 
     @Test
+    fun `quick add - the tile and shortcut open a new lesson with the cursor in it`() {
+        Store.settings { it.copy(onboarded = true) }
+        morning()
+        Store.todayConcept()
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
+        scenario = ActivityScenario.launch(QuickAdd.intent(app))
+        compose.waitForIdle()
+        compose.onNodeWithText("NEW LESSON").assertExists()
+        field(0).assert(isFocused())
+        shot("55-quick-add")
+        // Back leaves the lessons for the Journal, with nothing saved.
+        back()
+        compose.onNodeWithText("Field journal").assertExists()
+        assertTrue(Store.state.value.lessons.isEmpty())
+    }
+
+    @Test
+    fun `quick add - text shared from Gemini becomes a lesson, split and ready to save`() {
+        Store.settings { it.copy(onboarded = true) }
+        morning()
+        Store.todayConcept()
+        val shared = "**What happened:** Agreed to a deadline in the meeting, then couldn't meet it.\n\n**Lesson:** Ask for a day to check before committing."
+        // The share step passes the text on to the app in its own task, then gets out of the way.
+        val share = org.robolectric.Robolectric.buildActivity(
+            ShareLessonActivity::class.java,
+            android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, shared),
+        ).create().get()
+        val forwarded = org.robolectric.Shadows.shadowOf(share).nextStartedActivity
+        assertTrue(share.isFinishing)
+        assertEquals(MainActivity::class.java.name, forwarded.component?.className)
+        assertEquals(MainActivity.ACTION_ADD_LESSON, forwarded.action)
+        assertEquals(shared, forwarded.getStringExtra(QuickAdd.EXTRA_TEXT))
+        assertTrue(forwarded.flags and android.content.Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
+        scenario = ActivityScenario.launch(forwarded)
+        compose.waitForIdle()
+        compose.onNodeWithText("Agreed to a deadline in the meeting, then couldn't meet it.").assertExists()
+        compose.onNodeWithText("Ask for a day to check before committing.").assertExists()
+        shot("56-shared-lesson")
+        tap("Save lesson")
+        val saved = Store.state.value.liveLessons.single()
+        assertEquals("Agreed to a deadline in the meeting, then couldn't meet it.", saved.situation)
+        assertEquals("Ask for a day to check before committing.", saved.lesson)
+        // Turning the phone afterwards doesn't open the shared text again.
+        scenario!!.recreate()
+        compose.waitForIdle()
+        compose.onNodeWithText("NEW LESSON").assertDoesNotExist()
+        assertEquals(1, Store.state.value.lessons.size)
+    }
+
+    @Test
+    fun `quick add - a share with nothing in it still opens an empty lesson`() {
+        Store.settings { it.copy(onboarded = true) }
+        morning()
+        Store.todayConcept()
+        val share = org.robolectric.Robolectric.buildActivity(ShareLessonActivity::class.java, android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")).create().get()
+        val forwarded = org.robolectric.Shadows.shadowOf(share).nextStartedActivity
+        assertEquals("", forwarded.getStringExtra(QuickAdd.EXTRA_TEXT))
+        // A huge paste is cut before it's passed on.
+        val big = org.robolectric.Robolectric.buildActivity(
+            ShareLessonActivity::class.java,
+            android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, "x".repeat(200_000)),
+        ).create().get()
+        assertTrue(org.robolectric.Shadows.shadowOf(big).nextStartedActivity.getStringExtra(QuickAdd.EXTRA_TEXT)!!.length <= 4_000)
+        InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
+        scenario = ActivityScenario.launch(forwarded)
+        compose.waitForIdle()
+        compose.onNodeWithText("NEW LESSON").assertExists()
+        field(0).assert(isFocused())
+    }
+
+    @Test
+    fun `quick add - the tile, the share target and the shortcut are where Android looks for them`() {
+        val pm = app.packageManager
+        val shares = pm.queryIntentActivities(android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain"), 0)
+        assertTrue(shares.any { it.activityInfo.name == ShareLessonActivity::class.java.name })
+        val tiles = pm.queryIntentServices(android.content.Intent(android.service.quicksettings.TileService.ACTION_QS_TILE).setPackage(app.packageName), 0)
+        val tile = tiles.single { it.serviceInfo.name == LessonTile::class.java.name }.serviceInfo
+        assertEquals(android.Manifest.permission.BIND_QUICK_SETTINGS_TILE, tile.permission)
+        assertTrue(tile.exported)
+        // The long-press shortcut points at the same place as the tile.
+        val xml = app.resources.getXml(R.xml.shortcuts)
+        val actions = ArrayList<String>()
+        while (xml.next() != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+            if (xml.eventType == org.xmlpull.v1.XmlPullParser.START_TAG && xml.name == "intent") {
+                actions += xml.getAttributeValue("http://schemas.android.com/apk/res/android", "action")
+            }
+        }
+        assertTrue(actions.toString(), MainActivity.ACTION_ADD_LESSON in actions)
+        // The tile remembers whether it's in the panel, so the app stops offering to add it.
+        val service = org.robolectric.Robolectric.setupService(LessonTile::class.java)
+        assertTrue(QuickAdd.canOfferTile(app))
+        service.onTileAdded()
+        assertFalse(QuickAdd.canOfferTile(app))
+        service.onTileRemoved()
+        assertTrue(QuickAdd.canOfferTile(app))
+    }
+
+    @Test
     fun `a sign-in notification opens the Google account sheet`() {
         Seed.weeks(5)
         InstrumentationRegistry.getInstrumentation().setInTouchMode(true)

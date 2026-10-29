@@ -106,6 +106,8 @@ class MainActivity : ComponentActivity() {
     private var settingsSheet by mutableStateOf<String?>(null)
     /** The screen open over the tabs, if any. */
     private var overlay by mutableStateOf<Overlay?>(null)
+    /** A new lesson asked for from outside (the tile, the shortcut, shared text), not yet opened. */
+    private var lessonDraft by mutableStateOf<LessonDraft?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -177,6 +179,8 @@ class MainActivity : ComponentActivity() {
                         ),
                         onCloseConcept = { concept = null },
                         onCloseOverlay = { overlay = null },
+                        lessonDraft = lessonDraft,
+                        onLessonDraftUsed = { lessonDraft = null },
                         onCloseLog = { logRequest = null },
                     )
                 }
@@ -256,6 +260,13 @@ class MainActivity : ComponentActivity() {
             ACTION_ACCOUNT -> { tab = Tab.ME; concept = null; overlay = null; settingsSheet = SettingsSheet.GOOGLE }
             ACTION_SHORTCUT_REVIEW -> { tab = Tab.TODAY; concept = null; overlay = Overlay.REVIEW }
             ACTION_WEEKLY -> { tab = Tab.JOURNAL; concept = null; overlay = Overlay.WEEKLY }
+            ACTION_ADD_LESSON -> {
+                tab = Tab.JOURNAL
+                concept = null
+                settingsSheet = null
+                overlay = Overlay.LESSONS
+                lessonDraft = LessonDraft(intent.getStringExtra(QuickAdd.EXTRA_TEXT).orEmpty(), System.nanoTime())
+            }
         }
     }
 
@@ -274,6 +285,7 @@ class MainActivity : ComponentActivity() {
         const val ACTION_SHORTCUT_LOG = "com.rajan.mindfield.OPEN_LOG"
         const val ACTION_SHORTCUT_REVIEW = "com.rajan.mindfield.OPEN_REVIEW"
         const val ACTION_WEEKLY = "com.rajan.mindfield.OPEN_WEEKLY"
+        const val ACTION_ADD_LESSON = "com.rajan.mindfield.ADD_LESSON"
     }
 }
 
@@ -290,6 +302,8 @@ private fun Root(
     nav: Nav,
     onCloseConcept: () -> Unit,
     onCloseOverlay: () -> Unit,
+    lessonDraft: LessonDraft?,
+    onLessonDraftUsed: () -> Unit,
     onCloseLog: () -> Unit,
 ) {
     val p = palette
@@ -329,7 +343,7 @@ private fun Root(
                             is String -> Store.library[target]?.let { ConceptScreen(it, state, today, nav, onBack = onCloseConcept) }
                             Overlay.REVIEW -> ReviewScreen(state, today, nav, onClose = onCloseOverlay)
                             Overlay.WEEKLY -> WeeklyScreen(state, today, nav, onClose = onCloseOverlay)
-                            Overlay.LESSONS -> LessonsScreen(state, today, onClose = onCloseOverlay)
+                            Overlay.LESSONS -> LessonsScreen(state, today, lessonDraft, onLessonDraftUsed, onClose = onCloseOverlay)
                             Tab.TODAY -> TodayScreen(state, today, nav)
                             Tab.GUIDE -> GuideScreen(state, today, nav)
                             Tab.JOURNAL -> JournalScreen(state, today, nav)

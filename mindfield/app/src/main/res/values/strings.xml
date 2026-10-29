@@ -3,4 +3,7 @@
     <string name="widget_description">Today\'s concept, always in sight</string>
     <string name="shortcut_log">Log a sighting</string>
     <string name="shortcut_review">Review</string>
+    <string name="shortcut_lesson">Add a lesson</string>
+    <string name="tile_add_lesson">Add lesson</string>
+    <string name="share_lesson">Save as a lesson</string>
 </resources>

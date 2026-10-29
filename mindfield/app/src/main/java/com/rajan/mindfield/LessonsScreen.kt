@@ -17,13 +17,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -45,13 +50,17 @@ import java.util.Locale
 /** The editor's state for a lesson not yet saved. */
 private const val NEW = "new"
 
+/** A new lesson asked for from outside the screen (the tile, the shortcut, shared text); [id] tells two apart. */
+data class LessonDraft(val text: String, val id: Long)
+
 /**
  * Your own lessons: what happened, and what you took from it, in your own words. Each becomes a
  * review card (see [Lesson] for why), so this is where they're written, edited and seen at a glance.
  */
 @Composable
-fun LessonsScreen(state: AppState, today: LocalDate, onClose: () -> Unit) {
+fun LessonsScreen(state: AppState, today: LocalDate, draft: LessonDraft? = null, onDraftUsed: () -> Unit = {}, onClose: () -> Unit) {
     val p = palette
+    val context = LocalContext.current
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var situation by rememberSaveable { mutableStateOf("") }
     var lesson by rememberSaveable { mutableStateOf("") }
@@ -62,10 +71,35 @@ fun LessonsScreen(state: AppState, today: LocalDate, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     // A lesson deleted on another phone while it was open here closes the editor.
     LaunchedEffect(lessons, editing) { if (editing != null && editing != NEW && lessons.none { it.id == editing }) editing = null }
-    fun open(id: String, s: String, l: String) {
-        editing = id; situation = s; lesson = l; confirmDelete = false
-        scope.launch { list.animateScrollToItem(0) }
+    val situationFocus = remember { FocusRequester() }
+    val lessonFocus = remember { FocusRequester() }
+    // Bumped to put the cursor in the first empty box once the editor is on screen.
+    var focusAsk by remember { mutableIntStateOf(0) }
+    LaunchedEffect(focusAsk) {
+        if (focusAsk == 0) return@LaunchedEffect
+        list.scrollToItem(0)
+        // The editor appears in the frame after the tap; focus it once it's there.
+        withFrameNanos { }
+        runCatching { (if (situation.isBlank() || lesson.isNotBlank()) situationFocus else lessonFocus).requestFocus() }
     }
+    fun open(id: String, s: String, l: String, focus: Boolean = false) {
+        editing = id; situation = s; lesson = l; confirmDelete = false
+        if (focus) focusAsk++ else scope.launch { list.animateScrollToItem(0) }
+    }
+    // A new lesson from the tile, the shortcut or shared text. Shared into a lesson already being
+    // written, the text is added to it rather than replacing it.
+    LaunchedEffect(draft?.id) {
+        val d = draft ?: return@LaunchedEffect
+        if (editing == NEW && (situation.isNotBlank() || lesson.isNotBlank())) {
+            Lessons.addShared(situation, lesson, d.text).let { (s, l) -> situation = s; lesson = l }
+            focusAsk++
+        } else {
+            val (s, l) = Lessons.fromShared(d.text)
+            open(NEW, s, l, focus = true)
+        }
+        onDraftUsed()
+    }
+    var tileOffered by remember { mutableStateOf(QuickAdd.canOfferTile(context)) }
     LazyColumn(
         Modifier.fillMaxSize(),
         state = list,
@@ -82,7 +116,15 @@ fun LessonsScreen(state: AppState, today: LocalDate, onClose: () -> Unit) {
         item {
             val id = editing
             if (id == null) {
-                PrimaryButton("Add a lesson", p.brand) { open(NEW, "", "") }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PrimaryButton("Add a lesson", p.brand) { open(NEW, "", "", focus = true) }
+                    if (tileOffered) {
+                        // One tap from the notification panel next time, wherever you are.
+                        SoftButton("Add an “Add lesson” button to quick settings", Modifier.fillMaxWidth(), color = p.muted) {
+                            QuickAdd.requestTile(context) { added -> if (added) tileOffered = false }
+                        }
+                    }
+                }
             } else {
                 Panel(border = p.brand.copy(alpha = 0.5f)) {
                     SectionLabel(if (id == NEW) "New lesson" else "Edit lesson", Glyph.PEN, color = p.brand)
@@ -90,7 +132,7 @@ fun LessonsScreen(state: AppState, today: LocalDate, onClose: () -> Unit) {
                     OutlinedTextField(
                         value = situation,
                         onValueChange = { situation = Texts.cap(situation, it, Lessons.SITUATION_MAX) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().focusRequester(situationFocus),
                         placeholder = { Text("The situation, in a line or two", color = p.faint) },
                         textStyle = MaterialTheme.typography.bodyMedium,
                         shape = RoundedCornerShape(14.dp),
@@ -100,7 +142,7 @@ fun LessonsScreen(state: AppState, today: LocalDate, onClose: () -> Unit) {
                     OutlinedTextField(
                         value = lesson,
                         onValueChange = { lesson = Texts.cap(lesson, it, Lessons.LESSON_MAX) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().focusRequester(lessonFocus),
                         placeholder = { Text("What you'll remember, or do next time", color = p.faint) },
                         textStyle = MaterialTheme.typography.bodyMedium,
                         shape = RoundedCornerShape(14.dp),

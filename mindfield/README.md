@@ -186,6 +186,20 @@ what the journal already holds, so the only writing is one sentence a week.
 - Every lesson becomes a review card. Review shows what happened; you recall the lesson, then
   check and rate yourself: Remembered, Hard to recall or Forgot. Recalling it from the situation it
   came from is practice at using it there.
+- **Three quick ways in**, so a lesson takes seconds to write down:
+  - **Quick settings:** an "Add lesson" tile in the notification panel (My lessons offers to add
+    it, on Android 13 and newer; on older phones, add it from the panel's edit view). On a locked
+    phone it asks you to unlock first, as lessons are private.
+  - **App icon:** long-press it and choose *Add a lesson*.
+  - **Share:** select text anywhere (Gemini, a chat, a note), Share → *Save as a lesson*. Text
+    labelled "What happened:" and "Lesson:" (as Gemini writes it if you ask) is split into the two
+    fields; anything else lands in "What happened" for you to draw the lesson from. Nothing is
+    saved until you press Save, and text shared into a lesson you're already writing is added to
+    it, not swapped for it.
+  - Each opens the editor with the cursor in the first empty box; the keyboard's mic dictates.
+  - Not a Gemini integration: Gemini can act inside other apps only through Google's AppFunctions,
+    still limited to selected partners, and sending your incidents to an AI to word the lesson
+    would cost the benefit of writing it yourself.
 - Lessons stay on your phone and in your Google backup and backup file (the repository and APK are
   public, so nothing personal is built into the app). Edit any time; deleting takes two taps.
   They're in the journal export too.
@@ -229,7 +243,7 @@ Four tabs: Today, Guide, Journal and You. Icons are line drawings made in the ap
   you compare, how concepts show up (spotted/in me/used), where you notice psychology (radar by
   area), most spotted, how deliberate uses went, a 12-week heatmap. Settings sit behind the gear.
 - **Widget**: today's concept on the home screen with a "Log it" button.
-- Long-press the app icon: *Log a sighting*, *Review*.
+- Long-press the app icon: *Log a sighting*, *Review*, *Add a lesson*.
 
 ## Google account (like the Meditation Timer)
 

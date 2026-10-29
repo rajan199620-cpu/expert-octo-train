@@ -214,3 +214,45 @@ class LessonsTest {
         assertTrue(abs(Sync.merge(a, b).cards.getValue("anchoring").stability!! - 6.0) < 1e-9)
     }
 }
+
+class SharedLessonTest {
+    @Test
+    fun `labelled text splits into what happened and the lesson`() {
+        assertEquals(
+            "Snapped at a colleague after a long day." to "Pause before replying when tired.",
+            Lessons.fromShared("What happened: Snapped at a colleague after a long day.\nLesson: Pause before replying when tired."),
+        )
+        // Gemini's markdown, a dash, other words for it, one line, Windows line ends.
+        assertEquals("A" to "B", Lessons.fromShared("**What happened:** A\n\n**Lesson:** B"))
+        assertEquals("A" to "B", Lessons.fromShared("**Situation**: A\r\n**Lesson learned** - B"))
+        assertEquals("A" to "B", Lessons.fromShared("Incident – A\nTakeaway: B"))
+        assertEquals("A." to "B", Lessons.fromShared("What happened: A. Lesson: B"))
+        assertEquals("A" to "B", Lessons.fromShared("situation: A\nTHE LESSON: B"))
+    }
+
+    @Test
+    fun `unlabelled text is all what happened, and the word lesson alone doesn't split it`() {
+        assertEquals("Missed the bus again." to "", Lessons.fromShared("  Missed the bus again.  "))
+        assertEquals("That was a lesson in patience." to "", Lessons.fromShared("That was a lesson in patience."))
+        assertEquals("Lessons from school stay." to "", Lessons.fromShared("Lessons from school stay."))
+        assertEquals("" to "", Lessons.fromShared(""))
+        assertEquals("" to "B", Lessons.fromShared("Lesson: B"))
+    }
+
+    @Test
+    fun `long shared text is cut to fit, never through an emoji`() {
+        val long = "x".repeat(Lessons.SITUATION_MAX - 1) + "😀" + "tail"
+        val (s, _) = Lessons.fromShared(long)
+        assertEquals(Lessons.SITUATION_MAX - 1, s.length)
+        val (_, l) = Lessons.fromShared("A\nLesson: " + "y".repeat(1000))
+        assertEquals(Lessons.LESSON_MAX, l.length)
+    }
+
+    @Test
+    fun `sharing into a lesson being written adds to it`() {
+        assertEquals("Mine\nShared" to "My lesson", Lessons.addShared("Mine", "My lesson", "Shared"))
+        assertEquals("Mine\nA" to "Mine too\nB", Lessons.addShared("Mine", "Mine too", "What happened: A\nLesson: B"))
+        assertEquals("A" to "B", Lessons.addShared("", " ", "A\nLesson: B"))
+        assertEquals(Lessons.SITUATION_MAX, Lessons.addShared("z".repeat(Lessons.SITUATION_MAX), "", "more").first.length)
+    }
+}

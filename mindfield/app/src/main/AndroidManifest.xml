@@ -38,6 +38,37 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- Text shared from another app (Gemini, a chat, a note) starts a new lesson. Text only:
+             the app reads nothing else, and nothing is saved until you press Save. -->
+        <activity
+            android:name=".ShareLessonActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/share_lesson"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!-- "Add lesson" in the quick-settings panel. -->
+        <service
+            android:name=".LessonTile"
+            android:exported="true"
+            android:icon="@drawable/ic_stat_mindfield"
+            android:label="@string/tile_add_lesson"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="false" />
+        </service>
+
         <receiver
             android:name=".AlarmReceiver"
             android:exported="false">

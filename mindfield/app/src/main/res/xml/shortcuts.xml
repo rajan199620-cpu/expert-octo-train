@@ -20,4 +20,14 @@
             android:targetClass="com.rajan.mindfield.MainActivity"
             android:targetPackage="com.rajan.mindfield" />
     </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut"
+        android:shortcutId="lesson"
+        android:shortcutShortLabel="@string/shortcut_lesson">
+        <intent
+            android:action="com.rajan.mindfield.ADD_LESSON"
+            android:targetClass="com.rajan.mindfield.MainActivity"
+            android:targetPackage="com.rajan.mindfield" />
+    </shortcut>
 </shortcuts>
