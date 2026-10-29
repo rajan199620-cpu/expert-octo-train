@@ -325,18 +325,28 @@ class LibraryUpgradeTest {
         "truth-default", "presumption-of-guilt", "polygraph", "emotional-victim-effect",
     )
 
-    private val added = fromFiveBooks + fromTwoMoreBooks + fromThreeMoreBooks
+    /** Then the Investigation & policing area, appended after the everyday library (see README). */
+    private val investigation = setOf(
+        "cognitive-interview", "information-gathering-interviews", "tunnel-vision", "blind-lineups",
+        "eyewitness-confidence", "forensic-confirmation-bias", "strategic-use-of-evidence", "procedural-justice",
+        "child-witness-interviews", "hot-spots-policing", "rapport-interviewing", "stress-and-eyewitness",
+        "body-worn-cameras",
+    )
+
+    private val added = fromFiveBooks + fromTwoMoreBooks + fromThreeMoreBooks + investigation
 
     /** The library as people first had it (151 concepts), after the five books (180) and after seven (195). */
     private val original = Library(Library.interleave(now.all.filter { it.id !in added }))
-    private val afterFiveBooks = Library(Library.interleave(now.all.filter { it.id !in fromTwoMoreBooks + fromThreeMoreBooks }))
-    private val afterSevenBooks = Library(Library.interleave(now.all.filter { it.id !in fromThreeMoreBooks }))
+    private val afterFiveBooks = Library(Library.interleave(now.all.filter { it.id !in fromTwoMoreBooks + fromThreeMoreBooks + investigation }))
+    private val afterSevenBooks = Library(Library.interleave(now.all.filter { it.id !in fromThreeMoreBooks + investigation }))
+    private val afterTenBooks = Library(Library.interleave(now.all.filter { it.id !in investigation }))
 
     /** Each earlier library, with the concepts that arrived after it. */
     private val upgrades = listOf(
         original to added,
-        afterFiveBooks to fromTwoMoreBooks + fromThreeMoreBooks,
-        afterSevenBooks to fromThreeMoreBooks,
+        afterFiveBooks to fromTwoMoreBooks + fromThreeMoreBooks + investigation,
+        afterSevenBooks to fromThreeMoreBooks + investigation,
+        afterTenBooks to investigation,
     )
     private val start: LocalDate = LocalDate.of(2026, 10, 2)
 
@@ -363,9 +373,12 @@ class LibraryUpgradeTest {
         assertEquals(151, original.size)
         assertEquals(180, afterFiveBooks.size)
         assertEquals(195, afterSevenBooks.size)
-        assertEquals(195 + fromThreeMoreBooks.size, now.size)
+        assertEquals(204, afterTenBooks.size)
+        assertEquals(195 + fromThreeMoreBooks.size, afterTenBooks.size)
+        assertEquals(204 + investigation.size, now.size)
+        assertTrue(now.all.filter { it.id in investigation }.all { it.category == Category.INVESTIGATION })
         assertTrue(added.all { now.contains(it) })
-        assertEquals(fromFiveBooks.size + fromTwoMoreBooks.size + fromThreeMoreBooks.size, added.size)
+        assertEquals(fromFiveBooks.size + fromTwoMoreBooks.size + fromThreeMoreBooks.size + investigation.size, added.size)
     }
 
     @Test
@@ -440,5 +453,26 @@ class LibraryUpgradeTest {
         val firstNew = now.all.filter { it.id in fromThreeMoreBooks }.minOf { it.number }
         assertTrue("first new day $firstNew", firstNew > 145)
         for (c in afterSevenBooks.all.filter { it.number < firstNew }) assertEquals(c.id, c.number, now[c.id]!!.number)
+    }
+
+    @Test
+    fun `the investigation area moves nothing, as it starts after the whole everyday library`() {
+        for (c in afterTenBooks.all) assertEquals(c.id, c.number, now[c.id]!!.number)
+        assertEquals(205, now.all.filter { it.id in investigation }.minOf { it.number })
+    }
+
+    @Test
+    fun `choosing investigation as a focus brings it in two days in three, then carries on with everything`() {
+        var s = AppState(settings = Settings(focus = setOf(Category.INVESTIGATION)))
+        val shown = (0 until 60).map { d ->
+            val day = start.plusDays(d.toLong())
+            s = Curriculum.assign(day, now, s, d.toLong())
+            now[s.assignments.getValue(day).conceptId]!!
+        }
+        // Every investigation concept within the first three weeks, one day in three kept for breadth.
+        assertEquals(investigation, shown.take(20).filter { it.category == Category.INVESTIGATION }.map { it.id }.toSet())
+        assertTrue(shown.take(19).count { it.category != Category.INVESTIGATION } in 5..7)
+        // Then everyday concepts, never a repeat.
+        assertEquals(shown.size, shown.map { it.id }.toSet().size)
     }
 }

@@ -18,11 +18,13 @@ are in [`docs/screenshots`](docs/screenshots).
 | Sunday | **Weekly review**, five minutes, one sentence to write: your blind spot, one moment turned into an if-then plan for next week, and an old note judged again | Reflecting on your own experience beats more practice once there's experience to reflect on (Di Stefano et al., HBS 14-093); see "The weekly review" below |
 | Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", and your own lessons, each back the day after, then when the FSRS scheduler predicts recall has fallen to 90% (about 3, 11, 35, 100 days while you keep remembering) | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
 
-## The library: 204 concepts, honestly labelled
+## The library: 217 concepts, honestly labelled
 
-Nine areas, dealt round-robin so neighbouring days differ (interleaving): memory & perception,
-the self, thinking traps, influence & persuasion, emotions & wellbeing, relationships, choices &
-money, motivation & habits, groups & society.
+Nine everyday areas, dealt round-robin so neighbouring days differ (interleaving): memory &
+perception, the self, thinking traps, influence & persuasion, emotions & wellbeing,
+relationships, choices & money, motivation & habits, groups & society. Plus one specialist area,
+**Investigation & policing**, dealt after the everyday library, or two days in three from the
+start for anyone who picks it as a focus area (Settings, Focus areas, "Policing").
 
 Every concept has: a hook, what's going on, **the key study with its numbers**, an **evidence
 label**, **"In the real world"**, how to spot it, a mission, a "watch out", a predict-first
@@ -112,6 +114,34 @@ are anecdotes. Already covered: eye contact and body language (the myth of spott
 New concepts sit at the end of each area, so the order for anyone already using the app is
 unchanged up to day 135 (day 144 for the second batch, day 174 for the third); people who had seen everything meet the
 new ones before any repeat.
+
+### Investigation & policing (October 2026)
+
+13 concepts for a police career, chosen where the research is strongest and written like the
+rest (a key study, a real case with its nuance, how to spot it, a mission, a watch-out). Kept
+separate from the everyday areas, so adding them renumbered nothing; they're numbered 205 to 217.
+
+- **Questioning witnesses:** the cognitive interview (two meta-analyses; Miami detectives drew out
+  47% more information after training), open questions for child witnesses (the NICHD protocol;
+  the McMartin preschool case), and stress and eyewitness memory (survival-school interrogations).
+- **Questioning suspects:** information-gathering interviews, the PEACE model (true confessions
+  kept, false ones cut; England and Wales after the Guildford Four and Birmingham Six), rapport
+  beats pressure (418 terrorism interviews; the Scharff technique), and holding back the evidence
+  (strategic use of evidence).
+- **Identification evidence:** blind identification parades (State v. Henderson) and eyewitness
+  confidence growing after feedback (Jennifer Thompson and Ronald Cotton).
+- **Investigator bias:** tunnel vision (Steven Avery, 1985) and forensic confirmation bias (the
+  Brandon Mayfield fingerprint error).
+- **Policing strategy:** hot spots policing (Minneapolis; a Campbell review of 65 studies),
+  procedural justice (the Queensland breath-test trial), and body-worn cameras, labelled
+  *debated* (Rialto's striking result against Washington, D.C.'s null one).
+- Indian law where it bears on the science: a confession to a police officer can't be proved
+  (Bharatiya Sakshya Adhiniyam 2023, s. 23), and BNSS s. 180 allows audio-video recording of
+  witness statements.
+- Already in the library and not repeated: false confessions, the presumption of guilt, the truth
+  default, criminal profiling, the polygraph, microexpressions, the misinformation effect.
+- Left out: numbers that couldn't be verified (some effect sizes, case details), and techniques
+  without good evidence. Procedure and statutes (BNSS, BSA, BNS) belong in flashcards, not here.
 
 ## Progress, the way the big learning apps do it (October 2026)
 
@@ -312,7 +342,7 @@ signature stable so updates install over each other and Google sign-in keeps wor
 the certificate, publishes the APK to the link above and commits screenshots.
 
 - `core/` is pure Kotlin (library parsing, daily scheduling, spaced review, stats, merge,
-  backup format, account linking) with content checks on all 204 concepts and randomised
+  backup format, account linking) with content checks on all 217 concepts and randomised
   stress tests: years of irregular use never repeat a concept early; merges are commutative,
   idempotent and associative over hundreds of random states; backups round-trip awkward text;
   alarms keep the wall-clock time across daylight-saving changes; three phones and two Google

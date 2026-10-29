@@ -27,9 +27,19 @@ class LibraryTest {
     @Test
     fun `categories are dealt round robin so neighbours differ`() {
         for (c in Category.entries) assertTrue("$c has too few", all.count { it.category == c } >= 12)
-        // While every category still has concepts left, no two consecutive days share a category.
-        val fullRounds = Category.entries.minOf { c -> all.count { it.category == c } } * Category.entries.size
+        // While every everyday area still has concepts left, no two consecutive days share an area.
+        val fullRounds = Library.ROTATION.minOf { c -> all.count { it.category == c } } * Library.ROTATION.size
         for (i in 1 until fullRounds) assertTrue("days $i and ${i + 1}", all[i].category != all[i - 1].category)
+    }
+
+    @Test
+    fun `specialist areas come after the whole everyday library, in file order`() {
+        val everyday = all.count { it.category in Library.ROTATION }
+        assertTrue(Library.SPECIALIST.isNotEmpty())
+        assertTrue(all.take(everyday).all { it.category in Library.ROTATION })
+        assertTrue(all.drop(everyday).all { it.category in Library.SPECIALIST })
+        val fileOrder = ConceptParser.parse(TestLibrary.text).concepts.filter { it.category in Library.SPECIALIST }.map { it.id }
+        assertEquals(fileOrder, all.drop(everyday).map { it.id })
     }
 
     @Test

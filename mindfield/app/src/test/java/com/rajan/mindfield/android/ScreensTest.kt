@@ -790,6 +790,21 @@ class ScreensTest {
     }
 
     @Test
+    fun `investigation - picking Policing as a focus brings its concepts from day two`() {
+        val today = LocalDate.now(Seed.zone)
+        Store.settings { it.copy(onboarded = true, focus = setOf(com.rajan.mindfield.core.Category.INVESTIGATION)) }
+        Seed.at(today.minusDays(1), 9)
+        Store.todayConcept()
+        morning()
+        assertEquals("cognitive-interview", Store.todayConcept().id)
+        launch()
+        compose.onNodeWithText("The cognitive interview").assertExists()
+        shot("57-investigation-today")
+        tab("Guide")
+        compose.onAllNodesWithText("Policing").onFirst().assertExists()
+    }
+
+    @Test
     fun `a sign-in notification opens the Google account sheet`() {
         Seed.weeks(5)
         InstrumentationRegistry.getInstrumentation().setInTouchMode(true)

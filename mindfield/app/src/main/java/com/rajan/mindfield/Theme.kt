@@ -132,6 +132,8 @@ object Palettes {
         Category.DECISIONS to Tones(0xFF1A7670, 0xFF67D4C9, 0xFF0C3936, 0xFF18706A),
         Category.HABITS to Tones(0xFF3F7329, 0xFFA2D987, 0xFF213E18, 0xFF3F7029),
         Category.GROUPS to Tones(0xFF806408, 0xFFEBCB62, 0xFF463707, 0xFF8A6E12),
+        // Slate, like a case file.
+        Category.INVESTIGATION to Tones(0xFF4F5D6E, 0xFFAFC0D3, 0xFF222B36, 0xFF46566A),
     )
 
     fun accent(c: Category, dark: Boolean): Color = Color(sets.getValue(c).let { if (dark) it.dark else it.light })
@@ -357,7 +359,7 @@ fun SoftButton(text: String, modifier: Modifier = Modifier, color: Color = palet
 
 /**
  * A selectable chip; selected chips fill with their colour, and a screen reader says whether it's on.
- * It can lead with a line icon, or with a dot of its colour (the nine areas).
+ * It can lead with a line icon, or with a dot of its colour (the areas).
  */
 @Composable
 fun ChoiceChip(text: String, selected: Boolean, color: Color, modifier: Modifier = Modifier, icon: Glyph? = null, dot: Boolean = false, onClick: () -> Unit) {

@@ -666,8 +666,8 @@ private fun AboutCard() {
                     "• Predict first: guessing before you learn improves memory (the pretesting effect).\n" +
                     "• Missions with if-then plans: deciding when and where makes action far more likely.\n" +
                     "• Field reports: connecting an idea to your own life is one of the strongest memory aids (the self-reference effect).\n" +
-                    "• Spaced review: questions return after 1, 3, 7, 16, 35 and 90 days.\n" +
-                    "• Interleaving: the nine areas take turns, so you learn to tell similar ideas apart.\n\n" +
+                    "• Spaced review: each card comes back when you're predicted to be about to forget it (FSRS, the scheduler Anki uses).\n" +
+                    "• Interleaving: the nine everyday areas take turns, so you learn to tell similar ideas apart. Investigation & policing is a specialist area: pick it as a focus to see it sooner.\n\n" +
                     "Every concept lists its sources. ${Store.library.size} concepts; about ${Math.round(Store.library.size / 30.4)} months of daily discovery, then the app brings back the ones you've spotted least.",
                 style = MaterialTheme.typography.bodySmall,
             )

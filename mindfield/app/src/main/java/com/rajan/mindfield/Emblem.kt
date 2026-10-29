@@ -190,6 +190,23 @@ object Emblems {
                 ink.alpha = 220
                 canvas.drawArc(RectF(cx - r * 0.9f, cy - r * 1.05f, cx + r * 0.1f, cy - r * 0.05f), 200f, 260f, false, ink)
             }
+            Category.INVESTIGATION -> {
+                // A lens over the whorls of a print: looking closely, and what looking can miss.
+                val lens = r * 0.62f
+                val ox = cx - r * 0.14f
+                val oy = cy - r * 0.14f
+                ink.alpha = 110
+                for (i in 1..5) {
+                    val rr = lens * i / 6f
+                    canvas.drawArc(RectF(ox - rr, oy - rr * 1.15f, ox + rr, oy + rr * 1.15f), rnd.nextFloat() * 360f, 230f + rnd.nextFloat() * 90f, false, ink)
+                }
+                ink.alpha = 235
+                canvas.drawCircle(ox, oy, lens, ink)
+                val d = 0.7071f
+                val handle = Paint(ink).apply { strokeWidth = s * 0.05f }
+                canvas.drawLine(ox + lens * d, oy + lens * d, ox + (lens + r * 0.5f) * d, oy + (lens + r * 0.5f) * d, handle)
+                canvas.drawCircle(ox + lens * 0.35f * (rnd.nextFloat() - 0.5f), oy + lens * 0.35f * (rnd.nextFloat() - 0.5f), s * 0.035f, accent)
+            }
             Category.GROUPS -> {
                 // A ring of people and one standing apart.
                 val n = 7 + rnd.nextInt(4)

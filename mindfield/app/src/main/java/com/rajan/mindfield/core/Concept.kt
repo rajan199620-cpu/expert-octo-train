@@ -1,6 +1,9 @@
 package com.rajan.mindfield.core
 
-/** The nine areas of psychology the guide covers. [key] is what the library file uses. */
+/**
+ * The areas the guide covers: nine of everyday psychology, then specialist ones (see
+ * [Library.SPECIALIST]). [key] is what the library file uses.
+ */
 enum class Category(val key: String, val label: String, val short: String, val blurb: String) {
     MEMORY("memory", "Memory & perception", "Perception", "What we notice, what we miss, and how memory rewrites itself."),
     SELF("self", "The self", "Self", "How we see ourselves, explain ourselves and guard our self-image."),
@@ -10,7 +13,8 @@ enum class Category(val key: String, val label: String, val short: String, val b
     CONNECTION("connection", "Relationships", "Connection", "Liking, trust and closeness, and the small moments that build them."),
     DECISIONS("decisions", "Choices & money", "Choices", "Why the way options are framed changes what we pick."),
     HABITS("habits", "Motivation & habits", "Habits", "What gets us moving, keeps us going and makes behaviour stick."),
-    GROUPS("groups", "Groups & society", "Groups", "What crowds, teams and tribes do to the people inside them.");
+    GROUPS("groups", "Groups & society", "Groups", "What crowds, teams and tribes do to the people inside them."),
+    INVESTIGATION("investigation", "Investigation & policing", "Policing", "How witnesses and suspects are questioned, how evidence goes wrong, and which police methods work.");
 
     companion object {
         fun of(key: String): Category? = entries.firstOrNull { it.key == key }

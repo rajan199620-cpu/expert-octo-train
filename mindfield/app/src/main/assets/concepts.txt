@@ -7,6 +7,7 @@
 #
 # Within each category the order is the order of first appearance. The app deals the categories
 # round-robin (memory, self, thinking, influence, feelings, connection, decisions, habits, groups).
+# Specialist areas (investigation) come after all of those, unless chosen as a focus area.
 #
 # Evidence: solid = replicated widely; good = real but smaller or conditional; debated = mixed
 # replications; busted = failed to replicate or misreported.
@@ -4175,3 +4176,274 @@ predict: In a Norwegian study, what most changed how credible a rape victim's te
 scenario: After a road accident, Priya, the driver who was hit, explains what happened in a flat, matter-of-fact voice. The officer finds the other driver's tearful account more convincing, until a dashcam shows Priya was right.
 source: Kaufmann, G., Drevland, G. C. B., Wessel, E., Overskeid, G., & Magnussen, S. (2003). The importance of being earnest: Displayed emotions and witness credibility. Applied Cognitive Psychology; Bollingmo, G. C., Wessel, E. O., Eilertsen, D. E., & Magnussen, S. (2008). Credibility of the emotional witness: A study of ratings by police investigators. Psychology, Crime & Law; Ask, K., & Landström, S. (2010). Why emotions matter. Law and Human Behavior.
 related: presumption-of-guilt, halo-effect, lie-detection-myth
+
+# =====================================================================================
+# INVESTIGATION & POLICING (a specialist area: dealt after the everyday library, or two days in
+# three for anyone who picks it as a focus area)
+# =====================================================================================
+
+## cognitive-interview
+title: The cognitive interview
+category: investigation
+evidence: solid
+hook: Ask a witness to picture the scene and report every detail, even trivial ones, and you get far more true detail with barely more mistakes.
+what: Memory is retrieved through cues, not played back like a recording. The cognitive interview, developed by psychologists Ronald Fisher and Edward Geiselman, gives witnesses more and better cues: mentally return to the scene (where you stood, the light, how you felt), report everything without editing, recall in a different order, and take another person's point of view. The interviewer mostly listens, asks open questions and doesn't interrupt. The same memory yields much more, because the problem was rarely that the witness forgot; it was that quick-fire questioning never reached it.
+study: In a 1999 meta-analysis of more than 50 experiments, Günter Köhnken and colleagues found the cognitive interview drew out substantially more correct details than a standard police interview, with only a small rise in errors, so the accuracy of what was said stayed about the same (85% against 82%). Amina Memon, Christian Meissner and Joanne Fraser updated it in 2010 with 65 experiments: still a large gain in correct details, a small increase in errors, and no rise in invented details.
+case: In 1989 Ronald Fisher, Edward Geiselman and Michael Amador tested the method on real cases. Seven experienced detectives at the Metro-Dade Police Department in Miami tape-recorded interviews with actual victims and witnesses, then were trained in the cognitive interview and recorded more. Nine untrained colleagues did the same. After training, the seven drew out 47% more information than they had before, and 63% more than the untrained detectives. Where statements could be checked against physical evidence, other witnesses or confessions, 94% was confirmed, as high after training as before. The nuance: the extra came from changing how detectives asked, not from better witnesses. Its cost is time, as a full cognitive interview takes longer, which is why busy units drift back to quick questioning.
+proof: Two meta-analyses (1999 and 2010, 65 experiments in the later one) and field tests with real detectives agree. The trade-offs are time and a small rise in errors.
+spot: Notice when someone telling what happened gets a string of quick yes-or-no questions and their account shrinks, compared with when they're given room and remember more.
+use: When someone is trying to remember what happened, ask them to picture the setting first, then tell you everything, even trivial details, without interrupting. Notice how much more comes out.
+guard: Don't offer options or fill silences ("Was he tall? Was it a red car?"): details you suggest can slip into the witness's memory. Open prompts can't.
+predict: Compared with a standard police interview, what does the cognitive interview get from witnesses?
+- More detail, but most of the extra is wrong
+* Much more correct detail, with only slightly more errors
+- No more detail once a first statement has been taken
+scenario: After a chain snatching, Inspector Kavya asks the victim to close her eyes, picture the bus stop, the noise and what she was holding, then tell everything, however small. The victim remembers a tattoo she had forgotten.
+source: Fisher, R. P., Geiselman, R. E., & Amador, M. (1989). Field test of the cognitive interview. Journal of Applied Psychology; Köhnken, G., Milne, R., Memon, A., & Bull, R. (1999). The cognitive interview: A meta-analysis. Psychology, Crime & Law; Memon, A., Meissner, C. A., & Fraser, J. (2010). The cognitive interview: A meta-analytic review and study space analysis of the past 25 years. Psychology, Public Policy, and Law.
+related: misinformation-effect, false-memories, child-witness-interviews
+
+## information-gathering-interviews
+title: Information-gathering interviews
+aka: The PEACE model
+category: investigation
+evidence: solid
+hook: Accusing a suspect raises confessions from the guilty and the innocent alike. Asking for their account raises the true ones.
+what: There are two broad ways to question a suspect. The accusatorial way (the US Reid technique is the best known) presumes guilt, confronts, cuts off denials and offers face-saving stories and hints of leniency until the suspect confesses. The information-gathering way, built into the PEACE model used in England and Wales (Planning and preparation, Engage and explain, Account, Closure, Evaluate), builds rapport, lets the suspect give a full account, then probes it and puts the evidence to them. Its goal is information that can be checked, not a confession for its own sake. In India that matters twice over: a confession made to a police officer can't be proved against the accused (Bharatiya Sakshya Adhiniyam 2023, s. 23), though information leading to the discovery of a fact can be.
+study: In 2014 Christian Meissner and colleagues meta-analysed both approaches. In field studies, both were linked to confessions. In experiments where it was known who was guilty, information-gathering kept or raised true confessions while lowering false ones; the accusatorial approach raised true and false confessions alike. A 2024 update of their Campbell review found information-gathering produced more true confessions than both accusatorial and plain direct questioning.
+case: England and Wales rebuilt police interviewing after a run of miscarriages of justice. The Guildford Four and the Birmingham Six, jailed in the 1970s for IRA pub bombings largely on confessions they said had been beaten or pressured out of them, had their convictions quashed in 1989 and 1991. The Police and Criminal Evidence Act 1984 had already brought in tape-recorded interviews, and in the early 1990s national PEACE training replaced persuading suspects to confess with investigative interviewing, aimed at getting a full account and testing it against the evidence. The nuance: the change was forced by scandal rather than adopted from enthusiasm, and later evaluations found that without supervision and feedback, many officers' interviews still fell short of the training. A method works when it's practised, not just taught.
+proof: A meta-analysis of field and laboratory studies (2014) and a Campbell review (updated 2024) agree. The experiments use mock crimes, so the exact rates in real cases may differ.
+spot: In news, films or office inquiries, notice when the questioner says "We know you did it, just tell us why" rather than "Walk me through your evening."
+use: In a dispute at home or work, ask for the other person's full account before saying what you suspect, then raise the one fact that doesn't fit.
+guard: A confession that feels like progress isn't proof: pressure draws confessions from the innocent too. Judge an interview by what it yields that can be checked.
+predict: In experiments where it was known who was guilty, what did accusatorial interrogation do compared with plain direct questioning?
+* Raised both true and false confessions
+- Raised true confessions and cut false ones
+- Made no difference to either
+scenario: Instead of shouting "Admit it!", Sub-Inspector Rohan asks a theft suspect to walk through his whole day. Only when the account is complete does he show the CCTV that contradicts it.
+source: Meissner, C. A., Redlich, A. D., Michael, S. W., Evans, J. R., Camilletti, C. R., Bhatt, S., & Brandon, S. (2014). Accusatorial and information-gathering interrogation methods and their effects on true and false confessions: a meta-analytic review. Journal of Experimental Criminology; Meissner, C. A., et al. (2024). Campbell Systematic Reviews (update); Bharatiya Sakshya Adhiniyam, 2023, s. 23.
+related: false-confessions, presumption-of-guilt, strategic-use-of-evidence, rapport-interviewing
+
+## tunnel-vision
+title: Tunnel vision
+category: investigation
+evidence: good
+hook: Once investigators settle on a suspect, evidence pointing elsewhere gets explained away instead of followed up.
+what: Tunnel vision is confirmation bias with institutional momentum. An early theory decides which leads get chased, how ambiguous evidence is read and what gets written down, and every step taken makes it costlier to turn back. Time pressure, public pressure and pride make it stickier. It rarely needs bad faith: honest, hard-working investigators fall into it because that's how human judgement works under pressure.
+study: Barbara O'Brien (2009) gave people a mock case file to investigate. Those asked to name a prime suspect early went on to look for information that confirmed their choice and to read ambiguous evidence as pointing to guilt. Asking them to argue why other suspects could have done it reduced the bias. Legal scholars Keith Findley and Michael Scott (2006) traced tunnel vision as a common thread through wrongful convictions later overturned by DNA.
+case: In July 1985 a woman was attacked on a beach near Two Rivers, Wisconsin. The sheriff's department focused on Steven Avery almost at once; a composite sketch was later said to have been drawn using his booking photo. Despite alibi witnesses, he was convicted that December and sentenced to 32 years. Some suspected another local man, Gregory Allen, who resembled Avery and was suspected in other sex crimes, but he was never investigated. In 2003 DNA testing cleared Avery and pointed to Allen, by then serving 60 years for a later assault. The nuance: Avery was later convicted of an unrelated 2005 murder, a verdict still disputed; neither outcome changes what 1985 shows, an investigation that stopped looking once it had a name.
+proof: Experiments with mock case files and analyses of overturned convictions point the same way; how many wrongful convictions it causes is hard to measure.
+spot: Watch for the moment a group stops asking "What happened?" and starts asking "How do we prove it was them?", in a newsroom, an office inquiry or a family argument.
+use: Before your next decision about who caused a problem, write down two other explanations and what evidence would favour each.
+guard: When a lead points away from your suspect, record it and follow it as carefully as one pointing towards them. Have someone argue the case against your theory.
+predict: In a mock investigation, what did naming a prime suspect early do?
+- Made investigators more careful with the evidence
+* Made them seek confirming facts and read ambiguous evidence as guilt
+- Nothing, once all the evidence was in the file
+scenario: After a shop theft, the station decides within an hour that the new helper did it. A neighbour's report of a stranger at the back door is filed but never followed up.
+source: O'Brien, B. (2009). Prime suspect: An examination of factors that aggravate and counteract confirmation bias in criminal investigations. Psychology, Public Policy, and Law; Findley, K. A., & Scott, M. S. (2006). The multiple dimensions of tunnel vision in criminal cases. Wisconsin Law Review.
+related: confirmation-bias, presumption-of-guilt, forensic-confirmation-bias, consider-the-opposite
+
+## blind-lineups
+title: Blind identification parades
+aka: Double-blind lineups
+category: investigation
+evidence: good
+hook: An officer who knows which face is the suspect can steer a witness towards it without meaning to.
+what: In an identification parade or photo lineup, the person running it can leak what they know: a pause, a nod, "take your time" when the witness lingers on the suspect, relief when they choose. Witnesses, unsure and wanting to help, pick up on it. The fix is procedural: the person running the parade doesn't know who the suspect is, the witness is told the culprit may not be there, the fillers fit the description, and the witness's confidence is written down at once, in their own words.
+study: Sarah Greathouse and Margaret Kovera (2009) paired 234 witnesses with lineup administrators. Administrators who knew who the suspect was behaved in more biasing ways, and witnesses picked the suspect more often, especially when instructions were biased and all faces were shown together, without either side noticing. In 2020 Gary Wells and colleagues set out nine evidence-based recommendations for identification procedures, double-blind administration among them.
+case: In 2011 the New Jersey Supreme Court decided State v. Henderson, a murder case resting on an eyewitness identification from a photo array. Before ruling, it appointed a special master who heard expert testimony and reviewed hundreds of studies. The court concluded that the legal test courts had used since the 1970s overstated how reliable identifications are and ignored known risks, among them an administrator who knows the suspect, feedback to the witness, stress and weapons. It ordered hearings whenever there's evidence of a suggestive procedure, and new jury instructions explaining the science. The nuance: a court can only judge an identification after the fact. The cheap protection is at the police station, before it happens, by keeping the person running the parade blind.
+proof: Laboratory experiments and field data agree that an administrator's knowledge can sway witnesses; how much depends on the instructions and the lineup format.
+spot: Notice whenever someone asking you to choose already knows which answer they hope for: a shop assistant, a teacher, an interviewer. Watch for the cues they leak.
+use: When you need someone's independent judgement, have the question put by a person who doesn't know which answer you're hoping for.
+guard: Say nothing after a witness chooses, not even "OK". Write down their confidence in their own words before anything else happens.
+predict: When the person running a lineup knew who the suspect was, what happened?
+* Witnesses picked the suspect more often, and neither side noticed the influence
+- Witnesses became more careful, because the administrator watched them closely
+- Nothing measurable, as long as the administrator said nothing
+scenario: At the parade, Constable Mehta, who arrested the suspect, quietly says "Take your time, look carefully" each time the witness pauses at the man in third place.
+source: Greathouse, S. M., & Kovera, M. B. (2009). Instruction bias and lineup presentation moderate the effects of administrator knowledge on eyewitness identification. Law and Human Behavior; Wells, G. L., Kovera, M. B., Douglass, A. B., Brewer, N., Meissner, C. A., & Wixted, J. T. (2020). Policy and procedure recommendations for the collection and preservation of eyewitness identification evidence. Law and Human Behavior; State v. Henderson, 208 N.J. 208 (2011).
+related: eyewitness-confidence, misinformation-effect, presumption-of-guilt
+
+## eyewitness-confidence
+title: Eyewitness confidence grows
+aka: Post-identification feedback
+category: investigation
+evidence: good
+hook: A witness's first, unsure pick can become courtroom certainty after one remark: "Good, that's our suspect."
+what: Under clean conditions, a witness's confidence at their very first identification is a fair guide to accuracy: high confidence goes with accurate picks, and low confidence is a warning sign. But confidence keeps growing afterwards, through feedback, repeated questioning and seeing the suspect again, while accuracy doesn't. By the trial, a witness can be sincerely certain of a choice they once hesitated over.
+study: Gary Wells and Amy Bradfield (1998) showed people a lineup that didn't contain the culprit, so every pick was wrong. Those then told "Good, you identified the suspect" became more confident, and even remembered having had a better view and paying more attention. A 2014 meta-analysis of about 7,000 people confirmed the effect. In 2017 John Wixted and Gary Wells concluded that confidence recorded at once, in a fair and blind procedure, is informative, while confidence stated later is not.
+case: In 1984 Jennifer Thompson was raped in Burlington, North Carolina, and studied her attacker's face so she could identify him. Shown photographs, she picked Ronald Cotton after some hesitation, and officers told her they had thought he might be the one. At the live lineup Cotton was the only person who had also been in the photos, and she picked him again. By the trial she was certain, and he was sentenced to life. In 1995 DNA testing cleared him and identified another man, Bobby Poole, after Cotton had spent more than ten years in prison. The nuance: Thompson's certainty was honest, and she later campaigned for reform with Cotton. It had been built after her first, hesitant choice, the only one that said anything about her memory.
+proof: The feedback effect is well replicated (a 2014 meta-analysis of about 7,000 people). Initial confidence is informative under clean procedures and much less so when they aren't followed.
+spot: Listen for stories that get more certain with each retelling: "I think it was Tuesday" becoming "It was definitely Tuesday."
+use: Next time you're asked to recall something important, note how sure you are right away, before anyone reacts to your answer.
+guard: Record a witness's confidence in their own words at the first identification, and give little weight to confidence stated later, in court especially. BNSS s. 180 lets police record witness statements by audio-video; use it.
+predict: People picked from a lineup that didn't contain the culprit, then were told "Good, you identified the suspect." What happened?
+- They grew doubtful, sensing they were being tested
+* They grew more confident and remembered having had a better view
+- Nothing: confidence was fixed once they had chosen
+scenario: At the parade, Asha hesitates before pointing to number four. The sub-inspector smiles and says "Good, that's the one we arrested." Months later, in court, Asha says she was certain from the start.
+source: Wells, G. L., & Bradfield, A. L. (1998). "Good, you identified the suspect": Feedback to eyewitnesses distorts their reports of the witnessing experience. Journal of Applied Psychology; Steblay, N. K., Wells, G. L., & Douglass, A. B. (2014). The eyewitness post identification feedback effect 15 years later. Psychology, Public Policy, and Law; Wixted, J. T., & Wells, G. L. (2017). The relationship between eyewitness confidence and identification accuracy. Psychological Science in the Public Interest.
+related: blind-lineups, false-memories, hindsight-bias, misinformation-effect
+
+## forensic-confirmation-bias
+title: Forensic confirmation bias
+category: investigation
+evidence: good
+hook: Fingerprint experts shown their own earlier matches, framed as a famous mistake, mostly changed their verdicts.
+what: Comparing fingerprints, handwriting, shoe marks or a mixed DNA sample involves human judgement, and judgement bends to context: knowing the suspect has confessed, or what the investigating officer expects, changes what an expert sees in an ambiguous mark. Psychologists Saul Kassin, Itiel Dror and Jeff Kukucka named it forensic confirmation bias. The fix is to control what examiners know: analyse the crime-scene mark before seeing the suspect's sample, and reveal case information only when it's needed.
+study: Itiel Dror, David Charlton and Ailsa Péron (2006) gave five experienced fingerprint examiners pairs of prints that each of them had judged a match years earlier, now presented as the notorious Mayfield error. Four of the five reached a different conclusion from their own earlier one.
+case: After the 2004 Madrid train bombings, the FBI ran a fingerprint from a bag of detonators through its database, and its examiners declared it a match to Brandon Mayfield, an Oregon lawyer who had converted to Islam; an independent expert appointed by the court agreed. Spanish police doubted the match and later linked the print to an Algerian man, Ouhnane Daoud. Mayfield had spent about two weeks in custody. The FBI apologised and paid him $2 million in a settlement, and a 2006 Justice Department review found that once the match was declared, differences were explained away. The nuance: the print really did resemble Mayfield's. A search through millions of prints is bound to turn up close non-matches, which is exactly when context does the rest.
+proof: Experiments with practising experts and documented real errors agree; how often it changes verdicts in everyday casework is still being measured.
+spot: Notice when someone judging quality (a teacher marking, a reviewer, a doctor) already knows what others concluded, and ask how much that shaped their verdict.
+use: Next time you check someone's work, do your own check before reading their conclusion or anyone else's.
+guard: Send examiners only what they need, and ask for the crime-scene mark to be analysed before the suspect's sample is shown. "The expert confirmed it" means more when the expert didn't know what you expected.
+predict: Fingerprint experts were shown prints they had judged a match years earlier, now framed as a famous mistaken match. How many of the five changed their verdict?
+- None: trained experts are unaffected by context
+- One of the five
+* Four of the five
+scenario: Before sending a handwriting sample to the lab, the investigating officer adds a note: "Suspect has already confessed, just need confirmation." The examiner reports a match.
+source: Dror, I. E., Charlton, D., & Péron, A. E. (2006). Contextual information renders experts vulnerable to making erroneous identifications. Forensic Science International; Kassin, S. M., Dror, I. E., & Kukucka, J. (2013). The forensic confirmation bias: Problems, perspectives, and proposed solutions. Journal of Applied Research in Memory and Cognition; U.S. Department of Justice, Office of the Inspector General (2006). A review of the FBI's handling of the Brandon Mayfield case.
+related: tunnel-vision, confirmation-bias, halo-effect
+
+## strategic-use-of-evidence
+title: Holding back the evidence
+aka: Strategic use of evidence
+category: investigation
+evidence: good
+hook: Show a lying suspect the CCTV first and he builds his story around it. Ask first, show later, and the lie shows.
+what: Liars and truth-tellers prepare differently. Truth-tellers tend to tell it as it happened; liars try to avoid or deny facts that incriminate them. If the evidence is revealed at the start, a liar can fit their account to it. If the interviewer first gets a free account, then asks about the topic of the evidence without revealing it, liars tend to contradict what the evidence shows, and those contradictions are the clue. The evidence is then disclosed late and step by step.
+study: Maria Hartwig and colleagues (2006) trained police trainees in this approach and had them interview mock suspects, some of whom had stolen a wallet from a briefcase. Trained interviewers judged correctly who was lying about 85% of the time; untrained ones, who tended to reveal the evidence early, managed about 56%, little better than chance.
+case: In a 2020 UK study by Sandham and colleagues, police officers who hadn't been trained in any of these techniques watched recorded mock interviews and judged who was lying. When the interviewer had disclosed the evidence tactically, step by step and pressing on each inconsistency, the officers were right 68% of the time. For interviews using the standard strategic method or no method at all, they were around chance, at 51% and 48%. The nuance: holding evidence back helps the interviewer who knows what to look for, but colleagues watching the recording later may not see it. How the evidence is revealed matters as much as when.
+proof: Experiments, mostly with mock crimes and trainees, consistently favour late disclosure; evidence from real police interviews is still limited.
+spot: Notice when someone confronts another person with proof straight away ("I saw your message!") and then hears an explanation built neatly around it.
+use: When you suspect someone has told you something untrue, ask them to tell you what happened before you mention what you already know.
+guard: Don't lead with your best evidence, and don't treat one inconsistency as proof of lying: honest memories have gaps too.
+predict: Police trainees interviewed mock suspects. How accurate were those trained to hold back the evidence at spotting who lied?
+- About 55%, no better than the untrained
+* About 85%, against about 56% for the untrained
+- Nearly 100%, as liars always contradicted the evidence
+scenario: Detective Inspector Iyer lets the suspect describe his whole evening, including that he never went near the jewellery shop, before mentioning the shop's camera footage of him at the counter.
+source: Hartwig, M., Granhag, P. A., Strömwall, L. A., & Kronkvist, O. (2006). Strategic use of evidence during police interviews: When training to detect deception works. Law and Human Behavior; Granhag, P. A., & Hartwig, M. (2015). The Strategic Use of Evidence technique: A conceptual overview. In Detecting Deception; Sandham, et al. (2020). Improving professional observers' veracity judgements by tactical interviewing. Journal of Police and Criminal Psychology.
+related: information-gathering-interviews, lie-detection-myth, prolific-liars
+
+## procedural-justice
+title: Procedural justice
+category: investigation
+evidence: good
+hook: People see police as more legitimate, and cooperate more, when they're treated fairly, even when the outcome goes against them.
+what: Procedural justice is the idea that how people are treated matters to them as much as what happens to them. Four things carry it: a voice (being allowed to explain), neutrality (decisions based on facts and rules), respect, and trustworthy motives (believing the officer means well). When encounters have these, people see the police as more legitimate, and people who see the police as legitimate are more willing to comply, report crime and come forward as witnesses. Tom Tyler's surveys built the case; field experiments then tested it.
+study: Lorraine Mazerolle and colleagues' Campbell systematic review (2013) pooled evaluations of police interventions that included procedural justice principles. They improved people's satisfaction with and confidence in the police and their sense of being treated fairly, and made cooperation more likely; effects on reoffending were less clear.
+case: In 2010 Queensland Police ran a randomised trial at 60 random breath-testing operations in Brisbane. At half the sites, officers delivered a short scripted exchange: why they were testing, a road-safety message, a chance for the driver to ask questions, and thanks for taking part. At the others, testing was business as usual. Drivers who got the scripted version rated the police as fairer and more legitimate, although the encounter lasted only slightly longer. The nuance: the trial measured views of the police, not later behaviour. But those views shape whether people call the police, give evidence and come forward as witnesses, which is where investigations succeed or fail.
+proof: A Campbell systematic review (2013) and randomised field trials support effects on how people see the police; effects on later behaviour are smaller and less certain.
+spot: Notice how your attitude to a rule changes when the person enforcing it explains why and listens to you, compared with when they don't.
+use: Next time you have to refuse or enforce something, explain the reason, let the other person speak and thank them.
+guard: Fairness isn't softness: procedural justice is about how decisions are made and explained, not about changing the decision.
+predict: At random breath tests, police gave half the drivers a short explanation, a chance to ask questions and thanks. What changed?
+- Nothing, as drivers only care whether they pass
+* Those drivers rated the police as fairer and more legitimate
+- Drivers became more annoyed by the delay
+scenario: At a traffic checkpoint, Sub-Inspector Farida explains why she is checking licences, answers a driver's question and thanks him. He leaves without complaint, even though she fined him.
+source: Mazerolle, L., Bennett, S., Davis, J., Sargeant, E., & Manning, M. (2013). Legitimacy in policing: A systematic review. Campbell Systematic Reviews; Mazerolle, L., Bennett, S., Antrobus, E., & Eggins, E. (2012). Procedural justice, routine encounters and citizen perceptions of police: Main findings from the Queensland Community Engagement Trial. Journal of Experimental Criminology; Tyler, T. R. (2006). Why people obey the law.
+related: reactance, broken-windows, hot-spots-policing
+
+## child-witness-interviews
+title: Open questions for child witnesses
+aka: The NICHD protocol
+category: investigation
+evidence: solid
+hook: "Tell me everything that happened" gets more accurate answers from a child than any yes-or-no question.
+what: Children can be accurate witnesses, but they are more suggestible than adults, especially to yes-or-no and either-or questions from an adult in authority, and to repeated questions, which they may take as a sign their first answer was wrong. Structured protocols such as the NICHD Investigative Interview Protocol start with rapport and practice describing a neutral event, then rely on open invitations ("Tell me more about that") and leave specific questions until the end.
+study: Michael Lamb and colleagues (2007) reviewed field studies from several countries. Interviewers trained in the protocol asked many more open invitations and fewer suggestive questions, and children's answers to open prompts were more likely to be accurate. Even four- to six-year-olds gave about half their information in response to open invitations.
+case: From 1983, investigators in Manhattan Beach, California, interviewed hundreds of children who had attended the McMartin preschool. Interviewers told children what other children had supposedly said, praised answers that fitted the abuse theory and kept asking until they got them. Accounts grew to include secret tunnels and animal sacrifice. After one of the longest and most expensive criminal trials in US history, no one was convicted. In 1998 Sena Garven, James Wood and colleagues recreated those techniques with children who had had a harmless classroom visitor, and far more of them made false accusations against him than children questioned plainly. The nuance: real abuse needs children's accounts to be believed, and suggestive interviews destroy their value for genuine victims too.
+proof: Field studies in several countries and laboratory work agree; protocols built on open questions are used by police and child-protection services in many countries.
+spot: Listen to how adults question children ("Did he hit you?", "Was it the red one?") and how often the child simply agrees.
+use: When a child tells you something happened, ask "Tell me everything about that" and then "What happened next?" instead of guessing for them.
+guard: Don't repeat a question because you didn't like the answer, and don't mention what others have said. Both teach a child which answer is wanted.
+predict: Children were questioned about a harmless classroom visitor using techniques from a 1980s preschool abuse case. What happened?
+- They resisted, since nothing had happened
+* Far more made false accusations than children asked plainly
+- Only the youngest few were affected
+scenario: A worried parent asks her six-year-old, "Did the driver touch you? He did, didn't he? Your friend said so." After a pause, the child nods.
+source: Lamb, M. E., Orbach, Y., Hershkowitz, I., Esplin, P. W., & Horowitz, D. (2007). A structured forensic interview protocol improves the quality and informativeness of investigative interviews with children. Child Abuse & Neglect; Garven, S., Wood, J. M., Malpass, R. S., & Shaw, J. S. (1998). More than suggestion: The effect of interviewing techniques from the McMartin Preschool case. Journal of Applied Psychology.
+related: cognitive-interview, false-memories, misinformation-effect
+
+## hot-spots-policing
+title: Hot spots policing
+category: investigation
+evidence: solid
+hook: Crime clusters on a few streets. Policing those spots cuts crime there, and it doesn't simply move round the corner.
+what: In most cities a few per cent of street segments account for around half of recorded crime, and the same places stay hot year after year. Hot spots policing concentrates patrols and problem-solving there instead of spreading officers thinly. The common fear is displacement, that crime just moves next door. The evidence mostly finds the opposite: a diffusion of benefits, with crime falling on nearby streets too.
+study: Anthony Braga and colleagues' 2019 Campbell review pooled 65 studies with 78 tests, 27 of them randomised. Hot spots policing produced a small but significant drop in crime at the targeted places, and crime in the surrounding areas tended to fall rather than rise.
+case: In 1988 and 1989 Minneapolis ran the first randomised test. Lawrence Sherman and David Weisburd took 110 crime hot spots and gave 55 of them about twice the patrol presence. Total calls about crime fell by between 6% and 13% compared with the other 55, and disorder seen by observers on site was about half as common. The nuance: officers didn't need to do anything dramatic, just be visibly there more often. The trial was also disrupted partway, so the results come from about six and a half months of full implementation, and later trials in many countries had to confirm the pattern, which they did.
+proof: A Campbell systematic review of 65 studies (2019), many of them randomised, supports a modest effect; how it's done, and whether it harms community trust, matter.
+spot: Notice where trouble in your area happens: the same corner, bus stop or shop. Count how few places account for most of it.
+use: Pick a recurring problem at home or work, note where it happens, and fix the one or two places that produce most of it.
+guard: Concentrated policing can slide into heavy-handed stops of the people who live there. Pair presence with problem-solving and fair treatment, or trust erodes.
+predict: When patrols were concentrated on crime hot spots, what usually happened in the streets around them?
+- Crime moved there, cancelling out the gain
+* Crime tended to fall there too
+- Nothing either way
+scenario: Station records show most chain snatchings happen at three bus stops. The SHO moves two patrols to stand there at peak hours instead of driving round the whole area.
+source: Braga, A. A., Turchan, B., Papachristos, A. V., & Hureau, D. M. (2019). Hot spots policing of small geographic areas effects on crime. Campbell Systematic Reviews; Sherman, L. W., & Weisburd, D. (1995). General deterrent effects of police patrol in crime "hot spots": A randomized, controlled trial. Justice Quarterly.
+related: broken-windows, procedural-justice, base-rate-neglect
+
+## rapport-interviewing
+title: Rapport beats pressure
+aka: Rapport-based interviewing
+category: investigation
+evidence: good
+hook: With suspects later convicted of terrorism, respectful interviewers got more useful information than those who pushed.
+what: Rapport here isn't friendliness for its own sake; it's a working relationship in which the other person decides that talking is worth it. Skills borrowed from motivational interviewing help: reflecting back what the person said, being honest about the situation, respecting their right to stay silent, and not passing judgement. Criticism, sarcasm and threats do the opposite. They make people defensive, and defensive people give less.
+study: Laurence Alison and colleagues (2013) coded 418 recorded police interviews with suspects who were later convicted of terrorist offences. Interviewers' motivational-interviewing skills went with more cooperative behaviour from suspects, which in turn went with more useful information about capability, opportunity, motive, people, places and times.
+case: In the Second World War, Luftwaffe interrogator Hanns Scharff questioned captured Allied pilots without threats: conversation, walks, and talking as if he already knew most of the story, so a pilot's small corrections seemed harmless. He became known for getting information prisoners didn't realise they had given. In the 2010s, psychologists led by Pär Anders Granhag tested his approach in experiments. It drew out more new information than direct questioning, and sources tended to underestimate how much they had revealed. The nuance: Scharff's fame rests partly on his own account. The experiments, not the legend, are what make the method credible.
+proof: Field studies of real interviews (which show associations, not causes) and laboratory experiments agree; not every study finds large effects.
+spot: Notice how people clam up when questioned with sarcasm or blame, and open up when they feel heard.
+use: In your next difficult conversation, reflect back what the other person said ("So you felt ignored") before asking your next question.
+guard: Rapport isn't trickery or false promises. Lying about leniency risks false confessions and, in court, the evidence itself.
+predict: In real interviews with suspects later convicted of terrorism, what went with more useful information?
+- Confronting them firmly with accusations
+* Respectful, non-judgemental questioning that reflected back what they said
+- Keeping the interview short and formal
+scenario: Instead of threatening the gang member, Inspector Thomas tells him plainly that he doesn't have to talk, listens, and repeats back his complaints about the rival gang. An hour later he is describing who supplies the weapons.
+source: Alison, L. J., Alison, E., Noone, G., Elntib, S., & Christiansen, P. (2013). Why tough tactics fail and rapport gets results: Observing Rapport-Based Interpersonal Techniques (ORBIT) to generate useful information from terrorists. Psychology, Public Policy, and Law; Oleszkiewicz, S., Granhag, P. A., and colleagues (2014). Experimental tests of the Scharff technique.
+related: information-gathering-interviews, false-confessions, reactance
+
+## stress-and-eyewitness
+title: Stress and eyewitness memory
+category: investigation
+evidence: good
+hook: A terrified victim feels sure they'll never forget the face. Very high stress usually makes it harder to recognise.
+what: It feels as if a frightening moment burns itself into memory, and the gist often does stick. But extreme stress narrows attention to the threat and disrupts the encoding of details such as a stranger's face. It also tends to raise confidence more than accuracy. Moderate arousal can sharpen memory for the central event; intense fear tends to impair memory for faces.
+study: Kenneth Deffenbacher and colleagues' 2004 meta-analysis of 27 tests found that heightened stress reduced correct identifications (an overall effect of about -0.31), with a similar drop in the accuracy of what witnesses recalled.
+case: In 2004 Charles Morgan and colleagues studied more than 500 military personnel at survival school, where each faced a harsh, high-stress mock interrogation with physical confrontation and a calmer, low-stress one. Afterwards they tried to pick out their interrogators. Those who had faced the high-stress interrogator identified him far less often than the calm one, whether from a live lineup, a photo array or photos shown one at a time, even though they had faced him at close range for a long time. The nuance: these were fit, trained people, wide awake and looking straight at the person. A robbery victim gets seconds.
+proof: A meta-analysis and studies of real stress such as survival training agree that high stress impairs face identification; how much depends on the level of stress, the delay and the kind of test.
+spot: Notice how vividly people describe frightening events, and how often their details disagree with each other or with the footage.
+use: After a stressful moment today, write down what you remember of it, then check one detail against a photo, a message or another person.
+guard: Don't treat a frightened witness's certainty as a sign of accuracy. Look for other evidence, and use a fair, blind identification procedure.
+predict: Soldiers faced a harsh interrogator in survival training. Afterwards, how well did they pick him out?
+- Better than a calm interrogator, because stress burns faces into memory
+- About as well as a calm interrogator
+* Much worse than a calm interrogator
+scenario: Held at knifepoint for a minute at an ATM, Vikram tells police he'll never forget the robber's face. At the parade he confidently picks a man who was in jail that night.
+source: Deffenbacher, K. A., Bornstein, B. H., Penrod, S. D., & McGorty, E. K. (2004). A meta-analytic review of the effects of high stress on eyewitness memory. Law and Human Behavior; Morgan, C. A., Hazlett, G., Doran, A., et al. (2004). Accuracy of eyewitness memory for persons encountered during exposure to highly intense stress. International Journal of Law and Psychiatry.
+related: eyewitness-confidence, misattribution-of-arousal, memory-recording-myth
+
+## body-worn-cameras
+title: Body-worn cameras
+category: investigation
+evidence: debated
+hook: A trial in one small city found cameras halved police use of force. A trial with over 2,000 officers found almost no effect.
+what: Body-worn cameras were expected to make both officers and the public behave better, since people act differently when they know they're being recorded, and to provide evidence. Early results were striking, and cameras spread fast. Bigger and more careful trials found smaller and more mixed effects. Cameras may still be useful as evidence and for accountability, but as a way to change behaviour on their own, the case is unproven.
+study: Cynthia Lum and colleagues' 2020 Campbell review of 30 studies found that cameras reduced complaints against officers by about 17%, though it's unclear why, and had no clear or consistent effect on use of force or most other behaviours of officers or citizens.
+case: In 2012 and 2013 the police in Rialto, California, a city of about 100,000, randomly assigned cameras by shift. Use of force on camera shifts was about half that on other shifts, and complaints fell sharply; the result made headlines and helped drive adoption around the world. In 2015 and 2016 Washington, D.C. randomly gave cameras to about half of the 2,224 officers in its trial, and the effects on use of force and complaints were very small and not statistically significant. The nuance: Rialto's force was small, its chief oversaw the trial, and its own researchers cautioned against generalising. One striking study is a hypothesis; the replication decides.
+proof: Randomised trials disagree; a 2020 Campbell systematic review finds fewer complaints but no consistent effect on use of force.
+spot: Notice whether you or others behave differently when you know a camera or phone is recording, and whether it lasts once you're used to it.
+use: Pick a claim you've heard about a new policy or gadget and check whether it was tested in more than one place.
+guard: Don't expect a camera to fix behaviour by itself: the footage helps only if it's kept, reviewed and acted on.
+predict: In a large randomised trial with Washington, D.C. police, what did body-worn cameras do to use of force?
+- Cut it by about half, as in an earlier small trial
+* Very little: the effects were small and not significant
+- Increased it, as officers felt protected by the footage
+scenario: After a viral video, the district buys cameras for every officer and announces that complaints will now fall. A year later, nobody has checked whether they did.
+source: Lum, C., Koper, C. S., Wilson, D. B., Stoltz, M., et al. (2020). Body-worn cameras' effects on police officers and citizen behavior: A systematic review. Campbell Systematic Reviews; Ariel, B., Farrar, W. A., & Sutherland, A. (2015). The effect of police body-worn cameras on use of force and citizens' complaints against the police. Journal of Quantitative Criminology; Yokum, D., Ravishankar, A., & Coppock, A. (2019). A randomized control trial evaluating the effects of police body-worn cameras. PNAS.
+related: hawthorne-effect, replication-crisis, procedural-justice

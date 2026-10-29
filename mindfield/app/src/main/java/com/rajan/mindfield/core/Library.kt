@@ -6,6 +6,8 @@ package com.rajan.mindfield.core
  * The file is written grouped by category, best "hook" first within each. The daily order deals
  * the categories round-robin (see [ROTATION]) so consecutive days never sit in one corner of
  * psychology, which is also interleaving, a reliable aid to learning to tell concepts apart.
+ * Specialist areas ([SPECIALIST]) come after all of that, in file order: they're for people who
+ * choose them as a focus, and adding one never renumbers or reorders the concepts before it.
  */
 class Library(val all: List<Concept>) {
     private val byId = all.associateBy { it.id }
@@ -23,6 +25,9 @@ class Library(val all: List<Concept>) {
             Category.CONNECTION, Category.DECISIONS, Category.HABITS, Category.GROUPS,
         )
 
+        /** Areas outside the everyday rotation, in the order they're appended. */
+        val SPECIALIST = Category.entries - ROTATION.toSet()
+
         /** Parses and orders the library, or throws listing every problem in the file. */
         fun parse(text: String): Library {
             val parsed = ConceptParser.parse(text)
@@ -36,6 +41,7 @@ class Library(val all: List<Concept>) {
             while (queues.values.any { it.isNotEmpty() }) {
                 for (c in ROTATION) queues.getValue(c).removeFirstOrNull()?.let { ordered += it }
             }
+            for (c in SPECIALIST) ordered += concepts.filter { it.category == c }
             return ordered.mapIndexed { i, c -> c.copy(number = i + 1) }
         }
     }
