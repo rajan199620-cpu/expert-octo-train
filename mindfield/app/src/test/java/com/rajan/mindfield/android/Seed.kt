@@ -74,11 +74,10 @@ object Seed {
         Store.flush()
     }
 
-    /** The right option text for the first review question today, as the Review screen will ask it. */
-    fun firstReviewAnswer(): String {
+    /** The first review question today, as the Review screen will ask it. */
+    fun firstReviewQuestion(): com.rajan.mindfield.core.Question {
         val today = Store.today()
         val card = Spacing.due(Store.state.value, Store.library, today).first()
-        val q = Quiz.question(card, Store.library, Store.state.value.unlocked.keys, seed = today.toEpochDay() * 31)
-        return q.options[q.answer]
+        return Quiz.question(card, Store.library, Store.state.value.unlocked.keys, seed = today.toEpochDay() * 31)
     }
 }

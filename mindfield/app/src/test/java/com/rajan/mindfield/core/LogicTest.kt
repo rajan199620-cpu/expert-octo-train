@@ -160,39 +160,70 @@ class QuizTest {
     private val everything = library.all.map { it.id }
 
     @Test
-    fun `every concept makes a valid question of both kinds`() {
+    fun `every concept makes a valid question of all three kinds`() {
         for (c in library.all) {
-            for (reviews in 0..1) {
+            for (reviews in 0..2) {
                 val q = Quiz.question(Card(c.id, reviews, day0, null, reviews, 0), library, everything, seed = 7)
-                assertEquals(if (reviews == 0) Question.Kind.NAME_IT else Question.Kind.RECALL, q.kind)
-                assertEquals(q.options.size, q.options.toSet().size)
-                assertTrue(q.answer in q.options.indices)
-                if (q.kind == Question.Kind.NAME_IT) {
-                    assertEquals(c.title, q.options[q.answer])
-                    assertEquals(4, q.options.size)
-                    // Related concepts would also fit the story, so they're never offered as wrong answers.
-                    val related = c.related.map { library[it]!!.title } + library.all.filter { c.id in it.related }.map { it.title }
-                    assertTrue("${c.id}: ${q.options}", q.options.none { it in related })
-                } else {
-                    assertEquals(c.predict.options[c.predict.answer], q.options[q.answer])
+                assertEquals(listOf(Question.Kind.NAME_IT, Question.Kind.RECALL, Question.Kind.NUANCE)[reviews], q.kind)
+                when (q.kind) {
+                    Question.Kind.NAME_IT -> {
+                        assertEquals(c.title, q.options[q.answer])
+                        assertEquals(4, q.options.size)
+                        assertEquals(q.options.size, q.options.toSet().size)
+                        // Related concepts would also fit the story, so they're never offered as wrong answers.
+                        val related = c.related.map { library[it]!!.title } + library.all.filter { c.id in it.related }.map { it.title }
+                        assertTrue("${c.id}: ${q.options}", q.options.none { it in related })
+                    }
+                    Question.Kind.RECALL -> {
+                        assertEquals(q.options.size, q.options.toSet().size)
+                        assertEquals(c.predict.options[c.predict.answer], q.options[q.answer])
+                    }
+                    Question.Kind.NUANCE -> {
+                        // The case without its takeaway, then the takeaway to check against.
+                        assertEquals(c.caseStory, q.prompt)
+                        assertEquals(c.caseNuance, q.answerText)
+                        assertTrue(q.options.isEmpty())
+                        assertTrue("${c.id} gives the nuance away", !q.prompt.contains("The nuance") && !q.prompt.contains(q.answerText!!))
+                        assertTrue("${c.id} nuance too short: ${q.answerText}", q.answerText!!.length >= 60)
+                    }
                 }
             }
         }
     }
 
     @Test
-    fun `mastered concepts still alternate between naming it and recalling the study`() {
+    fun `mastered concepts still take turns between all three kinds`() {
         val kinds = (0..5).map { n ->
-            Quiz.question(Card("anchoring", Spacing.MAX_BOX, day0, day0, 3 + n, 1), library, everything, seed = 7).kind
+            Quiz.question(Card("anchoring", Spacing.MAX_BOX, day0, day0, 3 + n, 0), library, everything, seed = 7).kind
         }
-        assertEquals(listOf(Question.Kind.NAME_IT, Question.Kind.RECALL), kinds.take(2))
-        assertEquals(kinds.take(2) + kinds.take(2) + kinds.take(2), kinds)
+        assertEquals(kinds.take(3).toSet(), Question.Kind.entries.toSet())
+        assertEquals(kinds.take(3) + kinds.take(3), kinds)
     }
 
     @Test
-    fun `with fewer than four concepts known it asks about the study instead`() {
-        val q = Quiz.question(Card("anchoring", 0, day0, null, 0, 0), library, listOf("anchoring", "frequency-illusion"), 1)
-        assertEquals(Question.Kind.RECALL, q.kind)
+    fun `with fewer than four concepts known it alternates the study and the nuance`() {
+        val few = listOf("anchoring", "frequency-illusion")
+        assertEquals(Question.Kind.RECALL, Quiz.question(Card("anchoring", 0, day0, null, 0, 0), library, few, 1).kind)
+        assertEquals(Question.Kind.NUANCE, Quiz.question(Card("anchoring", 0, day0, null, 1, 0), library, few, 1).kind)
+    }
+
+    @Test
+    fun `stress - random histories and libraries always give a well-formed question`() {
+        val rnd = Random(31)
+        repeat(5000) {
+            val c = library.all.random(rnd)
+            val known = library.all.shuffled(rnd).take(rnd.nextInt(1, 30)).map { it.id } + c.id
+            val card = Card(c.id, rnd.nextInt(0, 6), day0, day0, rnd.nextInt(0, 50), rnd.nextInt(0, 50))
+            val q = Quiz.question(card, library, known, rnd.nextLong())
+            assertEquals(c.id, q.conceptId)
+            assertTrue(q.prompt.isNotBlank())
+            if (q.kind == Question.Kind.NUANCE) {
+                assertTrue(q.options.isEmpty() && !q.answerText.isNullOrBlank())
+            } else {
+                assertTrue(q.answer in q.options.indices)
+                assertEquals(q.options.size, q.options.toSet().size)
+            }
+        }
     }
 
     @Test

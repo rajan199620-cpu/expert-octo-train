@@ -253,6 +253,14 @@ what the journal already holds, so the only writing is one sentence a week.
   public, so nothing personal is built into the app). Edit any time; deleting takes two taps.
   They're in the journal export too.
 
+**Nuance cards** (November 2026): review now takes turns between three kinds of card for each
+concept: name it from a story, recall the study's result, and recall the **nuance** of its
+real-world case. A nuance card shows the case without its takeaway; you say the catch to yourself,
+tap *Show the nuance*, and rate yourself (Remembered, Hard to recall, Forgot). It's free recall
+rather than a choice, which strengthens memory more (Rowland 2014), and it needs no new writing:
+every concept already has a case and a nuance, and a test checks that no case gives its nuance
+away. The weak spot is honesty: it only works if you try before you look.
+
 **FSRS-5 scheduling** replaces the fixed 1, 3, 7, 16, 35, 90-day ladder, for concepts and lessons:
 
 - FSRS is the scheduler Anki uses (Ye, Su & Cao, KDD 2022; open-spaced-repetition). It tracks each

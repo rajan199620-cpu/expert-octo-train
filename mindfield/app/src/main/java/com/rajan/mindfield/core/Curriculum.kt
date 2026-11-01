@@ -213,30 +213,46 @@ object Spacing {
         cards(state, library).map { it.due }.filter { it > today }.minOrNull()
 }
 
-/** A review question. */
+/**
+ * A review question. [NAME_IT][Kind.NAME_IT] and [RECALL][Kind.RECALL] are multiple choice;
+ * [NUANCE][Kind.NUANCE] has no options: the real-world case is shown, you recall its nuance,
+ * then check it against [answerText] and rate yourself.
+ */
 data class Question(
     val conceptId: String,
     val kind: Kind,
     val prompt: String,
     val options: List<String>,
     val answer: Int,
+    val answerText: String? = null,
 ) {
-    enum class Kind { NAME_IT, RECALL }
+    enum class Kind { NAME_IT, RECALL, NUANCE }
 }
 
 object Quiz {
     /**
-     * "Name it" (an everyday story: which concept is this?) once you know four or more concepts,
-     * alternating review by review with recalling the study's result, which uses the "Predict
-     * first" question, so a concept you've mastered still gets both. Concepts marked related are
-     * never offered as wrong answers, because they would fit too.
+     * Three kinds of question take turns, review by review, so a concept you've mastered still
+     * gets each: "Name it" (an everyday story: which concept is this?) once you know four or more
+     * concepts; recalling the study's result, from the "Predict first" question; and recalling the
+     * nuance of its real-world case, in your own words. The nuance is free recall rather than a
+     * choice, the harder kind of retrieval that strengthens memory more (Rowland, Psychological
+     * Bulletin 2014). Concepts marked related are never offered as wrong answers, because they
+     * would fit too.
      */
     fun question(card: Card, library: Library, unlocked: Collection<String>, seed: Long): Question {
         val concept = library[card.conceptId] ?: error("unknown concept ${card.conceptId}")
         val rnd = kotlin.random.Random(seed xor card.conceptId.hashCode().toLong())
         val related = concept.related.toSet() + library.all.filter { concept.id in it.related }.map { it.id }
         val candidates = unlocked.filter { it != concept.id && it !in related && library.contains(it) }.sorted()
-        val nameIt = candidates.size >= 3 && (card.right + card.wrong) % 2 == 0
+        val n = card.right + card.wrong
+        val kinds = if (candidates.size >= 3) listOf(Question.Kind.NAME_IT, Question.Kind.RECALL, Question.Kind.NUANCE)
+        else listOf(Question.Kind.RECALL, Question.Kind.NUANCE)
+        val nuance = concept.caseNuance
+        val kind = kinds[n % kinds.size].takeIf { it != Question.Kind.NUANCE || nuance != null } ?: Question.Kind.RECALL
+        if (kind == Question.Kind.NUANCE) {
+            return Question(concept.id, kind, concept.caseStory, emptyList(), -1, nuance)
+        }
+        val nameIt = kind == Question.Kind.NAME_IT
         return if (nameIt) {
             val wrong = candidates.shuffled(rnd).take(3).map { library[it]!!.title }
             val options = (wrong + concept.title).shuffled(rnd)

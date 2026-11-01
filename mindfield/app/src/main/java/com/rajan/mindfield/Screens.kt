@@ -345,7 +345,7 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Uni
                     Text(if (due.size == 1) "1 card to review" else "${due.size} cards to review", style = MaterialTheme.typography.headlineSmall)
                     val lessonsDue = due.count { Lessons.isLesson(it.conceptId) }
                     Text(
-                        "Name the concept from an everyday story, or recall what the study found." +
+                        "Name the concept from an everyday story, recall what the study found, or recall the nuance of its real-world case." +
                             if (lessonsDue > 0) " And recall ${if (lessonsDue == 1) "a lesson" else "$lessonsDue lessons"} of your own from what happened." else "",
                         style = MaterialTheme.typography.bodyMedium, color = p.muted,
                     )
@@ -410,7 +410,28 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Uni
                     val question = remember(card.conceptId, index, current) {
                         Quiz.question(card, library, state.unlocked.keys, seed = current.seed + index)
                     }
-                    QuestionView(question, concept, index, current.cards.size, answered, onAnswer = { choice ->
+                    if (question.kind == Question.Kind.NUANCE) {
+                        val accent = concept.category.accent(p.dark)
+                        RecallQuestion(
+                            index, current.cards.size, revealed,
+                            label = "The nuance", glyph = Glyph.SCALE, accent = accent,
+                            meta = concept.title, cue = question.prompt, cueStyle = MaterialTheme.typography.bodyLarge,
+                            ask = "What's the catch in this case? Say it to yourself in a sentence before you look.",
+                            showLabel = "Show the nuance", answerLabel = "The nuance", answer = question.answerText.orEmpty(),
+                            answerStyle = MaterialTheme.typography.bodyLarge,
+                            onReveal = { revealed = true },
+                            onRate = { rating ->
+                                if (rating != Rating.AGAIN) right++
+                                if (!current.practice) Store.grade(card.conceptId, rating)
+                                index++
+                                revealed = false
+                            },
+                            onQuit = { round = null },
+                            after = {
+                                Text("Open the concept", style = MaterialTheme.typography.labelLarge, color = accent, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { nav.openConcept(concept.id) }.padding(vertical = 4.dp))
+                            },
+                        )
+                    } else QuestionView(question, concept, index, current.cards.size, answered, onAnswer = { choice ->
                         answered = choice
                         val correct = choice == question.answer
                         if (correct) right++

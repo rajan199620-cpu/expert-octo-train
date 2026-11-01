@@ -109,6 +109,23 @@ class ScreensTest {
         openSheet(row)
     }
 
+    /**
+     * Answers the first question of a review round that has just started: the right option of a
+     * multiple-choice card, or reveals a nuance card. Returns text that should now be showing.
+     */
+    private fun answerFirstQuestion(): String {
+        val q = Seed.firstReviewQuestion()
+        return if (q.kind == com.rajan.mindfield.core.Question.Kind.NUANCE) {
+            compose.onNodeWithText("Show the nuance").performScrollTo().performClick()
+            compose.waitForIdle()
+            q.answerText!!
+        } else {
+            compose.onNodeWithText(q.options[q.answer]).performScrollTo().performClick()
+            compose.waitForIdle()
+            "✓ Right"
+        }
+    }
+
     private fun step(label: String) = compose.onNode(hasText(label) and hasStateDescriptionIn("done", "to do"))
 
     private fun hasStateDescriptionIn(vararg values: String) =
@@ -242,13 +259,10 @@ class ScreensTest {
 
         openReview()
         shot("24-review")
-        val answer = Seed.firstReviewAnswer()
         compose.onNodeWithText("Start review").performClick()
         compose.waitForIdle()
         shot("25-review-question")
-        compose.onNodeWithText(answer).performScrollTo().performClick()
-        compose.waitForIdle()
-        compose.onNodeWithText("✓ Right").assertExists()
+        compose.onNodeWithText(answerFirstQuestion()).assertExists()
         shot("26-review-answered")
 
         tab("You")
@@ -805,6 +819,41 @@ class ScreensTest {
     }
 
     @Test
+    fun `nuance cards - the case first, the nuance only on request, and a self-rating that schedules it`() {
+        val today = LocalDate.now(Seed.zone)
+        Store.settings { it.copy(onboarded = true) }
+        Seed.at(today.minusDays(1), 9)
+        val concept = Store.todayConcept()
+        // With only two concepts known the cards alternate the study and the nuance; one review
+        // done, so the next is the nuance.
+        Store.update { s ->
+            s.copy(cards = s.cards + (concept.id to com.rajan.mindfield.core.Card(concept.id, 1, today, today.minusDays(3), 1, 0, 3.0, 5.0)))
+        }
+        morning()
+        val q = Seed.firstReviewQuestion()
+        assertEquals(com.rajan.mindfield.core.Question.Kind.NUANCE, q.kind)
+        launch()
+        openReview()
+        tap("Start review")
+        compose.onNodeWithText(concept.caseStory).assertExists()
+        compose.onNodeWithText(q.answerText!!).assertDoesNotExist()
+        shot("58-nuance-card")
+        tap("Show the nuance")
+        compose.onNodeWithText(q.answerText!!).assertExists()
+        // A revealed card survives turning the phone.
+        scenario!!.recreate()
+        compose.waitForIdle()
+        compose.onNodeWithText(q.answerText!!).assertExists()
+        shot("59-nuance-revealed")
+        tap("Hard to recall")
+        val card = Store.state.value.cards.getValue(concept.id)
+        assertEquals(today, card.lastReviewed)
+        assertEquals(2, card.right)
+        assertTrue(card.due > today)
+        compose.onNodeWithText("Review done").assertExists()
+    }
+
+    @Test
     fun `a sign-in notification opens the Google account sheet`() {
         Seed.weeks(5)
         InstrumentationRegistry.getInstrumentation().setInTouchMode(true)
@@ -959,16 +1008,14 @@ class ScreensTest {
         Seed.weeks(40)
         launch()
         openReview()
-        val answer = Seed.firstReviewAnswer()
         compose.onNodeWithText("Start review").performClick()
         compose.waitForIdle()
-        compose.onNodeWithText(answer).performScrollTo().performClick()
-        compose.waitForIdle()
-        compose.onNodeWithText("✓ Right").assertExists()
+        val shown = answerFirstQuestion()
+        compose.onNodeWithText(shown).assertExists()
         tab("Journal")
         compose.onNodeWithText("Field journal").assertExists()
         openReview()
-        compose.onNodeWithText("✓ Right").assertExists()
+        compose.onNodeWithText(shown).assertExists()
         compose.onAllNodesWithText("1 of ", substring = true).onFirst().assertExists()
     }
 }

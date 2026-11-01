@@ -236,20 +236,58 @@ fun LessonsCard(state: AppState, nav: Nav) {
 @Composable
 fun LessonQuestion(lesson: Lesson, index: Int, total: Int, revealed: Boolean, onReveal: () -> Unit, onRate: (Rating) -> Unit, onQuit: () -> Unit) {
     val p = palette
+    RecallQuestion(
+        index, total, revealed,
+        label = "Your lesson", glyph = Glyph.BULB, accent = p.brand,
+        meta = "Written " + lesson.day.format(DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH)),
+        cue = lesson.situation, cueStyle = Quote,
+        ask = "What did you take from it? Say it to yourself before you look.",
+        showLabel = "Show my lesson", answerLabel = "The lesson", answer = "“${lesson.lesson}”", answerStyle = Quote,
+        onReveal = onReveal, onRate = onRate, onQuit = onQuit,
+    )
+}
+
+/**
+ * Free recall: a cue, then the answer only when asked for, then a self-rating that schedules the
+ * card. Rating honestly is the deal: try to recall before you look.
+ */
+@Composable
+fun RecallQuestion(
+    index: Int,
+    total: Int,
+    revealed: Boolean,
+    label: String,
+    glyph: Glyph,
+    accent: androidx.compose.ui.graphics.Color,
+    meta: String,
+    cue: String,
+    cueStyle: androidx.compose.ui.text.TextStyle,
+    ask: String,
+    showLabel: String,
+    answerLabel: String,
+    answer: String,
+    answerStyle: androidx.compose.ui.text.TextStyle,
+    onReveal: () -> Unit,
+    onRate: (Rating) -> Unit,
+    onQuit: () -> Unit,
+    after: @Composable () -> Unit = {},
+) {
+    val p = palette
     RoundHeader(index, total, onQuit)
     ProgressBar((index + if (revealed) 1 else 0) / total.toFloat(), p.brand)
     Panel {
-        SectionLabel("Your lesson", Glyph.BULB, color = p.brand)
-        Text("Written " + lesson.day.format(DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH)), style = MaterialTheme.typography.labelLarge, color = p.muted)
-        Text(lesson.situation, style = Quote)
-        if (!revealed) Text("What did you take from it? Say it to yourself before you look.", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+        SectionLabel(label, glyph, color = accent)
+        Text(meta, style = MaterialTheme.typography.labelLarge, color = p.muted)
+        Text(cue, style = cueStyle)
+        if (!revealed) Text(ask, style = MaterialTheme.typography.bodyMedium, color = p.muted)
     }
     if (!revealed) {
-        PrimaryButton("Show my lesson", p.brand, onClick = onReveal)
+        PrimaryButton(showLabel, p.brand, onClick = onReveal)
     } else {
-        Panel(border = p.brand.copy(alpha = 0.5f)) {
-            SectionLabel("The lesson", Glyph.CHECK, color = p.brand)
-            Text("“${lesson.lesson}”", style = Quote, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        Panel(border = accent.copy(alpha = 0.5f)) {
+            SectionLabel(answerLabel, Glyph.CHECK, color = accent)
+            Text(answer, style = answerStyle, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            after()
             Text("How well did you remember it?", style = MaterialTheme.typography.titleSmall)
         }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -400,7 +400,7 @@ class LibraryUpgradeTest {
                 assertEquals(Spacing.cards(s, before), Spacing.cards(s, now))
                 for (card in Spacing.due(s, now, today.plusDays(1))) {
                     val q = Quiz.question(card, now, s.unlocked.keys, seed = days.toLong())
-                    assertTrue(q.answer in q.options.indices)
+                    assertTrue(q.kind == Question.Kind.NUANCE || q.answer in q.options.indices)
                 }
                 assertEquals(s, Codec.decode(Codec.encode(s, 0)).copy(settings = s.settings))
             }
