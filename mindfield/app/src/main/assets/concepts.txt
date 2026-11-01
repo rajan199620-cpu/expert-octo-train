@@ -1421,6 +1421,27 @@ scenario: After a laptop goes missing, the office manager decides it must be "a 
 source: Snook, B., Eastwood, J., Gendreau, P., Goggin, C., & Cullen, R. M. (2007). Taking stock of criminal profiling. Criminal Justice and Behavior; Canter, D. V., Alison, L. J., Alison, E., & Wentink, N. (2004). The organized/disorganized typology of serial murder: Myth or model? Psychology, Public Policy, and Law; Alison, L., Smith, M. D., & Morgan, K. (2003). Interpreting the accuracy of offender profiles. Psychology, Crime & Law.
 related: barnum-effect, confirmation-bias, overconfidence
 
+## occasion-noise
+title: Occasion noise
+aka: Disagreeing with yourself
+category: thinking
+evidence: good
+hook: Shown the same fingerprint pairs seven months later, experienced examiners changed about one in ten of their own conclusions.
+what: You are not one judge but a crowd of possible judges, and which one turns up depends on the moment: your mood, fatigue, the weather, the case you saw just before, whether your team won at the weekend. The same person, given the same case on a different day, can reach a different conclusion. This occasion noise is part of why professionals disagree with each other, and it means a single judgement, even an expert's, is one sample from a range.
+study: Ozkan Eren and Naci Mocan (2018) studied thousands of decisions by Louisiana juvenile-court judges. In the week after an unexpected weekend loss by Louisiana State University's football team, judges handed down harsher sentences, and Black defendants bore most of the extra harshness. Other studies have found doctors prescribing more opioids as the day goes on.
+case: In 2012 Bradford Ulery and colleagues, including FBI laboratory researchers, gave 72 experienced latent-fingerprint examiners 25 pairs of prints that each examiner had already judged about seven months earlier, without telling them. The examiners repeated 89% of their own "match" decisions and 90% of their "exclusion" decisions; most changes were to "inconclusive", and consistency was lowest on the comparisons they had rated difficult. None of the four false matches in the study was repeated. The nuance: experts were highly consistent on clear cases and noisy on hard ones, and hard cases are exactly the ones that end up contested in court, where a second, independent opinion is worth the most.
+proof: Measured in fingerprint examiners, radiologists, judges and doctors; the size varies by task and is largest for hard, ambiguous cases.
+spot: Notice when you'd answer a question differently depending on your mood: rating a film, judging a colleague's email, deciding how strict to be.
+use: For one decision today that isn't urgent, write down your view, then look at it again tomorrow before acting.
+guard: Don't rely on one judgement made at one moment for something important. Decide when rested and calm, and check hard calls on another day or with another person.
+predict: Fingerprint examiners judged the same print pairs again seven months later, without knowing. How often did they repeat their own "match" decisions?
+- Every time: an expert's verdict on the same evidence doesn't change
+* About 89% of the time, with most changes to "inconclusive"
+- About half the time, barely better than a coin toss
+scenario: On Monday morning, after his team's loss, Inspector Sharma rejects a leave application that he would have signed without a second thought on Friday.
+source: Ulery, B. T., Hicklin, R. A., Buscaglia, J., & Roberts, M. A. (2012). Repeatability and reproducibility of decisions by latent fingerprint examiners. PLOS ONE; Eren, O., & Mocan, N. (2018). Emotional judges and unlucky juveniles. American Economic Journal: Applied Economics; Kahneman, D., Sibony, O., & Sunstein, C. R. (2021). Noise: A Flaw in Human Judgment.
+related: system-noise, crowd-within, forensic-confirmation-bias, decision-fatigue
+
 # =====================================================================================
 # INFLUENCE & PERSUASION
 # =====================================================================================
@@ -3217,6 +3238,47 @@ scenario: A company makes every staff member take a "honesty test" after a theft
 source: National Research Council (2003). The Polygraph and Lie Detection. National Academies Press; CIA Office of Inspector General (1994). Report on the Aldrich H. Ames case; Houston, P., Floyd, M., Carnicero, S., & Tennant, D. (2012). Spy the Lie. St. Martin's Press.
 related: base-rate-neglect, presumption-of-guilt, lie-detection-myth
 
+## system-noise
+title: Noise in judgement
+aka: System noise
+category: decisions
+evidence: solid
+hook: Give the same case to different judges or underwriters and you get wildly different answers. Organisations rarely notice.
+what: Errors of judgement come in two kinds. Bias is a shared lean in one direction, like archers all hitting low and to the left. Noise is scatter: archers aiming at the same target and hitting all over it. When professionals who are meant to be interchangeable (judges, doctors, underwriters, officers deciding similar cases) reach different conclusions from the same facts, the outcome depends on who happens to get the file. Noise is invisible case by case, because each decision looks reasonable on its own; it shows only when the same case is given to many people.
+study: In a 1981 study, 208 US federal judges were given the same 16 hypothetical cases. They agreed unanimously on a prison term in only 3. In one fraud case where the average sentence was 8.5 years, one judge gave life; in another, with an average of 1.1 years, one judge gave 15 years. An earlier 1974 study of 50 judges found that a heroin dealer could get anything from one to ten years, depending on the judge.
+case: Daniel Kahneman and colleagues ran a "noise audit" at a large insurance company. Underwriters and claims adjusters each priced realistic written cases independently, without knowing what was being studied. Most people, executives included, expected two professionals' figures to differ by about 10%. The median difference was 55% for underwriters and 43% for claims adjusters: where one underwriter quoted $9,500, a colleague would typically quote $16,700. One senior executive put the cost of this scatter in the hundreds of millions of dollars a year. The nuance: nobody had noticed, because each underwriter only ever saw their own quotes. They worked under an "illusion of agreement" that only giving everyone the same cases could break.
+proof: Documented for decades wherever the same cases have been given to many professionals: in sentencing, medicine, forensic science, asylum decisions, hiring and insurance.
+spot: Notice when an outcome you received (a fine, a mark, a loan decision, a medical opinion) might have been different with a different person deciding.
+use: Next time a decision depends on someone's judgement, ask a second person to judge the same thing independently, and compare.
+guard: In any team that makes repeated judgements, such as charging decisions, bail applications or case priorities, give a few identical cases to several members now and then and look at the spread. Noise you haven't measured can't be fixed.
+predict: An insurance company's executives expected two underwriters pricing the same policy to differ by about 10%. What was the typical difference?
+- About 10%, as expected
+- About 25%
+* About 55%
+scenario: Two clerks at the same passport office review identical applications. One approves it on the spot; the other demands three more documents.
+source: Kahneman, D., Sibony, O., & Sunstein, C. R. (2021). Noise: A Flaw in Human Judgment; Clancy, K., Bartolomeo, J., Richardson, D., & Wellford, C. (1981). Sentence decisionmaking: The logic of sentence decisions and the extent and sources of sentence disparity. Journal of Criminal Law and Criminology.
+related: wisdom-of-crowds, formulas-beat-judgement, occasion-noise, structured-interviews
+
+## crowd-within
+title: The crowd within
+category: decisions
+evidence: good
+hook: Guess, set it aside, then guess again. The average of your two guesses usually beats either one alone.
+what: Your first answer to a hard estimate is just one draw from what your mind could have produced; another moment would give another answer. Because the two draws have partly independent errors, averaging them cancels some of the error, the same way averaging different people's guesses does, though much less. The gain grows if you wait before guessing again, or if you deliberately argue against your first answer before making the second.
+study: Edward Vul and Harold Pashler (2008) asked people factual questions and then, unexpectedly, asked them again. Averaging a person's two answers improved accuracy by about a tenth as much as asking a second person when the second guess came straight away, and about a third as much when it came three weeks later. Stefan Herzog and Ralph Hertwig (2009) asked people to assume their first estimate was wrong, think about why, and make a second; this "dialectical bootstrapping" gained about half as much as a second opinion.
+case: From 2013 to 2015 the Dutch casino chain Holland Casino ran a promotion in which visitors estimated how many objects, such as pearls or chips, were in a large container, and many entered more than once. Dennis van Dolder and Martijn van den Assem analysed hundreds of thousands of estimates a year. Averaging a person's own estimates made them more accurate, but averaging the estimates of different people helped far more. The nuance: much of each person's error was a bias they repeated every time, and averaging your own guesses can't cancel that. The crowd within is a cheap fallback for when no one else is around, not a substitute for independent opinions.
+proof: Laboratory experiments and a large natural experiment agree; the gain is real but much smaller than asking someone else.
+spot: Notice when a quick first estimate (a travel time, a price, a budget) becomes "the" number without anyone checking it again.
+use: For one estimate today, write down your first guess, then assume it's wrong, think about why, make a second guess, and use the average.
+guard: Averaging your own guesses doesn't remove a bias you share with yourself. When it matters, get an independent opinion before telling anyone your number.
+predict: People answered the same factual questions twice. How much did averaging their own two answers help, compared with asking another person?
+- Just as much as a second person's answer
+* Less: about a tenth as much at once, a third if they waited three weeks
+- Not at all: the second guess just repeats the first
+scenario: Before telling the inspector how long the search will take, Priya writes "3 hours", tells herself it's surely wrong, thinks about the parking and the crowds, writes "5 hours", and says 4.
+source: Vul, E., & Pashler, H. (2008). Measuring the crowd within: Probabilistic representations within individuals. Psychological Science; Herzog, S. M., & Hertwig, R. (2009). The wisdom of many in one mind: Improving individual judgments with dialectical bootstrapping. Psychological Science; van Dolder, D., & van den Assem, M. J. (2018). The wisdom of the inner crowd in three large natural experiments. Nature Human Behaviour.
+related: wisdom-of-crowds, consider-the-opposite, occasion-noise, planning-fallacy
+
 # =====================================================================================
 # MOTIVATION & HABITS
 # =====================================================================================
@@ -4176,6 +4238,47 @@ predict: In a Norwegian study, what most changed how credible a rape victim's te
 scenario: After a road accident, Priya, the driver who was hit, explains what happened in a flat, matter-of-fact voice. The officer finds the other driver's tearful account more convincing, until a dashcam shows Priya was right.
 source: Kaufmann, G., Drevland, G. C. B., Wessel, E., Overskeid, G., & Magnussen, S. (2003). The importance of being earnest: Displayed emotions and witness credibility. Applied Cognitive Psychology; Bollingmo, G. C., Wessel, E. O., Eilertsen, D. E., & Magnussen, S. (2008). Credibility of the emotional witness: A study of ratings by police investigators. Psychology, Crime & Law; Ask, K., & Landström, S. (2010). Why emotions matter. Law and Human Behavior.
 related: presumption-of-guilt, halo-effect, lie-detection-myth
+
+## structured-interviews
+title: Structured interviews
+category: groups
+evidence: solid
+hook: A chatty job interview predicts performance poorly. The same questions for everyone, scored one quality at a time, predict far better.
+what: In a typical interview, the interviewer forms an impression in the first minutes and spends the rest confirming it; charm, looks and shared hobbies count for more than the job. A structured interview breaks the decision into separate, job-relevant qualities, asks every candidate the same questions about each, scores each quality before moving on, and only then forms an overall view. Kahneman and colleagues call the general method the mediating assessments protocol: judge the parts independently, and delay the overall intuition rather than banning it.
+study: Meta-analyses of decades of hiring research, most recently by Paul Sackett and colleagues in 2022, find structured interviews among the best predictors of job performance, clearly ahead of unstructured ones. In the figures Kahneman and colleagues report, structured interviews correlate with later performance at about .44 to .57, a 65 to 69% chance of picking the better of two candidates, against 56 to 61% for unstructured interviews.
+case: Google once put some candidates through as many as 25 interviews, and an internal audit of how well its interviews predicted performance found, in the words of its former head of people operations Laszlo Bock, "zero relationship... a complete random mess." It cut the number to four, after finding that more added almost nothing, switched to structured behavioural interviews scored on four set qualities (general cognitive ability, leadership, cultural fit and role-related knowledge), added work-sample tests, and left the decision to a committee that reviews every score. The nuance: intuition wasn't banned, only delayed. The committee still judges the whole person, but only after the separate assessments are in, so a first impression can't quietly decide everything.
+proof: Supported by meta-analyses covering many thousands of hires over decades, though candidates and interviewers often prefer unstructured interviews anyway.
+spot: Notice interviews, selection boards or viva panels that wander into small talk, and how often the verdict matches the first impression.
+use: Next time you assess someone, write down three qualities that matter, ask everyone the same question about each, and score each one before deciding.
+guard: Score each quality separately and on paper before any discussion, and don't let one strong impression ("he seems sharp") settle the rest.
+predict: Compared with a free-flowing job interview, how well does a structured interview predict job performance?
+- About the same: a good interviewer finds out the same things
+* Clearly better, among the best predictors there are
+- Worse, because candidates rehearse the questions
+scenario: The selection board asks every constable applicant the same five questions, scores each answer from 1 to 5 before moving on, and adds up the scores before anyone says whom they liked.
+source: Kahneman, D., Sibony, O., & Sunstein, C. R. (2021). Noise: A Flaw in Human Judgment, chapters 24 and 25; Sackett, P. R., Zhang, C., Berry, C. M., & Lievens, F. (2022). Revisiting meta-analytic estimates of validity in personnel selection. Journal of Applied Psychology; Bock, L. (2015). Work Rules!
+related: halo-effect, formulas-beat-judgement, system-noise, rater-noise
+
+## rater-noise
+title: Ratings measure the rater
+aka: The idiosyncratic rater effect
+category: groups
+evidence: good
+hook: When 4,492 managers were rated by six colleagues each, the raters' quirks explained three times as much of the scores as performance did.
+what: A performance rating looks like a measurement of the person rated, but much of the score reflects the rater: how lenient they are, how they use the scale, and their particular reaction to this person. Studies of 360-degree reviews, where several people rate the same employee, find that the part raters agree on is often only 20 to 30% of the variation; the rest is noise. Fixes include several independent raters, scales anchored to concrete examples, and asking raters about their own intentions rather than other people's abstract qualities.
+study: Steven Scullen, Michael Mount and Maynard Goff (2000) analysed ratings of 4,492 managers, each rated by two bosses, two peers and two subordinates. About 62% of the variation in the ratings came from individual raters' idiosyncrasies, and only about 21% from the managers' actual performance.
+case: In 2015 the consulting firm Deloitte reported that its performance management (forms, meetings and ratings) was taking close to 2 million hours a year, and, citing the 62% finding, that its ratings said more about the raters than about the people rated. It redesigned the process: instead of rating each person's skills, team leaders answered a few questions about their own future actions, such as whether they would always want this person on their team, which raters can answer more reliably. The nuance: the redesign was reported by Deloitte's own managers in the Harvard Business Review, not tested independently. What the research supports is the diagnosis: one person's rating is a weak measure of another person's work.
+proof: Several large studies of multi-rater reviews agree that rater effects outweigh performance in single ratings; averaging independent raters reduces the noise.
+spot: Notice how the same person gets very different reviews from different bosses, teachers or customers, and how much each review tells you about its writer.
+use: Before trusting a single rating of someone (a review, an appraisal, a reference), ask how that rater tends to score other people.
+guard: Never base a promotion or posting on one rater's score. Use several independent raters and concrete examples for each grade, and compare raters' averages before comparing people.
+predict: Managers were each rated by two bosses, two peers and two subordinates. How much of the variation in their ratings came from actual performance?
+- About 80%: the raters mostly agreed
+- About half
+* About 21%: most of it came from the raters' own quirks
+scenario: Two sub-inspectors with similar records get their annual appraisals. One reporting officer gives everyone "outstanding"; the other hasn't given that grade in ten years.
+source: Scullen, S. E., Mount, M. K., & Goff, M. (2000). Understanding the latent structure of job performance ratings. Journal of Applied Psychology; Buckingham, M., & Goodall, A. (2015). Reinventing performance management. Harvard Business Review; Kahneman, D., Sibony, O., & Sunstein, C. R. (2021). Noise: A Flaw in Human Judgment, chapter 23.
+related: halo-effect, system-noise, structured-interviews, self-serving-bias
 
 # =====================================================================================
 # INVESTIGATION & POLICING (a specialist area: dealt after the everyday library, or two days in

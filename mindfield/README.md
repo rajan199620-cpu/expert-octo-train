@@ -18,7 +18,7 @@ are in [`docs/screenshots`](docs/screenshots).
 | Sunday | **Weekly review**, five minutes, one sentence to write: your blind spot, one moment turned into an if-then plan for next week, and an old note judged again | Reflecting on your own experience beats more practice once there's experience to reflect on (Di Stefano et al., HBS 14-093); see "The weekly review" below |
 | Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", and your own lessons, each back the day after, then when the FSRS scheduler predicts recall has fallen to 90% (about 3, 11, 35, 100 days while you keep remembering) | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
 
-## The library: 217 concepts, honestly labelled
+## The library: 222 concepts, honestly labelled
 
 Nine everyday areas, dealt round-robin so neighbouring days differ (interleaving): memory &
 perception, the self, thinking traps, influence & persuasion, emotions & wellbeing,
@@ -115,11 +115,30 @@ New concepts sit at the end of each area, so the order for anyone already using 
 unchanged up to day 135 (day 144 for the second batch, day 174 for the third); people who had seen everything meet the
 new ones before any repeat.
 
+### From Noise (November 2026)
+
+*Noise* (Kahneman, Sibony & Sunstein, 2021), checked against the library before adding anything:
+only five of its ideas were new, the minimum agreed for adding a book at all.
+
+- **Added:** noise in judgement (the same case, different professionals, very different answers;
+  208 federal judges, and an insurance noise audit where the gap was 55% against an expected 10%),
+  occasion noise (examiners changed about one in ten of their own fingerprint conclusions seven
+  months later), the crowd within (averaging your own two guesses; the Holland Casino natural
+  experiment), structured interviews (Google's hiring overhaul), and ratings measure the rater
+  (62% of rating variance from raters' quirks; Deloitte's redesign, flagged as self-reported).
+- **Already covered, so skipped:** the "hungry judge" parole study (in the library as busted;
+  *Noise* cites it without its critics), formulas and simple rules beating experts, the wisdom of
+  crowds, information cascades (the MusicLab experiment), and the bail algorithm, which overlaps
+  with formulas beating judgement.
+- New concepts sit at the end of their areas, so nothing before day 175 moves. Investigation
+  concepts are now labelled by their own case numbers ("Case No. 01"), so additions to the
+  everyday areas never relabel them.
+
 ### Investigation & policing (October 2026)
 
 13 concepts for a police career, chosen where the research is strongest and written like the
 rest (a key study, a real case with its nuance, how to spot it, a mission, a watch-out). Kept
-separate from the everyday areas, so adding them renumbered nothing; they're numbered 205 to 217.
+separate from the everyday areas, so adding them renumbered nothing; they're labelled Case No. 01 to 13.
 
 - **Questioning witnesses:** the cognitive interview (two meta-analyses; Miami detectives drew out
   47% more information after training), open questions for child witnesses (the NICHD protocol;
@@ -342,7 +361,7 @@ signature stable so updates install over each other and Google sign-in keeps wor
 the certificate, publishes the APK to the link above and commits screenshots.
 
 - `core/` is pure Kotlin (library parsing, daily scheduling, spaced review, stats, merge,
-  backup format, account linking) with content checks on all 217 concepts and randomised
+  backup format, account linking) with content checks on all 222 concepts and randomised
   stress tests: years of irregular use never repeat a concept early; merges are commutative,
   idempotent and associative over hundreds of random states; backups round-trip awkward text;
   alarms keep the wall-clock time across daylight-saving changes; three phones and two Google

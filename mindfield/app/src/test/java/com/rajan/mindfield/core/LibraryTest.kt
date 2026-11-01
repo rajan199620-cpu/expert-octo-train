@@ -40,6 +40,12 @@ class LibraryTest {
         assertTrue(all.drop(everyday).all { it.category in Library.SPECIALIST })
         val fileOrder = ConceptParser.parse(TestLibrary.text).concepts.filter { it.category in Library.SPECIALIST }.map { it.id }
         assertEquals(fileOrder, all.drop(everyday).map { it.id })
+        // Labelled by their place in their own area; everyday concepts by their overall number.
+        for (c in Library.SPECIALIST) {
+            val inArea = all.filter { it.category == c }
+            assertEquals((1..inArea.size).toList(), inArea.map { it.serial })
+        }
+        assertTrue(all.take(everyday).all { it.serial == 0 && it.numberLabel == "No. %03d".format(it.number) })
     }
 
     @Test

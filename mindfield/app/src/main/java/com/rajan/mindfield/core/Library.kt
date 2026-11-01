@@ -7,7 +7,9 @@ package com.rajan.mindfield.core
  * the categories round-robin (see [ROTATION]) so consecutive days never sit in one corner of
  * psychology, which is also interleaving, a reliable aid to learning to tell concepts apart.
  * Specialist areas ([SPECIALIST]) come after all of that, in file order: they're for people who
- * choose them as a focus, and adding one never renumbers or reorders the concepts before it.
+ * choose them as a focus, and adding one never renumbers or reorders the concepts before it. They
+ * are labelled by their place within their own area, so concepts added to the everyday areas later
+ * (which move them further down the overall order) don't change their labels either.
  */
 class Library(val all: List<Concept>) {
     private val byId = all.associateBy { it.id }
@@ -41,7 +43,8 @@ class Library(val all: List<Concept>) {
             while (queues.values.any { it.isNotEmpty() }) {
                 for (c in ROTATION) queues.getValue(c).removeFirstOrNull()?.let { ordered += it }
             }
-            for (c in SPECIALIST) ordered += concepts.filter { it.category == c }
+            // Specialist concepts still get a place in the overall order, but are shown by their serial.
+            for (c in SPECIALIST) ordered += concepts.filter { it.category == c }.mapIndexed { i, x -> x.copy(serial = i + 1) }
             return ordered.mapIndexed { i, c -> c.copy(number = i + 1) }
         }
     }

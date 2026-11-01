@@ -4,7 +4,14 @@ package com.rajan.mindfield.core
  * The areas the guide covers: nine of everyday psychology, then specialist ones (see
  * [Library.SPECIALIST]). [key] is what the library file uses.
  */
-enum class Category(val key: String, val label: String, val short: String, val blurb: String) {
+enum class Category(
+    val key: String,
+    val label: String,
+    val short: String,
+    val blurb: String,
+    /** A specialist area numbers its concepts on its own ("Case No. 01"), so later additions elsewhere never renumber them. */
+    val serialLabel: String? = null,
+) {
     MEMORY("memory", "Memory & perception", "Perception", "What we notice, what we miss, and how memory rewrites itself."),
     SELF("self", "The self", "Self", "How we see ourselves, explain ourselves and guard our self-image."),
     THINKING("thinking", "Thinking traps", "Thinking", "Mental shortcuts that are usually useful and sometimes badly wrong."),
@@ -14,7 +21,7 @@ enum class Category(val key: String, val label: String, val short: String, val b
     DECISIONS("decisions", "Choices & money", "Choices", "Why the way options are framed changes what we pick."),
     HABITS("habits", "Motivation & habits", "Habits", "What gets us moving, keeps us going and makes behaviour stick."),
     GROUPS("groups", "Groups & society", "Groups", "What crowds, teams and tribes do to the people inside them."),
-    INVESTIGATION("investigation", "Investigation & policing", "Policing", "How witnesses and suspects are questioned, how evidence goes wrong, and which police methods work.");
+    INVESTIGATION("investigation", "Investigation & policing", "Policing", "How witnesses and suspects are questioned, how evidence goes wrong, and which police methods work.", "Case No.");
 
     companion object {
         fun of(key: String): Category? = entries.firstOrNull { it.key == key }
@@ -67,13 +74,15 @@ data class Concept(
     val scenario: String,
     val source: String,
     val related: List<String>,
+    /** In a specialist area, the concept's place within that area, from 1 (see [Category.serialLabel]); 0 otherwise. */
+    val serial: Int = 0,
 ) {
     val isMyth: Boolean get() = evidence == Evidence.BUSTED
 
     /** The mission's first sentence, short enough for a notification line. */
     val missionLine: String get() = firstSentence(use)
 
-    val numberLabel: String get() = "No. %03d".format(number)
+    val numberLabel: String get() = if (serial > 0 && category.serialLabel != null) "${category.serialLabel} %02d".format(serial) else "No. %03d".format(number)
 
     /** The real-world case before its closing "The nuance: ..." takeaway (all of it if there is none). */
     val caseStory: String get() = case.indexOf(NUANCE).let { if (it > 0) case.substring(0, it).trim() else case }
