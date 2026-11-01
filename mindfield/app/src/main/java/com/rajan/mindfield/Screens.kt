@@ -42,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -330,8 +331,18 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Uni
     var right by rememberSaveable { mutableIntStateOf(0) }
     var revealed by rememberSaveable { mutableStateOf(false) }
     val current = round
+    val scroll = rememberScrollState()
+    // A recall answer appears below its cue, which can be long: bring it into view. A new card starts at the top.
+    LaunchedEffect(revealed, index) {
+        if (revealed) {
+            withFrameNanos { }
+            scroll.animateScrollTo(scroll.maxValue)
+        } else {
+            scroll.scrollTo(0)
+        }
+    }
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
+        Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 18.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         if (current == null) {
@@ -414,7 +425,7 @@ fun ReviewScreen(state: AppState, today: LocalDate, nav: Nav, onClose: () -> Uni
                         val accent = concept.category.accent(p.dark)
                         RecallQuestion(
                             index, current.cards.size, revealed,
-                            label = "The nuance", glyph = Glyph.SCALE, accent = accent,
+                            label = "In the real world", glyph = Glyph.SCALE, accent = accent,
                             meta = concept.title, cue = question.prompt, cueStyle = MaterialTheme.typography.bodyLarge,
                             ask = "What's the catch in this case? Say it to yourself in a sentence before you look.",
                             showLabel = "Show the nuance", answerLabel = "The nuance", answer = question.answerText.orEmpty(),
