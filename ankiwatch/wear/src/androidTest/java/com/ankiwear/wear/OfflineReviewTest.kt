@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
@@ -19,6 +20,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
@@ -190,6 +192,15 @@ class OfflineReviewTest {
         show(lawPack())
         rule.scrollContentTo(hasTestTag(ReviewTags.BURY))
         rule.onNodeWithTag(ReviewTags.BURY).performClick()
+        rule.waitForIdle()
+        assertEquals(listOf(Triple(lawCards[0].noteId, lawCards[0].cardOrd, Wire.EASE_BURY)), answers)
+        header().assertTextEquals("Offline · 2 left")
+    }
+
+    @Test
+    fun aDoubleTapBuriesOffline() {
+        show(lawPack())
+        rule.onRoot().performTouchInput { doubleClick(center) }
         rule.waitForIdle()
         assertEquals(listOf(Triple(lawCards[0].noteId, lawCards[0].cardOrd, Wire.EASE_BURY)), answers)
         header().assertTextEquals("Offline · 2 left")

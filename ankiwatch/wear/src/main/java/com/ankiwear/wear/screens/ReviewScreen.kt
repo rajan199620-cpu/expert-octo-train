@@ -200,10 +200,15 @@ fun ReviewScreen(
         }
     }
 
+    // A double tap anywhere buries the card, like the Bury chip; Undo brings it back.
+    val bury: (() -> Unit)? = if (allowBury) ({ grade(Wire.EASE_BURY) }) else null
+    val currentBury by rememberUpdatedState(bury)
+
     val insets = rememberScreenInsets()
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .doubleTapAnywhere(revisionKey) { currentBury?.invoke() }
             .padding(horizontal = 6.dp, vertical = 4.dp)
     ) {
         // Colored per-category counter — matches AnkiDroid's blue·red·green display.
@@ -244,7 +249,7 @@ fun ReviewScreen(
             onTapContent = if (!showAnswer && !rendered.hasTappableCloze) reveal else null,
             onFocusModeChange = onFocusModeChange,
             // Bury hides the card until tomorrow; once per card, like a grade.
-            onBury = if (allowBury) ({ grade(Wire.EASE_BURY) }) else null,
+            onBury = bury,
             buryEnabled = !hasAnswered,
             onUndo = onUndo,
             insets = insets,

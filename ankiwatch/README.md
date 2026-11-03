@@ -19,7 +19,7 @@ Based on [AnkiWatch](https://github.com/OleksandrShabaldas/AnkiWatch) by Oleksan
 | **Show answer** | Opens the tested cloze. The note's other fields (Note / Mnemonics / Extra / Why …) follow as folded headers: tap **▸ Note** to open one. |
 | **Again** / **Good** | Grade the card. **Hold Again = Hard**, **hold Good = Easy**. Each button shows its next interval; the Hard/Easy intervals are at the end of the answer. |
 | **Bottom side button** | Press: show the answer, then press again for **Good**. Hold (½ s): **Again**. Ignored while the next cards load; on *Done!* it returns to the decks. |
-| **Bury** | Under the card (scroll down). Hides this card until tomorrow, as Bury does in AnkiDroid; its sibling cards stay. |
+| **Bury** | Under the card (scroll down), or double-tap anywhere on the card. Hides this card until tomorrow, as Bury does in AnkiDroid; its sibling cards stay. A double tap that buries by mistake: ↶ Undo. |
 | **↶ Undo** | Under the card (and on *Done!*). Takes back your last grade or Bury and shows that card again. The watch keeps your latest grade for up to 30 s, until your next grade or until you leave the review, and only then sends it: AnkiDroid can't undo a grade once it has it. One step back, live and offline. |
 | Whole note / Focus on cloze | Focus mode (default) shows only the part of a long note holding the tested cloze, plus its heading or parent list item. Either way a card opens scrolled so the tested cloze (then its answer) is fully on screen. |
 | Bezel / swipe | Scroll. Swipe right to leave the review. |
@@ -223,7 +223,9 @@ Never commit the keystore; this repository is public.
   the whole note, the tested cloze and its answer on screen when each side opens (checked by
   position inside the display circle, not just presence), peeking, focus mode, grading buttons
   and holds, real side-button key events, Bury on either side (once only, even when tapped
-  together with a grade or the side button), 120 random cards with random Bury and focus
+  together with a grade or the side button), Bury by double tap (on either side, offline,
+  never from single, slow, far-apart, dragged, held or two-finger taps, or a tap on each of
+  two cards; 150 random touch runs checked against a model), 120 random cards with random Bury and focus
   mode, a 40-section note, malformed input. Every control on 192, 204 and 227 dp round
   screens at font sizes from 0.85× to 2×: labels whole and inside the circle up to 1.3×
   (the largest watch setting), the chips under the card wrapping instead of overlapping at
