@@ -864,7 +864,7 @@ class ScreensTest {
         launch()
         compose.onNodeWithText("Socratic questioning").assertExists()
         compose.onAllNodesWithText("Idea No. 01", substring = true, ignoreCase = true).onFirst().assertExists()
-        shot("58-philosophy-today")
+        shot("60-philosophy-today")
         tab("Guide")
         compose.onAllNodesWithText("Philosophy").onFirst().assertExists()
     }
