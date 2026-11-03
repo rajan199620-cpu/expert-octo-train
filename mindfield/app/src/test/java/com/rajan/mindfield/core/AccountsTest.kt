@@ -336,22 +336,34 @@ class LibraryUpgradeTest {
     /** Then five from Noise (Kahneman, Sibony & Sunstein), at the end of their everyday areas (see README). */
     private val fromNoise = setOf("occasion-noise", "system-noise", "crowd-within", "structured-interviews", "rater-noise")
 
-    private val added = fromFiveBooks + fromTwoMoreBooks + fromThreeMoreBooks + investigation + fromNoise
+    /** Then the Philosophy, tested area, appended after investigation (see README). */
+    private val philosophy = setOf(
+        "socratic-questioning", "golden-mean", "meaning-and-happiness", "reason-and-intuition", "ring-of-gyges",
+        "negative-visualisation", "memento-mori", "second-arrow", "trying-too-hard", "born-good",
+        "know-your-opponent", "warrior-or-guardian", "winning-without-fighting", "certainty-over-severity",
+        "trolley-problem", "veil-of-ignorance", "sitting-alone", "what-doesnt-kill-you", "akrasia", "know-thyself",
+        "leviathan", "guide-with-virtue", "worthy-models", "holding-both-sides", "act-not-the-fruit",
+        "learning-pyramid-myth", "vipassana-in-prison", "believe-then-doubt",
+    )
+
+    private val added = fromFiveBooks + fromTwoMoreBooks + fromThreeMoreBooks + investigation + fromNoise + philosophy
 
     /** The library as people first had it (151 concepts), after the five books (180) and after seven (195). */
     private val original = Library(Library.interleave(now.all.filter { it.id !in added }))
-    private val afterFiveBooks = Library(Library.interleave(now.all.filter { it.id !in fromTwoMoreBooks + fromThreeMoreBooks + investigation + fromNoise }))
-    private val afterSevenBooks = Library(Library.interleave(now.all.filter { it.id !in fromThreeMoreBooks + investigation + fromNoise }))
-    private val afterTenBooks = Library(Library.interleave(now.all.filter { it.id !in investigation + fromNoise }))
-    private val withInvestigation = Library(Library.interleave(now.all.filter { it.id !in fromNoise }))
+    private val afterFiveBooks = Library(Library.interleave(now.all.filter { it.id !in fromTwoMoreBooks + fromThreeMoreBooks + investigation + fromNoise + philosophy }))
+    private val afterSevenBooks = Library(Library.interleave(now.all.filter { it.id !in fromThreeMoreBooks + investigation + fromNoise + philosophy }))
+    private val afterTenBooks = Library(Library.interleave(now.all.filter { it.id !in investigation + fromNoise + philosophy }))
+    private val withInvestigation = Library(Library.interleave(now.all.filter { it.id !in fromNoise + philosophy }))
+    private val withNoise = Library(Library.interleave(now.all.filter { it.id !in philosophy }))
 
     /** Each earlier library, with the concepts that arrived after it. */
     private val upgrades = listOf(
         original to added,
-        afterFiveBooks to fromTwoMoreBooks + fromThreeMoreBooks + investigation + fromNoise,
-        afterSevenBooks to fromThreeMoreBooks + investigation + fromNoise,
-        afterTenBooks to investigation + fromNoise,
-        withInvestigation to fromNoise,
+        afterFiveBooks to fromTwoMoreBooks + fromThreeMoreBooks + investigation + fromNoise + philosophy,
+        afterSevenBooks to fromThreeMoreBooks + investigation + fromNoise + philosophy,
+        afterTenBooks to investigation + fromNoise + philosophy,
+        withInvestigation to fromNoise + philosophy,
+        withNoise to philosophy,
     )
     private val start: LocalDate = LocalDate.of(2026, 10, 2)
 
@@ -381,10 +393,13 @@ class LibraryUpgradeTest {
         assertEquals(204, afterTenBooks.size)
         assertEquals(195 + fromThreeMoreBooks.size, afterTenBooks.size)
         assertEquals(204 + investigation.size, withInvestigation.size)
-        assertEquals(204 + investigation.size + fromNoise.size, now.size)
+        assertEquals(204 + investigation.size + fromNoise.size, withNoise.size)
+        assertEquals(222 + 28, now.size)
+        assertEquals(28, philosophy.size)
         assertTrue(now.all.filter { it.id in investigation }.all { it.category == Category.INVESTIGATION })
+        assertEquals(philosophy, now.all.filter { it.category == Category.PHILOSOPHY }.map { it.id }.toSet())
         assertTrue(added.all { now.contains(it) })
-        assertEquals(fromFiveBooks.size + fromTwoMoreBooks.size + fromThreeMoreBooks.size + investigation.size + fromNoise.size, added.size)
+        assertEquals(fromFiveBooks.size + fromTwoMoreBooks.size + fromThreeMoreBooks.size + investigation.size + fromNoise.size + philosophy.size, added.size)
     }
 
     @Test
@@ -477,6 +492,31 @@ class LibraryUpgradeTest {
         val firstNew = now.all.filter { it.id in fromNoise }.minOf { it.number }
         assertTrue("first new day $firstNew", firstNew > 174)
         for (c in withInvestigation.all.filter { it.number < firstNew }) assertEquals(c.id, c.number, now[c.id]!!.number)
+    }
+
+    @Test
+    fun `the philosophy area moves nothing, and keeps every earlier label`() {
+        for (c in withNoise.all) {
+            assertEquals(c.id, c.number, now[c.id]!!.number)
+            assertEquals(c.id, c.numberLabel, now[c.id]!!.numberLabel)
+        }
+        assertEquals(223, now.all.filter { it.id in philosophy }.minOf { it.number })
+        assertEquals("Idea No. 01", now["socratic-questioning"]!!.numberLabel)
+        assertEquals("Idea No. 28", now["believe-then-doubt"]!!.numberLabel)
+    }
+
+    @Test
+    fun `choosing philosophy as a focus brings it in two days in three, and nothing from it repeats`() {
+        var s = AppState(settings = Settings(focus = setOf(Category.PHILOSOPHY)))
+        val shown = (0 until 60).map { d ->
+            val day = start.plusDays(d.toLong())
+            s = Curriculum.assign(day, now, s, d.toLong())
+            now[s.assignments.getValue(day).conceptId]!!
+        }
+        // 28 ideas at two days in three take 42 or 43 days, depending on where the breadth day falls.
+        assertEquals(philosophy, shown.take(43).filter { it.category == Category.PHILOSOPHY }.map { it.id }.toSet())
+        assertTrue(shown.take(43).count { it.category != Category.PHILOSOPHY } in 13..15)
+        assertEquals(shown.size, shown.map { it.id }.toSet().size)
     }
 
     @Test

@@ -21,7 +21,8 @@ enum class Category(
     DECISIONS("decisions", "Choices & money", "Choices", "Why the way options are framed changes what we pick."),
     HABITS("habits", "Motivation & habits", "Habits", "What gets us moving, keeps us going and makes behaviour stick."),
     GROUPS("groups", "Groups & society", "Groups", "What crowds, teams and tribes do to the people inside them."),
-    INVESTIGATION("investigation", "Investigation & policing", "Policing", "How witnesses and suspects are questioned, how evidence goes wrong, and which police methods work.", "Case No.");
+    INVESTIGATION("investigation", "Investigation & policing", "Policing", "How witnesses and suspects are questioned, how evidence goes wrong, and which police methods work.", "Case No."),
+    PHILOSOPHY("philosophy", "Philosophy, tested", "Philosophy", "What philosophers from Athens to Beijing to Kurukshetra claimed about the mind and how to live, and what happened when researchers tested it.", "Idea No.");
 
     companion object {
         fun of(key: String): Category? = entries.firstOrNull { it.key == key }

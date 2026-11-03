@@ -854,6 +854,22 @@ class ScreensTest {
     }
 
     @Test
+    fun `philosophy - picking it as a focus brings its first idea, with its own number`() {
+        val today = LocalDate.now(Seed.zone)
+        Store.settings { it.copy(onboarded = true, focus = setOf(com.rajan.mindfield.core.Category.PHILOSOPHY)) }
+        Seed.at(today.minusDays(1), 9)
+        Store.todayConcept()
+        morning()
+        assertEquals("socratic-questioning", Store.todayConcept().id)
+        launch()
+        compose.onNodeWithText("Socratic questioning").assertExists()
+        compose.onAllNodesWithText("Idea No. 01", substring = true, ignoreCase = true).onFirst().assertExists()
+        shot("58-philosophy-today")
+        tab("Guide")
+        compose.onAllNodesWithText("Philosophy").onFirst().assertExists()
+    }
+
+    @Test
     fun `a sign-in notification opens the Google account sheet`() {
         Seed.weeks(5)
         InstrumentationRegistry.getInstrumentation().setInTouchMode(true)

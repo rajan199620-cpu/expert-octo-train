@@ -7,7 +7,7 @@
 #
 # Within each category the order is the order of first appearance. The app deals the categories
 # round-robin (memory, self, thinking, influence, feelings, connection, decisions, habits, groups).
-# Specialist areas (investigation) come after all of those, unless chosen as a focus area.
+# Specialist areas (investigation, then philosophy) come after all of those, unless chosen as a focus area.
 #
 # Evidence: solid = replicated widely; good = real but smaller or conditional; debated = mixed
 # replications; busted = failed to replicate or misreported.
@@ -266,7 +266,7 @@ aka: Digital amnesia
 category: memory
 evidence: debated
 hook: When we know information is saved somewhere, we may remember where it is rather than what it says.
-what: The idea is that we treat the internet like a friend who remembers things for us: when information is easy to look up, we invest less in storing it, and remember the location instead. Offloading memory isn't new (diaries, address books), but how much it changes memory is still argued over.
+what: The idea is that we treat the internet like a friend who remembers things for us: when information is easy to look up, we invest less in storing it, and remember the location instead. Offloading memory isn't new (diaries, address books), but how much it changes memory is still argued over. The worry is ancient: in Plato's Phaedrus, Socrates tells of an Egyptian king who warned that writing would make people forgetful, trusting marks outside themselves instead of their own memory.
 study: In 2011 Betsy Sparrow, Jenny Liu and Daniel Wegner reported that people who believed typed facts would be saved remembered them less well, and were better at recalling the folder they were saved in than the facts. In 2018 a large project replicating social science papers from Nature and Science re-ran one of their experiments and found no effect.
 case: In 2015 Matthew Fisher, Mariel Goddu and Frank Keil asked people to answer questions such as "How does a zip work?", either using internet search or without it. Afterwards, those who had searched rated their own ability to explain unrelated topics more highly, as if the internet's knowledge had become their own. In 2017 Benjamin Storm and colleagues found that people who had used Google to answer hard trivia questions were later more likely to reach for Google even on easy questions they could have answered from memory. The nuance: offloading memory to devices isn't new or always bad (Storm's own work shows saving one file can free memory for the next), but these studies suggest a subtler cost: we may lose track of where our knowledge ends and the search engine's begins.
 proof: The broad idea (we offload memory to tools) is plausible and partly supported, but a high-profile replication of the original study failed.
@@ -1143,7 +1143,7 @@ title: The illusion of explanatory depth
 category: thinking
 evidence: solid
 hook: You think you know how a zip works. Try explaining it step by step.
-what: We feel we understand everyday objects and complex issues in much more depth than we do. The feeling comes from familiarity and knowing that someone understands it. Trying to explain it step by step reveals the gaps, and also makes us more humble.
+what: We feel we understand everyday objects and complex issues in much more depth than we do. The feeling comes from familiarity and knowing that someone understands it. Trying to explain it step by step reveals the gaps, and also makes us more humble. In Plato's Apology, Socrates says he is wiser than others only in that he doesn't think he knows what he doesn't know.
 study: In 2002 Leonid Rozenblit and Frank Keil asked people to rate how well they understood things like zips, flush toilets and sewing machines. Then they asked for detailed step-by-step explanations. Afterwards, people's ratings of their own understanding dropped sharply. Later studies extended this to policies; whether explaining policies also reduces extreme views has had mixed replication.
 case: In 2013 Philip Fernbach, Todd Rogers, Craig Fox and Steven Sloman applied the illusion to politics. They asked Americans to rate their understanding of policies such as cap-and-trade carbon emissions or a national flat tax, and how strongly they supported or opposed them. Some were then asked to explain, step by step, how the policy would work; others merely listed reasons for their position. Explaining the mechanism lowered people's rated understanding and moderated their positions, while listing reasons didn't. The nuance: a 2021 replication by Matthew Crawford and John Ruscio again found that explaining reduced people's sense of understanding, but did not find the moderation of political views. So the illusion itself is solid; whether exposing it can defuse polarisation is still open.
 proof: The core illusion is robust; its effect on political views is less certain.
@@ -1919,7 +1919,7 @@ title: Reappraisal
 category: feelings
 evidence: solid
 hook: Telling yourself "I'm excited" instead of "I'm anxious" can improve exam scores. How you interpret a feeling changes it.
-what: Reappraisal means changing how you interpret a situation or a bodily feeling, so that the emotion itself changes. It tends to work better than suppressing the emotion, which hides it on the outside but keeps it running inside and makes conversations worse.
+what: Reappraisal means changing how you interpret a situation or a bodily feeling, so that the emotion itself changes. It tends to work better than suppressing the emotion, which hides it on the outside but keeps it running inside and makes conversations worse. The idea is ancient: the Stoic Epictetus taught that people are disturbed not by things but by their opinions about things, a line Albert Ellis and Aaron Beck cited as a root of cognitive therapy.
 study: In 1998 James Gross showed that suppressing the expression of disgust left physiological arousal high, while reappraising reduced the experience. In 2010 Jeremy Jamieson and colleagues told some students before a practice GRE that anxiety arousal can improve performance. Those students scored higher on the maths section, and later on the actual GRE.
 case: In 2008, in the middle of the financial crisis, Alia Crum, Peter Salovey and Shawn Achor ran a study inside UBS, a global bank where layoffs and losses were daily news. Employees were randomly assigned to watch three short videos portraying stress either as debilitating (causing illness and mistakes) or as enhancing (sharpening focus and building resilience), or to a control group with no videos. Afterwards, those who saw the enhancing videos had shifted towards seeing stress as useful, and reported fewer health symptoms and better work performance than those who saw the debilitating version. The bank and its pressures hadn't changed; how people read their own racing hearts had. The nuance: this isn't "stress is good" or "think positive". Reappraisal changes what an arousal response means rather than denying it. The outcomes were self-reported and the effects modest, about what you would expect from a few minutes of video.
 proof: Reappraisal is one of the best-supported emotion regulation strategies; meta-analyses show moderate effects.
@@ -1940,7 +1940,7 @@ aka: Solomon's paradox
 category: feelings
 evidence: good
 hook: We give wiser advice to friends than to ourselves. Talking to yourself by name brings that wisdom home.
-what: When we're inside a problem, we're flooded with emotion and see narrowly. When advising a friend, we step back and see the bigger picture. You can borrow that distance by thinking about your situation in the third person ("Why is Rahul so upset?") or as if advising a friend.
+what: When we're inside a problem, we're flooded with emotion and see narrowly. When advising a friend, we step back and see the bigger picture. You can borrow that distance by thinking about your situation in the third person ("Why is Rahul so upset?") or as if advising a friend. The Stoic emperor Marcus Aurelius wrote his Meditations to himself, often addressing himself as "you".
 study: In 2014 Ethan Kross and colleagues found that people who used their own name or "you" instead of "I" in self-talk before a speech felt less anxious and gave better speeches. Also in 2014, Igor Grossmann and Ethan Kross found that people reasoned more wisely about a friend's relationship problem than their own, but the gap disappeared when they considered their own problem in the third person.
 case: In October 2014, Ebola had just been diagnosed in the United States and anxiety was spreading far faster than the virus. Ethan Kross and colleagues asked 1,257 Americans to think through their feelings about Ebola, either in the first person ("Why am I worried?") or using their own name. Among people who started out highly worried, those who used their own name generated more fact-based reasons not to worry, such as how the disease actually spreads, and that predicted lower worry and a lower sense of personal risk afterwards. People who weren't very anxious to begin with changed little. The nuance: self-distancing didn't make people careless or blindly reassured; it seemed to let anxious people reason with facts they already had. It is a tool for when emotion is crowding out thinking, not a general mood booster.
 proof: Supported by several studies; effects are moderate and best for emotional, personal situations.
@@ -2202,7 +2202,7 @@ title: Most worries never happen
 category: feelings
 evidence: good
 hook: People with anxiety logged their worries, then checked later what actually happened. About 91% of the worries never came true.
-what: Worry feels like useful preparation, so we keep doing it. But most of what we worry about doesn't happen, and when it does it's usually less bad than we imagined. Worry may persist partly because it seems to work: when the feared event doesn't come, the worrying gets the credit. It can also keep us braced so that bad news won't feel like a sudden drop, at the price of feeling bad all the time.
+what: Worry feels like useful preparation, so we keep doing it. But most of what we worry about doesn't happen, and when it does it's usually less bad than we imagined. Worry may persist partly because it seems to work: when the feared event doesn't come, the worrying gets the credit. It can also keep us braced so that bad news won't feel like a sudden drop, at the price of feeling bad all the time. Seneca told his friend Lucilius the same thing nearly 2,000 years ago: "We suffer more often in imagination than in reality."
 study: In 2020 Lucas LaFreniere and Michelle Newman had people with generalised anxiety disorder record their worries over several days and later note whether each one had come true. On average 91.4% of the worries did not come true, and for many participants none did. Emotionally, people had felt their worries were more likely than they logically believed. Those who found more of their worries untrue tended to improve more in treatment.
 case: If worrying gives false comfort, can you postpone it? In "worry postponement", people notice a worry, jot it down and save it for a fixed half-hour "worry period" later in the day, in the same place each time. In 2013 Sandra McGowan and Evelyn Behar randomly assigned 53 students with high levels of worry either to this technique or to worrying as they normally would. The postponement group reported less worry and anxiety, and better sleep. A 2023 meta-analysis of seven randomised trials with 999 participants found that postponement modestly reduced how often and how long people worried. The nuance: worry isn't the same as planning. If a worry points to a problem you can act on, act; it's the circling, unanswerable "what ifs" that these techniques shrink.
 proof: Good: the "most worries don't come true" finding comes from one careful study of people with anxiety; worry postponement is supported by randomised trials and a meta-analysis, with modest effects.
@@ -2243,7 +2243,7 @@ aka: Catharsis
 category: feelings
 evidence: busted
 hook: Hitting a punching bag while thinking of the person who angered you left people angrier and more aggressive than doing nothing.
-what: The idea that anger builds up like steam and has to be let out, by shouting, punching a pillow or smashing plates, is called catharsis. It feels right, and many people believe it. Experiments find the opposite: venting keeps you focused on the provocation and keeps your body revved up, so the anger lasts and aggression rises. What helps is bringing your arousal down.
+what: The idea that anger builds up like steam and has to be let out, by shouting, punching a pillow or smashing plates, is called catharsis. It feels right, and many people believe it. Experiments find the opposite: venting keeps you focused on the provocation and keeps your body revved up, so the anger lasts and aggression rises. What helps is bringing your arousal down. The word comes from Aristotle, who wrote that tragedy brings about a catharsis of pity and fear; what he meant is still argued over, and the steam-valve idea owes more to Freud.
 study: In 2002 Brad Bushman angered 600 students with harsh written feedback on an essay, supposedly from another student. Some then hit a punching bag while thinking about that person, others hit it while thinking about getting fit, and a third group simply sat quietly. Those who vented while thinking about their critic felt the angriest and were the most aggressive, giving the critic the harshest blasts of noise. The group that did nothing was the least aggressive.
 case: In 2024 Sophie Kjærvik and Brad Bushman combined 154 studies with more than 10,000 participants, from students to offenders. Activities that calm the body, such as slow breathing, meditation, mindfulness and yoga, reliably reduced anger and aggression. Activities that rev the body up, such as running or cycling, didn't reduce anger overall, and jogging, if anything, made it worse. Rage rooms, where people pay to smash plates and old televisions, are built on the opposite assumption. The nuance: exercise is still good for you, and playful ball games did seem to calm people; the problem is release that keeps you revved up and replaying the insult. Calming down first and dealing with the problem afterwards works better.
 proof: Busted: venting has failed experimental tests since the 1970s, and a 2024 meta-analysis of 154 studies found that calming the body, not venting, reduces anger.
@@ -3351,7 +3351,7 @@ aka: The 21-day myth
 category: habits
 evidence: good
 hook: It's not 21 days. In one study habits took a median of 66 days, and anywhere from 18 to 254.
-what: Habits form through repetition in a consistent context, until the cue triggers the behaviour automatically. The popular "21 days" figure has no research behind it. Real habits take longer, vary hugely by person and behaviour, and missing a single day doesn't reset the clock.
+what: Habits form through repetition in a consistent context, until the cue triggers the behaviour automatically. The popular "21 days" figure has no research behind it. Real habits take longer, vary hugely by person and behaviour, and missing a single day doesn't reset the clock. Aristotle made the same point about character: we become just by doing just acts. The popular line "We are what we repeatedly do" is the historian Will Durant's 1926 summary of Aristotle, not Aristotle's own words.
 study: In 2010 Phillippa Lally and colleagues had 96 people pick a daily behaviour (like drinking water after breakfast) and track how automatic it felt. On average, it took 66 days to reach a plateau, with a range from 18 to 254 days. Missing a day now and then didn't significantly harm progress. The "21 days" figure traces back to a 1960 self-help book by a plastic surgeon about patients getting used to their new faces.
 case: In 2023 Anastasia Buyalskaya, Colin Camerer and colleagues used machine learning on two huge behavioural records: more than 12 million gym check-ins from tens of thousands of members of a US gym chain, and over 40 million hand-hygiene events recorded by sensors for thousands of hospital workers. For each person, they measured how predictable the behaviour became and which cues predicted it. Handwashing typically became habitual within weeks; going to the gym typically took months. There was no magic number: the time varied widely between people. For gym-goers, the most useful predictors were simply how long it had been since the last visit and the day of the week. The nuance: habits form fastest for simple, frequent actions tied to a stable cue, like entering a patient's room. Complex actions that need planning and travel take longer, which makes "21 days" especially misleading for exercise.
 proof: The study is widely cited and consistent with later research, though small.
@@ -3653,7 +3653,7 @@ title: The premortem
 category: habits
 evidence: good
 hook: Imagine it's a year from now and your plan has failed. Now explain why. That one twist surfaces risks ordinary planning misses.
-what: In a premortem, before committing to a plan, a team imagines it has already failed and each person writes down why. Treating failure as certain rather than possible makes reasons easier to find, and it gives doubters permission to speak instead of looking disloyal. Psychologist Gary Klein devised it, and Daniel Kahneman recommends it in Thinking, Fast and Slow as a partial remedy for overconfidence.
+what: In a premortem, before committing to a plan, a team imagines it has already failed and each person writes down why. Treating failure as certain rather than possible makes reasons easier to find, and it gives doubters permission to speak instead of looking disloyal. Psychologist Gary Klein devised it, and Daniel Kahneman recommends it in Thinking, Fast and Slow as a partial remedy for overconfidence. The Stoics practised something similar, premeditatio malorum: rehearsing in advance what could go wrong.
 study: In 1989 Deborah Mitchell, Edward Russo and Nancy Pennington found that imagining an event had already happened, which they called prospective hindsight, increased the number of reasons people came up with for it by about 30%. In 2010 Elizabeth Veinott, Gary Klein and Sterling Wiggins had 178 people evaluate a plan for responding to a flu epidemic. Those who ran a premortem reduced their overconfidence in the plan more than those who critiqued it, listed pros and cons, or listed only cons.
 case: In 2016 David Gallop, Chris Willy and John Bischoff tested the premortem with 101 experienced programme managers and engineers, working in teams on a realistic plan to introduce a new technology. Teams trained to run premortems identified significantly more high-quality risks than teams using ordinary brainstorming, and proposed more effective changes to the plan. They were also better at spotting rare, catastrophic risks of the kind that had actually derailed the real project the scenario was based on. The nuance: a premortem only helps if the reasons change something. Decide in advance what you'll do with the list, and do it before enthusiasm for the plan returns.
 proof: Good: supported by experiments on prospective hindsight and several controlled studies of the technique, though large field trials are still few.
@@ -4550,3 +4550,598 @@ predict: In a large randomised trial with Washington, D.C. police, what did body
 scenario: After a viral video, the district buys cameras for every officer and announces that complaints will now fall. A year later, nobody has checked whether they did.
 source: Lum, C., Koper, C. S., Wilson, D. B., Stoltz, M., et al. (2020). Body-worn cameras' effects on police officers and citizen behavior: A systematic review. Campbell Systematic Reviews; Ariel, B., Farrar, W. A., & Sutherland, A. (2015). The effect of police body-worn cameras on use of force and citizens' complaints against the police. Journal of Quantitative Criminology; Yokum, D., Ravishankar, A., & Coppock, A. (2019). A randomized control trial evaluating the effects of police body-worn cameras. PNAS.
 related: hawthorne-effect, replication-crisis, procedural-justice
+
+# =====================================================================================
+# PHILOSOPHY, TESTED (specialist area)
+# =====================================================================================
+# Each concept starts from what a philosopher claimed, then says what happened when researchers
+# tested it, including where the claim failed. Quotations are checked against standard
+# translations; misattributions are called out.
+
+## socratic-questioning
+title: Socratic questioning
+aka: Guided discovery
+category: philosophy
+evidence: good
+hook: Socrates rarely told people they were wrong; he asked until they saw it. In therapy, more of his kind of questions predicts faster recovery.
+what: In Plato's dialogues, Socrates leads people to examine their own beliefs through questions: what do you mean, what's the evidence, what follows if that's true? Psychiatrist Aaron Beck built the same move into cognitive therapy as "guided discovery": rather than arguing a depressed patient out of a belief, the therapist asks questions that let the patient test it. A conclusion you reach yourself is harder to dismiss than one handed to you, and being asked doesn't trigger the resistance that being told does.
+study: In 2015 Joseph Braun, Daniel Strunk, Katherine Sasso and Andrew Cooper rated video recordings of early sessions of cognitive therapy for 55 adults with depression. Within each patient, sessions in which the therapist asked more Socratic questions were followed by bigger drops in depressive symptoms by the next session, over and above the quality of the relationship between therapist and patient.
+case: The same idea runs through motivational interviewing, developed by William Miller and Stephen Rollnick for people torn about their drinking: ask open questions, reflect back what you hear, and let the person voice their own reasons to change. In Project MATCH, a US trial with 1,726 people treated for alcohol problems and published in 1997, four sessions of a motivational therapy built on these ideas produced drinking outcomes about as good as twelve sessions of cognitive-behavioural therapy or twelve-step facilitation. The nuance: that is "as good with fewer sessions", not "better", and the trial's real surprise was that three very different treatments came out nearly the same. Questions are a powerful tool, not magic, and a question asked to trap someone is just an argument in disguise. People can tell.
+proof: A within-person link in real therapy sessions, consistent with trials of question-led approaches such as motivational interviewing. No trial isolates questioning on its own.
+spot: Notice when you try to change someone's mind by telling them, and they dig in, and when a question makes them pause.
+use: The next time you disagree with someone today, ask two genuine questions about how they reached their view before giving yours. Notice whether they soften.
+guard: Don't use questions as a trap ("So you admit you were wrong?"). Ask only questions whose answers you don't already know.
+predict: In cognitive therapy for depression, what followed sessions in which therapists asked more Socratic questions?
+* Bigger drops in symptoms by the next session
+- No change, as only the relationship with the therapist mattered
+- Worse symptoms, as patients felt interrogated
+scenario: Instead of telling her brother his business plan won't work, Meera asks who his first ten customers will be and what they pay now. Halfway through answering, he goes quiet and reaches for a notebook.
+source: Braun, J. D., Strunk, D. R., Sasso, K. E., & Cooper, A. A. (2015). Therapist use of Socratic questioning predicts session-to-session symptom change in cognitive therapy for depression. Behaviour Research and Therapy; Project MATCH Research Group (1997). Matching alcoholism treatments to client heterogeneity. Journal of Studies on Alcohol; Miller, W. R., & Rollnick, S. (2013). Motivational Interviewing.
+related: reactance, explanatory-depth, rapport-interviewing
+
+## golden-mean
+title: The golden mean
+aka: Too much of a good thing
+category: philosophy
+evidence: good
+hook: Aristotle said courage sits between cowardice and recklessness. For assertiveness, at least, the colleagues of leaders agree.
+what: In the Nicomachean Ethics, Aristotle argued that most virtues are a mean between two vices: courage between cowardice and recklessness, generosity between meanness and extravagance. In 2011 psychologists Adam Grant and Barry Schwartz reviewed the evidence and found the same inverted-U shape again and again: traits and choices that help in moderation start to hurt in excess. More is better, until it isn't.
+study: In 2007 Daniel Ames and Francis Flynn asked people to describe the leadership of colleagues they had worked with. Assertiveness was the weakness mentioned most often, and the complaints split almost evenly: 48% said too much, the rest too little. In ratings of leaders, effectiveness rose with assertiveness up to a point, then fell. Too little got nothing done; too much damaged relationships.
+case: In 2013 Adam Grant measured the extraversion of 340 call-centre sales staff and tracked their revenue over the next three months. Sales did not rise with extraversion. They peaked in the middle: "ambiverts", neither strongly outgoing nor strongly reserved, brought in the most, about $155 an hour against roughly $125 for the most extraverted and $120 for the most introverted. Grant suggested that extraverts talk too much and listen too little, while introverts are slow to close the sale. The nuance: this is one study at one company, and the ambivert advantage hasn't been widely replicated. The broader point stands better than the numbers do: when someone says a trait is always good, ask where the top of the curve is.
+proof: The inverted U is documented across many traits and choices; particular findings, like the ambivert one, rest on single studies.
+spot: Notice advice that treats a good thing as infinitely good: more confidence, more feedback, more choice, more practice.
+use: Pick one strength of yours and ask a colleague or friend honestly whether you ever overdo it. Write down when.
+guard: Don't swap one extreme for the other. The fix for too much assertiveness is a little less, not silence.
+predict: When coworkers criticised leaders' assertiveness, what did they say?
+* About half said too much and half too little
+- Nearly all said it was too much
+- Nearly all said it was too little
+scenario: Rohan, praised for his drive, starts answering every question in meetings, finishing people's sentences and overruling quieter colleagues. His project stalls because nobody will tell him the bad news.
+source: Aristotle, Nicomachean Ethics, Book II; Grant, A. M., & Schwartz, B. (2011). Too much of a good thing: The challenge and opportunity of the inverted U. Perspectives on Psychological Science; Ames, D. R., & Flynn, F. J. (2007). What breaks a leader: The curvilinear relation between assertiveness and leadership. Journal of Personality and Social Psychology; Grant, A. M. (2013). Rethinking the extraverted sales ideal: The ambivert advantage. Psychological Science.
+related: overconfidence, choice-overload, acting-extraverted
+
+## meaning-and-happiness
+title: A happy life or a meaningful one
+aka: Eudaimonia
+category: philosophy
+evidence: good
+hook: Aristotle set pleasure apart from flourishing. Happiness and meaning usually go together, but stress and giving can add meaning while costing happiness.
+what: Aristotle distinguished pleasure from eudaimonia, a flourishing life spent using your abilities well. Psychologists now measure two things separately: happiness (feeling good, needs met) and meaning (a sense of purpose that ties past, present and future together). They usually travel together, which is why most of us never notice the difference. Where they split is revealing: some of what makes life meaningful, like raising children, caring for others or struggling towards a goal, can make it less pleasant day to day.
+study: In 2013 Roy Baumeister, Kathleen Vohs, Jennifer Aaker and Emily Garbinsky surveyed 397 American adults. Happiness and meaning were strongly correlated, but they had different ingredients. Having enough money, good health and feeling good predicted happiness more than meaning. Thinking about the past and future, worrying, stress and giving to others went with more meaning, and some of them with less happiness.
+case: In 2014 Shigehiro Oishi and Ed Diener used the 2007 Gallup World Poll, which asked over 140,000 people in 132 countries how satisfied they were with their lives and whether their lives had an important purpose or meaning. People in richer countries reported higher life satisfaction. People in poorer countries reported more meaning, and the main reason was religion: more people in poorer nations said religion was an important part of their daily lives, and that accounted for much of the gap. The nuance: this doesn't mean poverty makes life meaningful. It suggests meaning comes from sources, like faith, family and duty, that wealth doesn't supply, which is why the two need to be asked about separately.
+proof: Large surveys agree the two overlap but differ; these are correlations, not causes. A 2013 claim that the two affect gene expression in opposite ways did not hold up when other researchers reanalysed the data.
+spot: Notice when something that matters to you, a hard job, caring for a parent, training for an exam, feels bad today. That may be meaning, not a mistake.
+use: Tonight, write down one thing from today that felt good and one that felt meaningful. Notice whether they were the same thing.
+guard: Don't judge a commitment only by how it feels this week. Ask whether it still means something to you.
+predict: In a survey of 132 countries, how did people in poorer countries compare with people in richer ones?
+* Less satisfied with life, but more likely to say it had meaning
+- Less satisfied, and less likely to say their life had meaning
+- No different on either measure once age was counted
+scenario: Divya's new job at the district hospital is exhausting and pays less than her old one at a private firm. She is less cheerful than she used to be, yet she says she has never felt more sure that her days count.
+source: Aristotle, Nicomachean Ethics, Book I; Baumeister, R. F., Vohs, K. D., Aaker, J. L., & Garbinsky, E. N. (2013). Some key differences between a happy life and a meaningful life. Journal of Positive Psychology; Oishi, S., & Diener, E. (2014). Residents of poor nations have a greater sense of meaning in life than residents of wealthy nations. Psychological Science; Brown, N. J. L., MacDonald, D. A., Samanta, M. P., Friedman, H. L., & Coyne, J. C. (2014). A critical reanalysis of the relationship between genomics and well-being. PNAS.
+related: money-and-happiness, hedonic-adaptation, prosocial-spending
+
+## reason-and-intuition
+title: Reason, master or servant?
+aka: The social intuitionist model
+category: philosophy
+evidence: debated
+hook: Plato pictured reason as a charioteer steering the passions; Hume called it their slave. In moral judgement, the evidence leans towards Hume.
+what: Plato's Phaedrus pictures the soul as a chariot: reason is the driver, reining in two horses, spirit and appetite. In 1739 David Hume replied that "reason is, and ought only to be the slave of the passions". In 2001 psychologist Jonathan Haidt sided with Hume. In moral questions, he argued, we judge by quick gut intuition, then reason afterwards to justify the verdict, more like a lawyer than a judge. Reasoning changes minds mainly when other people's arguments push back.
+study: In Haidt's best-known demonstration, people read about two adult siblings, Julie and Mark, who have sex once, using two forms of contraception, and keep it a secret that brings them closer. Most said it was wrong. When an interviewer calmly answered each reason (there could be no child, nobody was harmed), many still insisted it was wrong while admitting they couldn't say why, which Haidt called moral dumbfounding. Later studies found dumbfounding is real but less common than first reported.
+case: Can reason win? In 2012 Joseph Paxton, Leo Ungar and Joshua Greene gave people the same sibling story with either a weak or a strong argument that what they did was acceptable. The strong argument shifted judgements, but only when people were made to wait before answering, a sign that reflection can override the gut. The nuance: in 2022 two larger, preregistered replications with Czech students, of 347 and 717 people, could not reproduce that pattern. So the claim that reason only ever rationalises is too strong, but so is the hope that a good argument plus a pause reliably changes a moral verdict. Where moral minds do change, it tends to be slowly and in conversation with others, which is Haidt's point about reasoning being social.
+proof: Intuition-first moral judgement is well supported; how often reasoning overturns it is genuinely unsettled, and a key experiment failed to replicate.
+spot: Notice when you know something is wrong before you can say why, then find yourself hunting for reasons.
+use: The next time you have an instant moral reaction, write down your verdict, then the best argument for the other side. Notice which came first.
+guard: Don't treat a fluent justification as the cause of your view. Ask what would change your mind; if nothing would, it's intuition talking.
+predict: A 2012 study gave people a strong argument that the siblings' act was acceptable. When did it shift their judgements?
+* Only when they had to pause before answering
+- Immediately, with or without a pause
+- Never: it made people more certain the act was wrong
+scenario: Asked why it would be wrong to eat a pet dog that had died naturally, Kabir says it's disgusting, then unhealthy, then disrespectful. Each time his friend answers the point, he says, "I just know it's wrong."
+source: Plato, Phaedrus; Hume, D. (1739). A Treatise of Human Nature, Book II; Haidt, J. (2001). The emotional dog and its rational tail. Psychological Review; Paxton, J. M., Ungar, L., & Greene, J. D. (2012). Reflection and reasoning in moral judgment. Cognitive Science; Herec, J., et al. (2022). Reflection and reasoning in moral judgment: Two preregistered replications of Paxton, Ungar, and Greene (2012). Cognitive Science; McHugh, C., McGann, M., Igou, E. R., & Kinsella, E. L. (2017). Searching for moral dumbfounding. Collabra: Psychology.
+related: cognitive-dissonance, naive-realism, confirmation-bias
+
+## ring-of-gyges
+title: The ring of Gyges
+aka: Honesty when unseen
+category: philosophy
+evidence: solid
+hook: Plato asked what a man would do with a ring that made him invisible. Given perfect secrecy, most people still lie only a little, or not at all.
+what: In Plato's Republic, Glaucon tells of a shepherd, Gyges, who finds a ring that makes him invisible, then seduces the queen, kills the king and takes the throne. Glaucon's challenge: anyone with such a ring would do the same, so people are just only because they fear being caught. Economists have since built the ring in the lab, giving people chances to lie for money where nobody could ever know, and most people turn down most of the gain.
+study: In 2013 Urs Fischbacher and Franziska Föllmi-Heusi had people roll a die in private and report the number, with higher numbers paying more. Nobody could check any individual. Comparing the reports with what fair dice produce, about 20% lied to the maximum, while 39% were fully honest; others shaded the truth a little. In 2019 Johannes Abeler, Daniele Nosenzo and Collin Raymond combined 90 such studies with more than 44,000 people in 47 countries: on average people gave up about three-quarters of what lying could have earned them.
+case: In 2019 Alain Cohn, Michel Maréchal, David Tannenbaum and Christian Zünd handed in 17,303 "lost" wallets at banks, hotels, post offices and other public offices in 355 cities across 40 countries. Each held a business card with an email address and a key; some also held money. Nobody would ever know if a wallet was kept. In 38 of the 40 countries, wallets with money were reported more often than empty ones, about 51% against 40% overall, and in a follow-up a wallet with nearly $100 was reported more often still. The nuance: that is the opposite of what Glaucon, and the economists and members of the public the researchers surveyed, predicted. Rates still varied widely between countries, and a fifth of people in the die studies did lie all the way, so the ring reveals people as mixed, not saints.
+proof: A meta-analysis of 90 studies and a field experiment in 40 countries agree. Pictures of "watching eyes", a popular trick for making people behave, did not increase generosity in two 2017 meta-analyses.
+spot: Notice what you do when nobody could possibly find out: extra change at a counter, a parcel left at the wrong door.
+use: Today, when a small dishonest gain is on offer and nobody would know, notice the pull, and what makes you refuse it or take it.
+guard: Don't design rules as if everyone will cheat, or as if nobody will. Most people cheat a little when it's easy to excuse, so make the honest choice the easy one.
+predict: People could lie about a private die roll for money, with no way of being caught. What did most of them do?
+* Lied a little or not at all, leaving most of the money
+- Lied to the maximum, since the money was free
+- Refused to take part
+scenario: The cashier gives Tanvi change for a 500-rupee note when she paid with a 200. Nobody saw, the queue is long, and she could walk away. She calls the cashier back.
+source: Plato, Republic, Book II; Fischbacher, U., & Föllmi-Heusi, F. (2013). Lies in disguise: An experimental study on cheating. Journal of the European Economic Association; Abeler, J., Nosenzo, D., & Raymond, C. (2019). Preferences for truth-telling. Econometrica; Cohn, A., Maréchal, M. A., Tannenbaum, D., & Zünd, C. L. (2019). Civic honesty around the globe. Science; Northover, S. B., Pedersen, W. C., Cohen, A. B., & Andrews, P. W. (2017). Artificial surveillance cues do not increase generosity: Two meta-analyses. Evolution and Human Behavior.
+related: moral-licensing, deindividuation, lie-detection-myth
+
+## negative-visualisation
+title: Negative visualisation
+aka: Mental subtraction
+category: philosophy
+evidence: good
+hook: The Stoics imagined losing what they loved, so as to value it more. Imagining you never had something good lifts your mood more than counting it.
+what: Seneca and Epictetus recommended a strange exercise: picture losing the things you value, your health, your home, the people you love, not to wallow but to stop taking them for granted. Epictetus advised reminding yourself, when you kiss your child, that you are kissing someone mortal. Psychology has a name for what this fights: hedonic adaptation, the way good things fade into the background. Briefly imagining their absence undoes some of the fading.
+study: In 2008 Minkyung Koo, Sara Algoe, Timothy Wilson and Daniel Gilbert asked people to write about something good in their lives, such as meeting their partner. Some described how it had happened; others imagined how it might never have happened. The second group felt better afterwards and, in one study, more satisfied with their relationships. People asked to predict the result expected the opposite: that recounting the good event would feel better.
+case: The 1992 Barcelona Olympics gave a natural test. Victoria Medvec, Scott Madey and Thomas Gilovich had viewers rate the faces of silver and bronze medallists from 1, agony, to 10, ecstasy. Right after their events, bronze medallists averaged about 7.1 and silver medallists 4.8; on the podium, 5.7 against 4.3. In interviews, silver medallists dwelt on the gold they had nearly won, while bronze medallists thought about how close they had come to no medal at all. The nuance: what lifted the bronze winners was the comparison that came to mind, not the medal, and that is the lever the Stoics pulled on purpose. Both effects were measured over minutes, not months, so like the Stoic exercise it works as a habit, not a one-off.
+proof: Mental subtraction lifts mood in experiments; the evidence is about short-term feeling, not lasting happiness.
+spot: Notice something good you've stopped noticing: a body that works, a friend who always picks up, running water.
+use: Tonight, pick one good thing in your life and spend two minutes imagining how your life would be if it had never happened. Then notice how you feel.
+guard: Don't let the exercise turn into worry. Imagine the absence briefly, then come back to the present; rehearsing loss for hours is rumination, not Stoicism.
+predict: Which made people feel better about a good event in their life?
+* Imagining how it might never have happened
+- Describing in detail how it happened
+- Both felt the same
+scenario: At dinner with her parents, Sunita thinks about how close her father came to not surviving his heart attack last year. The ordinary meal suddenly feels like a gift.
+source: Seneca, Letters to Lucilius; Epictetus, Enchiridion 3; Koo, M., Algoe, S. B., Wilson, T. D., & Gilbert, D. T. (2008). It's a wonderful life: Mentally subtracting positive events improves people's affective states, contrary to their affective forecasts. Journal of Personality and Social Psychology; Medvec, V. H., Madey, S. F., & Gilovich, T. (1995). When less is more: Counterfactual thinking and satisfaction among Olympic medalists. Journal of Personality and Social Psychology.
+related: hedonic-adaptation, gratitude-letters, savoring
+
+## memento-mori
+title: Memento mori
+aka: Mortality salience
+category: philosophy
+evidence: debated
+hook: "Remember you will die," said the Stoics. Psychology built a famous theory on what reminders of death do to us; then a large replication found nothing.
+what: Marcus Aurelius reminded himself that he could leave life at any moment and should act accordingly; Seneca urged balancing life's books every day. The Stoics thought keeping death in mind sharpens priorities. In the 1980s psychologists made a darker claim, terror management theory: reminders of death make us cling harder to our worldview and turn on people who break its rules. It became one of social psychology's most cited ideas, with hundreds of supporting experiments.
+study: A 2010 meta-analysis by Brian Burke, Andy Martens and Erik Faucher pooled 277 experiments and found a sizeable average effect of death reminders. In 2022 Many Labs 4, led by Richard Klein, re-ran a classic experiment in many labs with more than 2,200 people, some labs advised by the theory's founders. Neither group of labs found the effect: thinking about death did not make people defend their worldview.
+case: One of the most striking early studies used real judges. In 1989 Abram Rosenblatt and colleagues asked 22 municipal court judges in an American city to set bond in a hypothetical prostitution case. Judges who had first answered questions about their own death set an average bond of about $455; the others, about $50. It was taken as proof that death reminders make people punish those who break shared values. The nuance: 22 judges is a tiny sample, and the large replication failed. What remains largely untested is the Stoic claim itself, that thinking calmly about death helps you live better. Researchers mostly studied brief, unsettling reminders, not deliberate reflection, so the old practice is neither proven nor disproven.
+proof: Hundreds of positive studies, but the largest preregistered replication found no effect, which points to selective publishing. Debated at best.
+spot: Notice when a story about death, a crash, a pandemic, an attack, is said to have hardened people's attitudes to outsiders. Ask whether the link was measured or assumed.
+use: Try the Stoic version once today: for one minute, imagine this is your last ordinary day, then do one thing you would regret leaving undone.
+guard: Don't trust a famous effect because hundreds of studies support it. Ask whether the biggest, most careful test found it.
+predict: Many labs re-ran a classic death-reminder experiment with more than 2,200 people. What did they find?
+* No effect: death reminders didn't make people defend their worldview
+- A smaller effect than first reported, but still clear
+- A larger effect than first reported
+scenario: After hearing about a friend's sudden death, Arjun cancels a weekend of scrolling and calls the grandfather he has been meaning to visit for a year.
+source: Marcus Aurelius, Meditations, Book II; Seneca, Letters to Lucilius 101; Rosenblatt, A., Greenberg, J., Solomon, S., Pyszczynski, T., & Lyon, D. (1989). Evidence for terror management theory I. Journal of Personality and Social Psychology; Burke, B. L., Martens, A., & Faucher, E. H. (2010). Two decades of terror management theory: A meta-analysis of mortality salience research. Personality and Social Psychology Review; Klein, R. A., et al. (2022). Many Labs 4: Failure to replicate mortality salience effect with and without original author involvement. Collabra: Psychology.
+related: replication-crisis, ego-depletion, negative-visualisation
+
+## second-arrow
+title: The second arrow
+aka: Accepting emotions
+category: philosophy
+evidence: good
+hook: The Buddha said pain is the first arrow and our struggle against it is a second we fire ourselves. People who accept bad feelings end up having fewer of them.
+what: In the Sallatha Sutta, the Buddha describes a person struck by an arrow who is then struck by a second: the distress they add to the pain by fighting it. Psychologists call the habit of judging your own negative feelings, feeling bad about feeling bad, non-acceptance. Acceptance doesn't mean liking what happened or putting up with mistreatment. It means letting a feeling be there without treating it as a problem to be fixed, and that, oddly, seems to make it pass sooner.
+study: In 2018 Brett Ford, Phoebe Lam, Oliver John and Iris Mauss studied more than 1,300 adults. People who habitually accepted their negative thoughts and feelings had better psychological health. In the lab they felt less negative emotion during a stressful task; in a diary study they felt less on stressful days; and six months later they reported fewer symptoms of depression and anxiety, partly because daily stresses had hurt them less.
+case: Acceptance is the core of acceptance and commitment therapy. In 2002 Patty Bach and Steven Hayes randomly assigned 80 psychiatric inpatients with hallucinations or delusions to usual treatment, or usual treatment plus four sessions of acceptance training: noticing voices and beliefs as experiences rather than fighting or obeying them. Over the next four months, the acceptance group was readmitted to hospital at half the rate of the others. The nuance: they actually reported more symptoms, but believed them less. Acceptance didn't make the voices go away; it changed what the voices could do. A 2006 replication found a similar but not statistically significant difference, so the size of the effect is uncertain.
+proof: Correlational, diary and longitudinal studies agree, and acceptance-based therapies do well in trials; people who accept their feelings may also differ in other ways.
+spot: Notice the moment you start scolding yourself for a feeling: "I shouldn't be this anxious", "why am I still upset?"
+use: The next time a bad feeling hits today, name it and tell yourself, "This is here, and that's allowed." Then carry on with what you were doing.
+guard: Don't confuse accepting a feeling with accepting a situation. You can let anger be there and still act to stop an injustice.
+predict: Psychiatric inpatients learned to accept their voices and beliefs instead of fighting them. What happened over four months?
+* They reported more symptoms, but were readmitted half as often
+- They reported fewer symptoms and were readmitted less often
+- Nothing changed compared with usual treatment
+scenario: Ravi wakes at 3 a.m. anxious about his exam and starts telling himself the anxiety will ruin it, which makes him more anxious. The next night he tells himself the worry is just a feeling, lets it stay, and falls asleep.
+source: Sallatha Sutta, Samyutta Nikaya 36.6; Ford, B. Q., Lam, P., John, O. P., & Mauss, I. B. (2018). The psychological health benefits of accepting negative emotions and thoughts: Laboratory, diary, and longitudinal evidence. Journal of Personality and Social Psychology; Bach, P., & Hayes, S. C. (2002). The use of acceptance and commitment therapy to prevent the rehospitalization of psychotic patients. Journal of Consulting and Clinical Psychology; Gaudiano, B. A., & Herbert, J. D. (2006). Acute treatment of inpatients with psychotic symptoms using acceptance and commitment therapy. Behaviour Research and Therapy.
+related: ironic-process, affect-labeling, reappraisal
+
+## trying-too-hard
+title: Trying too hard
+aka: Wu wei
+category: philosophy
+evidence: good
+hook: Zhuangzi's cook carved oxen for 19 years without blunting his knife. Experts who start watching their own technique under pressure get worse.
+what: The Daoist ideal of wu wei, effortless action, appears in the Zhuangzi as Cook Ding, who carves an ox so smoothly that his knife stays sharp for nineteen years: he no longer looks with his eyes but follows the natural joints. Laozi warned that forcing things defeats them. Psychology finds a version of this in skilled performance. Once a skill is automatic, paying step-by-step attention to it under pressure can break it; experts choke less from caring than from thinking about the wrong level of the task.
+study: In 2002 Sian Beilock, Thomas Carr, Clare MacMahon and Janet Starkes had experienced and novice golfers and footballers perform while either attending to part of their own movement, such as the swing of the putter or which side of the foot touched the ball, or doing an unrelated task at the same time. Experts did worse when focusing on their technique and fine when distracted; novices showed the opposite pattern.
+case: Penalty shootouts are a cruel natural test. In 2008 Geir Jordet and a colleague analysed all 36 shootouts, 359 kicks, ever held at the World Cup, the European Championship and the Champions League. When scoring would win the shootout, players scored 92% of the time; when a miss would lose it, only about 62%. Players facing a must-score kick also more often looked away from the goalkeeper or rushed their run-up, signs of trying to escape the moment. The nuance: what hurts is less caring too much than shifting attention from the target to the threat, and to oneself. Routines that keep attention on the target, like a set breath before the run-up, are the modern version of Cook Ding's steady eye.
+proof: Lab studies of choking and field data from sport agree. The idea fits skills that are already automatic, not ones you're still learning, where attention to technique helps.
+spot: Notice when something you do well, typing, driving, speaking, falls apart the moment you start watching yourself do it.
+use: Before one task you're good at today, pick one external focus, the target or the listener's face, and keep your attention there instead of on your body.
+guard: Don't apply "stop thinking" to skills you're still learning. Beginners need to attend to technique; it's experts under pressure who should look outward.
+predict: How did experienced golfers putt when told to focus on the movement of their club?
+* Worse than when they were distracted by another task
+- Better, because attention always helps
+- The same, because experts aren't affected
+scenario: Priya has given the same presentation twenty times. At the board meeting she starts thinking about her hands and her voice, and for the first time she loses her place.
+source: Zhuangzi, chapter 3; Beilock, S. L., Carr, T. H., MacMahon, C., & Starkes, J. L. (2002). When paying attention becomes counterproductive. Journal of Experimental Psychology: Applied; Jordet, G., & Hartman, E. (2008). Avoidance motivation and choking under pressure in soccer penalty shootouts. Journal of Sport & Exercise Psychology; Slingerland, E. (2014). Trying Not to Try.
+related: ironic-process, flow, stress-and-eyewitness
+
+## born-good
+title: Born good or made good?
+aka: Mencius and Xunzi
+category: philosophy
+evidence: debated
+hook: Mencius said anyone seeing a child about to fall into a well would feel alarm; Xunzi said goodness is learned. Two famous tests for Mencius haven't held up.
+what: Mencius, a Confucian of the 4th century BCE, argued that human nature is good: everyone has "sprouts" of compassion, and anyone who suddenly saw a toddler about to fall into a well would feel alarm and pity, not for any reward. His later rival Xunzi argued that human nature is bad, or at least crude, and that goodness is made by education and ritual, the way a craftsman steams a warped board straight. The same debate is now run in labs, with babies and with strangers.
+study: In 2007 Kiley Hamlin, Karen Wynn and Paul Bloom showed babies a puppet show in which one shape helped another up a hill and a second pushed it down. Most babies then reached for the helper, apparently a sign of an inborn moral sense. In 2025 ManyBabies 4, a replication across 37 labs on five continents, tested more than a thousand babies: about 49% of those included chose the helper, no better than chance.
+case: Adults were tested too. In 2012 David Rand, Joshua Greene and Martin Nowak reported in Nature that people made to decide quickly gave more to their group in a money game than people told to reflect, as if cooperation were the gut response and selfishness the calculated one. In 2017, 21 labs re-ran it, and counting everyone assigned, the effect of time pressure was essentially zero. Rand and Ziv Epstein had also had readers rate 51 accounts by Carnegie Hero Medal recipients, people who risked their lives to save strangers; most decisions were rated fast and intuitive. The nuance: heroes saying they acted without thinking is real, but they are a selected group, and the experiments suggesting we're all born cooperators didn't replicate. Humans clearly can help strangers on impulse, but whether goodness is the default or a trained habit is unsettled.
+proof: Key experiments on babies and on adults failed large replications; spontaneous help between strangers is well documented, but its roots are unclear.
+spot: Notice your first impulse when a stranger needs help, before any thought about rules or reward, and what your second thought does to it.
+use: Today, act on one small helpful impulse before you talk yourself out of it: hold a door, pick up something dropped, give directions.
+guard: Don't build rules on the idea that people are naturally good, or naturally bad. Build them so that helping is easy and harming is hard.
+predict: More than a thousand babies in 37 labs watched the helper-and-hinderer puppet show. How many chose the helper?
+* About half, no better than chance
+- Nearly all, as in the original study
+- Most, but fewer than in the original study
+scenario: A toddler wobbles at the edge of an open drain on a busy street. Three passers-by lunge for her at once, and none of them later remembers deciding to.
+source: Mencius 2A:6; Xunzi, chapter 23; Hamlin, J. K., Wynn, K., & Bloom, P. (2007). Social evaluation by preverbal infants. Nature; Lucca, K., et al. (2025). Infants' social evaluation of helpers and hinderers: A large-scale, multi-lab, coordinated replication study. Developmental Science; Rand, D. G., Greene, J. D., & Nowak, M. A. (2012). Spontaneous giving and calculated greed. Nature; Bouwmeester, S., et al. (2017). Registered replication report: Rand, Greene, and Nowak (2012). Perspectives on Psychological Science; Rand, D. G., & Epstein, Z. G. (2014). Risking your life without a second thought. PLoS ONE.
+related: replication-crisis, bystander-effect, panic-myth
+
+## know-your-opponent
+title: Know your opponent
+aka: Perspective-taking
+category: philosophy
+evidence: good
+hook: Sun Tzu said to know the enemy and know yourself. In negotiation, working out how the other side thinks beats feeling what they feel.
+what: The Art of War's most quoted line is: know the enemy and know yourself, and in a hundred battles you will never be in danger. Psychology separates two ways of knowing another person. Perspective-taking is working out what they think, want and need; empathy is feeling what they feel. They sound alike, but in negotiation they act differently: perspective-taking finds deals hidden behind stated demands, while empathy can lead you to give away too much.
+study: In 2008 Adam Galinsky, William Maddux, Debra Gilin and Judith White had people negotiate the sale of a petrol station where the buyer's limit was below the seller's asking price, so a deal on price alone was impossible. A deal could only be found by discovering what the seller needed beyond money. About 76% of buyers told to imagine what the seller was thinking reached one, against 54% of those told to imagine what the seller was feeling.
+case: At Camp David in September 1978, Israel held the Sinai, captured from Egypt in 1967, and neither side would budge on where the border should be. Behind the positions lay different interests: Egypt wanted sovereignty over land that had been Egyptian since the pharaohs; Israel wanted security from Egyptian tanks on its border. The 1979 peace treaty returned the Sinai to Egypt but kept much of it demilitarised, giving each side what it actually needed. Roger Fisher and William Ury made it the classic example of interests versus positions in Getting to Yes. The nuance: the breakthrough came from understanding how the other side thought, not from warmth. Begin and Sadat got on so badly that Jimmy Carter kept them apart for most of the summit. Sun Tzu's advice is to map the other side's goals, not to like them.
+proof: Several experiments support perspective-taking in negotiation; the downside of empathy is smaller and depends on the setting.
+spot: Notice when an argument is stuck on positions ("I want this", "never") and nobody has asked why each side wants what it wants.
+use: In your next disagreement or bargain, ask "What would a good outcome look like for you, and why?" before stating your own terms.
+guard: Don't mistake feeling for someone with understanding them. Be kind, but work out their interests as carefully as your own.
+predict: In a negotiation where a deal on price alone was impossible, which buyers most often found a deal?
+* Those told to imagine what the seller was thinking
+- Those told to imagine what the seller was feeling
+- Those told to focus on their own goals
+scenario: Two neighbours fight for two years over a mango tree on their shared wall. When Anil finally asks why Mr Rao wants it cut, it turns out the falling leaves block his drain, and a net and a cleaning rota end the feud.
+source: Sun Tzu, The Art of War, chapter 3; Galinsky, A. D., Maddux, W. W., Gilin, D., & White, J. B. (2008). Why it pays to get inside the head of your opponent. Psychological Science; Fisher, R., & Ury, W. (1981). Getting to Yes; Wright, L. (2014). Thirteen Days in September.
+related: naive-realism, curse-of-knowledge, information-gathering-interviews
+
+## warrior-or-guardian
+title: Warrior or guardian
+aka: The guardian mindset
+category: philosophy
+evidence: good
+hook: Plato wanted a city's protectors to be guardians, gentle to citizens and fierce to enemies. Officers who see themselves as warriors accept more force.
+what: In Plato's Republic, the city's protectors are "guardians", compared to well-bred dogs: gentle with those they know, fierce with enemies. In 2015 the US President's Task Force on 21st Century Policing urged police to adopt a guardian mindset, protecting and serving the community, rather than a warrior one that treats patrol as combat and the public as potential threats. The language of battle, of the kind people borrow from Sun Tzu, creeps easily into police training, and it has costs.
+study: In 2020 Kyle McLean, Scott Wolfe, Jeff Rojek, Geoffrey Alpert and Michael Smith surveyed officers in two US cities, Fayetteville and Tucson. Warrior and guardian outlooks were measurably distinct, though many officers held some of both. Officers with stronger guardian attitudes put more value on communicating with people and treating them fairly. Officers with stronger warrior attitudes held more favourable attitudes towards using force.
+case: In July 2016, Minnesota officer Jeronimo Yanez stopped Philando Castile for a broken brake light and fired seven shots after Castile told him he was carrying a gun, for which he had a permit. Castile died; Yanez was acquitted in 2017. Records showed Yanez had attended a 20-hour "Bulletproof Warrior" seminar in 2014, which prepares officers to expect deadly threats in routine encounters. In 2019 Minneapolis mayor Jacob Frey banned "fear-based" warrior-style training for the city's police, and Minnesota later wrote a ban into state law. The nuance: no study has shown that a seminar caused that shooting, and warrior versus guardian is partly rhetoric. Officers do face real danger, and most hold both outlooks. The question is which one should lead, and for everyday policing the evidence on legitimacy points to the guardian.
+proof: Survey evidence links the two outlooks to different attitudes; no randomised study yet ties guardian training to fewer injuries.
+spot: Notice language that turns ordinary encounters into combat, "the enemy", "the battlefield", "us versus them", in policing, in business or at home.
+use: Before an encounter today in which you hold some power, with a customer, a junior or a student, ask yourself whether you're there to win or to protect, and act on the answer.
+guard: Don't drop vigilance in the name of the guardian mindset. Guardians still prepare for danger; they just don't treat every person as the danger.
+predict: In a survey of officers in two US cities, what went with a stronger warrior outlook?
+* More favourable attitudes towards using force
+- More value placed on communicating with the public
+- No measurable difference from the guardian outlook
+scenario: At a checkpoint, one constable greets every driver as a suspect, hand on his baton. His colleague greets them as citizens, stays alert, and gets far more drivers to tell him what they saw at the accident up the road.
+source: Plato, Republic, Books II and III; President's Task Force on 21st Century Policing (2015). Final Report; McLean, K., Wolfe, S. E., Rojek, J., Alpert, G. P., & Smith, M. R. (2020). Police officers as warriors or guardians: Empirical reality or intriguing rhetoric? Justice Quarterly; Rahr, S., & Rice, S. K. (2015). From warriors to guardians: Recommitting American police culture to democratic ideals. New Perspectives in Policing, Harvard Kennedy School.
+related: procedural-justice, winning-without-fighting, stanford-prison
+
+## winning-without-fighting
+title: Winning without fighting
+aka: De-escalation
+category: philosophy
+evidence: good
+hook: Sun Tzu's supreme art was to subdue the enemy without fighting. When one police force trained officers to de-escalate, its use of force fell by 28%.
+what: The Art of War says that winning a hundred battles is not the highest skill; subduing the enemy without fighting is. In policing, the modern version is de-escalation: slowing an encounter down, creating distance and time, talking, and treating force as the last option rather than the first. For decades police forces taught it with almost no evidence that it changed what officers did on the street.
+study: In 2020 Robin Engel, Hannah McManus and Tamara Herold reviewed the research on de-escalation training and found many programmes but almost no rigorous evaluations of whether police training changed behaviour or outcomes. Most of the evidence came from other professions, such as nursing and mental health care, and even there the results were mixed and often weakly measured.
+case: In 2019 the Louisville Metro Police Department in Kentucky trained its officers in ICAT, a de-escalation course from the Police Executive Research Forum, rolling it out to groups of officers at different times so that trained and untrained periods could be compared. Robin Engel and colleagues found that after the training, use-of-force incidents fell by about 28%, injuries to members of the public by about 26%, and injuries to officers by about 36%. The nuance: this is one department and one programme, and the same force was at the centre of the killing of Breonna Taylor in 2020, a reminder that training changes averages, not every decision. But it was the first strong evidence that teaching officers to slow down makes them safer, not more vulnerable.
+proof: One strong field evaluation in a US city, against a background of little rigorous evidence; more evaluations are needed.
+spot: Notice in any heated situation whether people add time and distance or close them down: stepping back, lowering a voice, sitting down.
+use: In the next tense conversation today, slow it down on purpose: lower your voice, pause before answering, and ask one question before making any demand.
+guard: Don't treat de-escalation as weakness, or as a guarantee. It buys time and options; it doesn't replace judgement when the danger is real.
+predict: After Louisville police were trained in de-escalation, what happened to injuries to officers?
+* They fell by about a third
+- They rose, as officers held back too long
+- They stayed the same while use of force fell
+scenario: A man waving a broken bottle shouts at the crowd outside a bar. The sub-inspector keeps a car between them, speaks slowly and asks his name, and twenty minutes later the man puts the bottle down.
+source: Sun Tzu, The Art of War, chapter 3; Engel, R. S., McManus, H. D., & Herold, T. D. (2020). Does de-escalation training work? A systematic review and call for evaluation in police use-of-force reform. Criminology & Public Policy; Engel, R. S., Corsaro, N., Isaza, G. T., & McManus, H. D. (2022). Assessing the impact of de-escalation training on police behavior: Reducing police use of force in the Louisville, KY Metro Police Department. Criminology & Public Policy.
+related: warrior-or-guardian, procedural-justice, reactance
+
+## certainty-over-severity
+title: Certainty over severity
+aka: Beccaria's principle
+category: philosophy
+evidence: solid
+hook: In 1764 Cesare Beccaria argued that the certainty of punishment deters more than its harshness. Modern crime research agrees.
+what: In On Crimes and Punishments (1764), Cesare Beccaria wrote that "the certainty of a punishment, even if it be moderate, will always make a stronger impression than the fear of another which is more terrible but combined with the hope of impunity". Modern criminology agrees: people who might offend respond mainly to the chance of being caught, and only weakly to how long a sentence would be. Visible police who make capture likely deter crime; longer prison terms largely don't.
+study: In 2013 criminologist Daniel Nagin reviewed the evidence on deterrence and concluded that the certainty of being caught is a far more powerful deterrent than the severity of punishment, and that lengthening already long sentences does little. A 2014 US National Research Council report on incarceration reached the same conclusion, adding that the deterrent effect of certainty comes from the chance of being caught, mainly by police, rather than from what happens after arrest.
+case: Hawaii tested swift, certain, modest punishment on people on probation. Under HOPE, started by Judge Steven Alm in 2004, every missed or failed drug test brought an immediate short jail stay of a few days, instead of repeated warnings and, eventually, a long prison term. In a 2009 randomised evaluation, Angela Hawken and Mark Kleiman found HOPE probationers far less likely to be arrested or to use drugs than those on ordinary probation. The nuance: when the US government funded a four-state replication with 1,504 probationers, published in 2016, HOPE did no better than ordinary probation on arrests. Certainty works best as certainty of capture by police; a court programme that depends on judges, staff and labs acting swiftly every time is harder to copy than the principle.
+proof: Reviews of decades of research agree that the certainty of being caught deters and longer sentences add little; particular programmes vary.
+spot: Notice rules that are harsh on paper but rarely enforced, at work, on the road, at home, and whether people actually follow them.
+use: For one rule you set, for a child, a team or yourself, make the consequence small but certain: the same response, every time, straight away.
+guard: Don't meet a problem by raising the penalty alone. Ask first how likely someone is to be caught, and raise that.
+predict: What deters crime more, according to decades of research?
+* A higher chance of being caught
+- A longer prison sentence
+- Both deter about equally
+scenario: Fines for speeding on the expressway double, but there are still no cameras and no patrols, and nothing changes. Then one well-signed speed camera goes up, and drivers start slowing down on that stretch.
+source: Beccaria, C. (1764). On Crimes and Punishments; Nagin, D. S. (2013). Deterrence in the twenty-first century. Crime and Justice; National Research Council (2014). The Growth of Incarceration in the United States; Hawken, A., & Kleiman, M. (2009). Managing drug involved probationers with swift and certain sanctions. National Institute of Justice; Lattimore, P. K., et al. (2016). Outcome findings from the HOPE demonstration field experiment. Criminology & Public Policy.
+related: hot-spots-policing, broken-windows, guide-with-virtue
+
+## trolley-problem
+title: The trolley problem
+aka: Kant or Mill?
+category: philosophy
+evidence: debated
+hook: Would you pull a lever to kill one person and save five? Philosophy's favourite dilemma predicts surprisingly little about what people actually do.
+what: The trolley problem, posed by Philippa Foot in 1967 and named by Judith Jarvis Thomson, pits two traditions against each other. Utilitarians, after Bentham and Mill, judge by outcomes: five lives outweigh one. Kantians judge by duties: some acts, like using a person merely as a means, are wrong whatever the outcome. Most people will pull a lever to divert a runaway trolley onto one person but won't push a man off a bridge to stop it, though the numbers are the same. Joshua Greene argued that pushing triggers a fast emotional alarm, while the lever invites cooler calculation.
+study: In 2018 Dries Bostyn, Sybren Sevenhant and Arne Roets gave 208 people a real version: they could press a button to give an electric shock to one mouse, or let a shock go to a cage of five. No mouse was actually shocked, but the participants believed it would be. Others answered the same dilemma as a hypothetical. People's answers to hypothetical dilemmas did not predict what they did when it was real, and in the real version they were more willing to sacrifice the one.
+case: MIT's Moral Machine put a version online: should a driverless car swerve to kill one group of people or stay on course and kill another? In 2018 Edmond Awad and colleagues reported nearly 40 million decisions from people in 233 countries and territories. Almost everywhere people preferred to spare more lives, humans over animals and the young over the old, but the strength varied by culture: people in East Asian countries put less weight on sparing the young. The nuance: Germany's 2017 ethics rules for automated driving forbid choosing victims by age or any other personal feature, the opposite of what the crowd wanted. Surveys show what people say, not what they'd do or what is right, which is why law treats them as input, not a verdict.
+proof: The intuitions are robust and found worldwide; whether answers to hypotheticals reflect real choices is doubtful.
+spot: Notice when a debate turns on a neat hypothetical ("would you torture one person to save a thousand?") and ask how often anything like it actually happens.
+use: Think of a real trade-off you face this week, where helping many costs one. Decide what you'd do, then ask what you would actually do if it were happening now.
+guard: Don't take your answer to a thought experiment as a forecast of your behaviour. Under real stakes people act differently from how they predict.
+predict: When people faced a real choice to shock one mouse to spare five, how well did their answers to the hypothetical version predict it?
+* Hardly at all: hypothetical answers didn't predict the real choice
+- Almost exactly
+- Perfectly in reverse: everyone switched sides
+scenario: In a college debate, Neha insists she would never sacrifice one person to save five. A year later, as a junior doctor in a crowded emergency ward, she gives the last ventilator to the patient most likely to survive, without hesitating.
+source: Foot, P. (1967). The problem of abortion and the doctrine of the double effect. Oxford Review; Thomson, J. J. (1985). The trolley problem. Yale Law Journal; Greene, J. D., et al. (2001). An fMRI investigation of emotional engagement in moral judgment. Science; Bostyn, D. H., Sevenhant, S., & Roets, A. (2018). Of mice, men, and trolleys: Hypothetical judgment versus real-life behavior in trolley-style moral dilemmas. Psychological Science; Awad, E., et al. (2018). The Moral Machine experiment. Nature.
+related: hot-cold-empathy-gap, identifiable-victim, veil-of-ignorance
+
+## veil-of-ignorance
+title: The veil of ignorance
+aka: Rawls's original position
+category: philosophy
+evidence: good
+hook: John Rawls asked what rules you'd choose if you didn't know who you'd be. People behind the veil do pick fairer rules, but not quite the ones Rawls predicted.
+what: In A Theory of Justice (1971), John Rawls proposed a test for fair rules: choose them from behind a "veil of ignorance", not knowing whether you'll be rich or poor, healthy or sick, in the majority or a minority. Self-interest then pushes you towards impartiality. Rawls predicted people would choose to make the worst-off as well off as possible, his "difference principle". Researchers have put people behind real veils to see what they choose.
+study: In 2019 Karen Huang, Joshua Greene and Max Bazerman ran seven experiments with over 6,000 people. Before facing moral dilemmas, such as whether driverless cars should be programmed to minimise total deaths, some people first imagined they had an equal chance of being any of the people affected. They more often chose the option that saved the most lives, and judged it more moral, even when asked again later without the veil.
+case: Norman Frohlich and Joe Oppenheimer put Rawls to the test with real money. In experiments in the United States and Canada, groups of students discussed principles for sharing out income and had to agree on one unanimously, not knowing which income class each of them would then be assigned to and paid by. The difference principle was rarely chosen. Most groups chose to maximise average income subject to a floor: a guaranteed minimum for the worst-off, and no cap on the rest. The nuance: behind the veil people did protect the bottom, as Rawls hoped, but they also wanted to reward effort and grow the total. The veil makes people fairer; it doesn't make them all Rawlsians.
+proof: The veil reliably shifts people towards impartial choices in experiments; Rawls's specific prediction about which rule they'd pick has fared poorly.
+spot: Notice when you judge a rule, a tax, a hostel curfew, a seniority system, by where you happen to stand in it.
+use: For one rule you're arguing about today, ask whether you would still support it if you didn't know which side of it you'd end up on.
+guard: Don't use the veil only on rules you dislike. Apply it to the ones that suit you, too.
+predict: Groups chose an income rule without knowing which income class they'd be in. What did most pick?
+* Maximise average income, with a guaranteed floor
+- Make the worst-off as well off as possible, as Rawls predicted
+- Maximise average income, with no floor at all
+scenario: Deciding how to split the rooms in their new flat, four friends agree on the rule first and then draw lots for who gets which room. Suddenly nobody argues that the biggest room should go to whoever pays the deposit.
+source: Rawls, J. (1971). A Theory of Justice; Huang, K., Greene, J. D., & Bazerman, M. (2019). Veil-of-ignorance reasoning favors the greater good. PNAS; Frohlich, N., & Oppenheimer, J. A. (1992). Choosing Justice: An Experimental Approach to Ethical Theory.
+related: naive-realism, trolley-problem, self-serving-bias
+
+## sitting-alone
+title: Alone in a quiet room
+aka: The disengaged mind
+category: philosophy
+evidence: good
+hook: Pascal blamed humanity's troubles on our inability to sit quietly in a room alone. Given 15 minutes and a shock button, two-thirds of men shocked themselves.
+what: In his Pensées, published in 1670, Blaise Pascal wrote that all of humanity's problems stem from man's inability to sit quietly in a room alone. We chase distraction, he argued, to avoid facing ourselves. Three and a half centuries later, psychologists put people in a room with nothing but their thoughts. Many disliked it, though, as later work showed, less than they expected to.
+study: In 2014 Timothy Wilson and colleagues ran 11 studies in which people spent 6 to 15 minutes alone with nothing to do but think. Most found it hard to concentrate and didn't enjoy it much. In one study, people who had earlier said they would pay to avoid a mild electric shock could give themselves one during 15 minutes alone: 12 of 18 men (67%) and 6 of 24 women (25%) did.
+case: In 2022 Aya Hatano, Cansu Ogulmus, Hiroaki Shigemasu and Kou Murayama ran six experiments with 259 students in Japan and the UK, asking them to predict how much they would enjoy sitting alone with their thoughts and then having them do it. People consistently enjoyed it more than they predicted. In one test, students who expected thinking to be duller than reading the news online ended up enjoying it about as much as a group that read the news. The nuance: thinking was "moderately enjoyable", around the middle of the scale, not bliss, and the bigger problem is the forecast. Because we expect quiet to be boring, we reach for the phone before finding out. Pascal was half right: we flee the room, but the room is not as bad as we fear.
+proof: Wilson's findings appeared across several studies and countries, though critics note people rated thinking as somewhat enjoyable on average; the self-shock result comes from one small study.
+spot: Notice the reflex to reach for your phone in every pause: a queue, a lift, the first minute after waking.
+use: Today, spend ten minutes doing nothing but thinking, with no phone and no music. Before you start, rate from 1 to 7 how much you'll enjoy it; afterwards, rate it again.
+guard: Don't read the shock study as proof that people hate their own minds. Most enjoy quiet thinking more than they expect; pick something to think about and it gets easier.
+predict: Alone with their thoughts for 15 minutes, what share of men gave themselves a shock they had said they'd pay to avoid?
+* About two-thirds
+- About a tenth
+- None of them
+scenario: Waiting twelve minutes for the metro, Karan finds his phone has died. He grumbles, then spends the wait planning his sister's birthday surprise and is almost sorry when the train arrives.
+source: Pascal, B. (1670). Pensées; Wilson, T. D., et al. (2014). Just think: The challenges of the disengaged mind. Science; Hatano, A., Ogulmus, C., Shigemasu, H., & Murayama, K. (2022). Thinking about thinking: People underestimate how enjoyable and engaging just waiting is. Journal of Experimental Psychology: General.
+related: mind-wandering, impact-bias, multitasking-myth
+
+## what-doesnt-kill-you
+title: What doesn't kill you
+aka: Post-traumatic growth
+category: philosophy
+evidence: debated
+hook: Nietzsche said what doesn't kill us makes us stronger. Some hardship may help, but people's sense of having grown after trauma often doesn't match real change.
+what: Nietzsche's line, from Twilight of the Idols (1888), has become a cliché of resilience. Psychology has two versions of it. One is post-traumatic growth: people often report that a crisis made them stronger, closer to others and clearer about what matters. The other is "steeling": a moderate dose of hardship may build the capacity to cope with the next one. Both are partly true, and both are easily overstated.
+study: In 2010 Mark Seery, Alison Holman and Roxane Cohen Silver followed a national US sample of 2,398 people from 2001 to 2004. People who had faced some adversity in their lives had better mental health and life satisfaction than both those who had faced a lot and those who had faced none, and they were the least shaken by new adverse events. The data are correlational, so adversity may not be the cause.
+case: In 2009 Patricia Frazier and colleagues had surveyed a large group of US undergraduates on their wellbeing when, over the following two months, 122 of them went through a traumatic event, such as a serious accident or the death of someone close. Because the researchers had measured these students before the trauma, they could compare the growth students said they'd experienced with the change that actually happened. The two were largely unrelated. Reporting more growth went with more distress, not less, while measured growth went with less. The nuance: saying "it made me stronger" may often be a way of coping, a story that helps, rather than an accurate report. Later studies agree that reported growth is a weak guide to real change. Hardship can strengthen, but the feeling of having been strengthened is not proof.
+proof: Moderate adversity predicting resilience comes from one large panel study and some replications; self-reported growth is a weak guide to actual growth.
+spot: Notice when someone, including you, says a crisis "made me stronger" soon after it, and whether their behaviour has actually changed.
+use: Think of a hard time you've come through. Write down one concrete thing you do differently because of it, rather than how you feel about it.
+guard: Don't tell people in pain that it will make them stronger. Some do grow; many just survive, and both are fine.
+predict: Students' wellbeing was measured before and after a trauma. How did the growth they reported compare with actual change?
+* They were largely unrelated; reporting more growth went with more distress
+- They matched closely; those who reported growth had grown
+- Nobody reported any growth
+scenario: A month after the flood destroyed his shop, Vikram tells everyone it was the best thing that ever happened to him and that he's tougher now. His wife notices he still can't sleep when it rains.
+source: Nietzsche, F. (1888). Twilight of the Idols; Seery, M. D., Holman, E. A., & Silver, R. C. (2010). Whatever does not kill us: Cumulative lifetime adversity, vulnerability, and resilience. Journal of Personality and Social Psychology; Frazier, P., Tennen, H., Gavian, M., Park, C., Tomich, P., & Tashiro, T. (2009). Does self-reported posttraumatic growth reflect genuine positive change? Psychological Science.
+related: learned-helplessness, self-serving-bias, hindsight-bias
+
+## akrasia
+title: Knowing better, doing worse
+aka: Akrasia
+category: philosophy
+evidence: solid
+hook: Socrates said nobody knowingly does wrong; Aristotle called it weakness of will. Changing what people intend changes what they do by only about half as much.
+what: In Plato's Protagoras, Socrates argues that nobody does wrong knowingly: if you truly knew what was best, you would do it. Aristotle thought this ignored the obvious. People often see the better course and take the worse, a failure he called akrasia, weakness of will. Psychologists call the gap between plans and actions the intention-behaviour gap, and it is wide. Wanting and deciding are only the start.
+study: In 2006 Thomas Webb and Paschal Sheeran gathered 47 experiments that changed people's intentions, to exercise, use condoms, recycle and so on, and checked whether behaviour followed. A medium-to-large change in intentions produced only a small-to-medium change in behaviour, effect sizes of 0.66 against 0.36. Persuading people to want something is far easier than getting them to do it.
+case: In 2006 economists Stefano DellaVigna and Ulrike Malmendier analysed three years of records from three US health clubs, covering 7,752 members. Members who chose a flat monthly fee of over $70 went on average 4.3 times a month, paying more than $17 a visit, when a ten-visit pass would have cost them $10 a visit. On average they would have saved about $600 by paying per visit. Their choice only makes sense if they expected to go far more often than they did. The nuance: these members weren't ignorant of what was good for them, and they weren't simply lazy; they knowingly paid for a commitment and then didn't keep it. That is Aristotle's point against Socrates. Knowing isn't enough. What closes the gap is changing the situation, with if-then plans, commitment devices and habits, so that the better choice doesn't depend on willpower in the moment.
+proof: A meta-analysis of experiments, consistent with decades of correlational work, shows intentions predict behaviour only modestly.
+spot: Notice a plan you've made more than twice and not acted on: a call, a form, a workout. That gap is the subject.
+use: Pick one intention you keep failing to act on and write an if-then plan for it: "When this happens, I will do that." Put it where you'll see it.
+guard: Don't conclude from a broken resolution that you never really wanted it. Wanting is rarely the problem, so plan for the moment of choice instead.
+predict: When experiments made people's intentions much stronger, what happened to their behaviour?
+* It changed, but only about half as much
+- It changed just as much as their intentions did
+- It didn't change at all
+scenario: Every term, Siddharth says he'll start revising a month before exams, and every term he genuinely means it. Every term he starts with a week to go.
+source: Plato, Protagoras; Aristotle, Nicomachean Ethics, Book VII; Webb, T. L., & Sheeran, P. (2006). Does changing behavioral intentions engender behavior change? A meta-analysis of the experimental evidence. Psychological Bulletin; DellaVigna, S., & Malmendier, U. (2006). Paying not to go to the gym. American Economic Review.
+related: implementation-intentions, commitment-devices, present-bias
+
+## know-thyself
+title: Know thyself
+aka: The self-other knowledge asymmetry
+category: philosophy
+evidence: good
+hook: "Know thyself" was carved at Delphi. You do know your own anxiety best, but your friends judge your intelligence and creativity better than you do.
+what: "Know thyself" was inscribed at the temple of Apollo at Delphi, and Socrates made it his life's work. It assumes that self-knowledge is hard but possible from the inside. Psychologist Simine Vazire found that it depends on the trait. For inner states that others can't see, like anxiety, you are the expert. For traits that carry pride or shame, like intelligence or creativity, your view is bent by wanting to look good, and people who know you see you more accurately.
+study: In 2010 Vazire had people rate their own personality and compared those ratings, and ratings by their friends and by strangers, with objective measures, including intelligence and creativity tests and behaviour in the lab. Self-ratings were the most accurate for anxiety and other inner traits. Friends were more accurate than the people themselves for intelligence and creativity, traits in which the ego has a stake.
+case: The workplace version of the test compares how people rate their own job performance with how others rate it. In 1988 Michael Harris and John Schaubroeck pooled dozens of such studies. Bosses and colleagues agreed with each other fairly well, a correlation of about 0.62, but each agreed much less with the person's own rating, about 0.35. Self-ratings also tended to run higher. The nuance: this doesn't mean others always know you better. They see your behaviour; you see your intentions and feelings. Socrates was right that self-knowledge takes work, and part of the work is asking people who see you, and believing them about the things they are placed to see.
+proof: Studies comparing self-ratings and others' ratings with objective measures support the asymmetry; who knows best depends on the trait.
+spot: Notice where you're sure of your own qualities but people react to you differently: your humour, your listening, your temper.
+use: Ask one friend today for one strength and one blind spot of yours, honestly. Thank them, and don't argue.
+guard: Don't hand others the final word on your inner life. Trust them on what they can see, and yourself on what only you can feel.
+predict: Who judged people's intelligence and creativity more accurately?
+* Their friends
+- The people themselves
+- Strangers who had just met them
+scenario: Megha is sure she's a patient listener. At her farewell, three colleagues separately joke that she always finishes their sentences for them.
+source: Plato, Apology and Charmides; Vazire, S. (2010). Who knows what about a person? The self-other knowledge asymmetry (SOKA) model. Journal of Personality and Social Psychology; Harris, M. M., & Schaubroeck, J. (1988). A meta-analysis of self-supervisor, self-peer, and peer-supervisor ratings. Personnel Psychology.
+related: bias-blind-spot, better-than-average-effect, dunning-kruger
+
+## leviathan
+title: Do we need a Leviathan?
+aka: Hobbes versus Ostrom
+category: philosophy
+evidence: solid
+hook: Hobbes said that without a power to keep everyone in awe, life is nasty, brutish and short. Cooperation does need enforcement, but not always a sovereign.
+what: In Leviathan (1651), Thomas Hobbes argued that without a government to enforce rules, people would fall into a war of all against all, and life would be "solitary, poor, nasty, brutish, and short". Later thinkers added the "tragedy of the commons": shared resources like fisheries and pastures get overused unless a state controls them or they are privatised. Experiments and field studies show something Hobbes didn't consider: people can enforce cooperation on each other.
+study: In 2002 Ernst Fehr and Simon Gächter had groups play a public-goods game: each person could put money into a pot that was multiplied and shared out, so everyone did best if all contributed, but each did best by free-riding. Without punishment, contributions fell round after round. When players could spend their own money to fine free-riders, even strangers they would never meet again, many did, and cooperation rose and stayed high. Anger at free-riders drove the fines.
+case: Elinor Ostrom spent decades studying real commons: Swiss alpine pastures shared since the Middle Ages, Japanese village forests, Spanish irrigation systems running for centuries. In Governing the Commons (1990) she showed that many communities manage shared resources well without either a central state or private ownership, using rules they make, monitors they choose, and penalties that start small and grow. In 2009 she became the first woman to win the Nobel Prize in economics. The nuance: Hobbes was half right. Cooperation does need enforcement, but it can come from the group itself. A 2008 study in 16 cities also found people punishing the generous, where trust and the rule of law were weak, so self-policing works best alongside fair institutions, not instead of them.
+proof: Laboratory experiments replicated in many countries and decades of field studies agree that enforcement by peers sustains cooperation, with cultural variation.
+spot: Notice a shared resource where you live, a society water tank, an office fridge, a group chat, and how it's kept fair, or isn't.
+use: For one shared space you're part of, propose one simple rule, a way to see who follows it, and a small, certain consequence.
+guard: Don't assume cooperation needs a boss, or that it survives without consequences. Groups that set and enforce their own fair rules do best.
+predict: In a group money game, what happened when players could pay to fine free-riders?
+* Cooperation rose and stayed high
+- Cooperation collapsed as players turned on each other
+- Nothing changed, as nobody paid to punish
+scenario: The water tank in Leela's housing society kept running dry until residents agreed on timings, a rota of volunteers to read the meter, and a small fine for overuse. Within a month the water lasts the week.
+source: Hobbes, T. (1651). Leviathan; Hardin, G. (1968). The tragedy of the commons. Science; Fehr, E., & Gächter, S. (2002). Altruistic punishment in humans. Nature; Ostrom, E. (1990). Governing the Commons; Herrmann, B., Thöni, C., & Gächter, S. (2008). Antisocial punishment across societies. Science.
+related: social-loafing, certainty-over-severity, guide-with-virtue
+
+## guide-with-virtue
+title: Guide them with virtue
+aka: A fine is a price
+category: philosophy
+evidence: good
+hook: Confucius warned that people ruled by punishments evade them and feel no shame. When Israeli day-care centres fined late parents, lateness went up.
+what: In the Analects (2.3), Confucius says that if you lead people with regulations and keep them in line with punishments, they will try to evade them and feel no shame; lead them with virtue and ritual, and they will feel shame and correct themselves. Han Feizi, of the rival Legalist school, held that rewards and punishments, the ruler's "two handles", are all that work. Research finds that a penalty can replace a moral obligation with a price, and people happily pay prices.
+study: In 2003 Ernst Fehr and Bettina Rockenbach ran a trust game: one player sent money to another, the amount was tripled, and the sender asked for some back. Some senders could also threaten a fine if too little came back. Threatening the fine, especially while asking for a lot, got senders less back than in a version with no fine at all; senders who had the fine available and visibly chose not to use it got the most. The threat signalled distrust and turned a favour into a transaction.
+case: In 2000 Uri Gneezy and Aldo Rustichini studied ten private day-care centres in Haifa, Israel, where parents sometimes collected their children late. After four weeks of observation, six centres introduced a small fine for arriving more than ten minutes late; the other four didn't. In the centres with the fine, late pickups rose and settled at roughly double their earlier level. When the fine was abolished after sixteen weeks, lateness stayed high. The nuance: the fine turned guilt about keeping teachers waiting into a fee for extra childcare, and once the guilt had gone, removing the fee didn't bring it back. That is Confucius's warning in miniature. Penalties still matter, but when they are small and feel like a price, they can crowd out the shame that was doing the work.
+proof: Field and lab experiments show penalties can backfire when they replace a moral norm; larger, certain penalties usually still deter.
+spot: Notice where a rule is kept because people feel it's right, a queue, a quiet carriage, and what would happen if it became something you could pay for.
+use: The next time you want someone to change a behaviour, appeal to the reason and the relationship first, and keep any penalty as a last step.
+guard: Don't put a price on what you want to be a duty. A small fine says "this is allowed if you pay", so if you do penalise, make it meaningful and certain.
+predict: When day-care centres in Israel fined parents for late pickups, what happened?
+* Late pickups rose, and stayed high after the fine was dropped
+- Late pickups fell sharply, then crept back
+- Nothing changed, as the fine was too small to notice
+scenario: The housing society starts charging 100 rupees for parking overnight in the visitors' bay. Within weeks, residents who used to feel guilty about it park there every night and happily pay.
+source: Confucius, Analects 2.3; Han Feizi, chapter 7; Gneezy, U., & Rustichini, A. (2000). A fine is a price. Journal of Legal Studies; Fehr, E., & Rockenbach, B. (2003). Detrimental effects of sanctions on human altruism. Nature.
+related: overjustification, procedural-justice, certainty-over-severity
+
+## worthy-models
+title: When you see a worthy person
+aka: Inspiring role models
+category: philosophy
+evidence: good
+hook: Confucius said that when you see a worthy person, you should think of becoming their equal. Role models do inspire, but only when their success looks reachable.
+what: In the Analects (4.17), Confucius says: when you see a worthy person, think of becoming their equal; when you see an unworthy one, look inward and examine yourself. Research on comparing ourselves with others finds that looking up at someone better than you can lift you or crush you. What decides it is whether their success seems attainable for you, and whether they're in a field you care about.
+study: In 1997 Penelope Lockwood and Ziva Kunda had students read about an outstanding student in their own field, a "superstar" who had won awards. First-year students, with time still to reach the same heights, rated themselves more highly and felt inspired. Final-year students, for whom it was too late to match the superstar, got no such lift. Reading about a superstar in an unrelated field made no difference at all.
+case: India ran a natural experiment. Since the 1990s, a share of village council leaderships have been reserved for women, with villages picked at random in West Bengal. In 2012 Lori Beaman, Esther Duflo, Rohini Pande and Petia Topalova surveyed teenagers and their parents in 495 villages in Birbhum district. Where a woman had led the council for two terms, the gap between parents' ambitions for their daughters and their sons narrowed, so did the gap in teenagers' own ambitions, and the gap in girls' and boys' schooling closed completely. Girls also spent less time on housework. The nuance: the changes showed up after two terms of women leaders, long enough for a woman in power to look normal rather than exceptional. A role model inspires when she makes the path look walkable, which is Lockwood and Kunda's finding played out over a decade.
+proof: Lab experiments on role models and a randomised policy experiment in India support the effect, which depends on relevance and attainability.
+spot: Notice how you feel after scrolling through someone's success: inspired to act, or deflated. Ask whether their path looks reachable from where you stand.
+use: Pick one person a few steps ahead of you in something you care about, and find out one concrete step they took at your stage.
+guard: Don't choose only superstars as models. Someone two steps ahead can teach you more than someone on the summit.
+predict: Students read about an award-winning student in their own field. Who felt inspired?
+* First-year students, who still had time to match the superstar
+- Final-year students, who were closest to the superstar's stage
+- Both equally
+scenario: Pooja, in her first year of preparing for the civil services, hears a talk by an officer from her own small town who cleared the exam on her third attempt. That night she redraws her study timetable.
+source: Confucius, Analects 4.17; Lockwood, P., & Kunda, Z. (1997). Superstars and me: Predicting the impact of role models on the self. Journal of Personality and Social Psychology; Beaman, L., Duflo, E., Pande, R., & Topalova, P. (2012). Female leadership raises aspirations and educational attainment for girls: A policy experiment in India. Science.
+related: self-efficacy, reflected-glory, growth-mindset
+
+## holding-both-sides
+title: Holding both sides
+aka: Dialectical thinking
+category: philosophy
+evidence: debated
+hook: Chinese thought, from yin and yang to the Daodejing, embraces contradiction. The famous finding that East Asians reason differently hasn't held up well.
+what: Classical Chinese thought often treats opposites as complementary: yin and yang, each containing the seed of the other; Laozi's "difficult and easy complete each other". In 1999 Kaiping Peng and Richard Nisbett proposed that this tradition left East Asians more comfortable with contradiction, seeking a middle way between two opposing claims where Westerners pick a side. It became a cornerstone of cultural psychology.
+study: Peng and Nisbett reported that Chinese students liked proverbs containing a contradiction, such as "too humble is half proud", more than American students did. Shown two opposing research findings, Chinese participants found both fairly plausible, while Americans favoured one and became more polarised. They traced the difference to a dialectical tradition in Chinese philosophy.
+case: In 2015 Hugo Mercier and colleagues re-ran two of Peng and Nisbett's experiments, and a new test of the theory, with students in China and France. Chinese and French participants responded alike: the cultural gap in handling contradiction did not appear, adding to earlier failed replications. Other research still finds East Asians more likely to expect change, for example predicting that a trend will reverse, and Igor Grossmann's work suggests that recognising change and other perspectives marks wise reasoning in any culture. The nuance: holding both sides looks less like a fixed cultural trait than a skill anyone can practise, and an appealing story about East and West is no substitute for replication.
+proof: The original contradiction findings have failed several replications; related work on expecting change and on wise reasoning holds up better.
+spot: Notice when you treat two claims as either-or when both might be partly true: strict or kind, freedom or safety, cheap or good.
+use: In your next disagreement, before choosing a side, write down one way in which each side is right. Then decide.
+guard: Don't use "both sides have a point" to dodge a question that has an answer. Sometimes one side is simply wrong.
+predict: When researchers re-ran the classic contradiction experiments with Chinese and French students, what did they find?
+* Both groups responded alike
+- Chinese students favoured compromise even more strongly
+- French students favoured compromise more
+scenario: Asked whether the new principal is too strict, Ananya says she's strict about attendance and generous about everything else, and that the school needed both.
+source: Laozi, Daodejing 2; Peng, K., & Nisbett, R. E. (1999). Culture, dialectics, and reasoning about contradiction. American Psychologist; Mercier, H., Zhang, J., Qu, Y., Lu, P., & Van der Henst, J.-B. (2015). Do Easterners and Westerners treat contradiction differently? Journal of Cognition and Culture; Ji, L.-J., Nisbett, R. E., & Su, Y. (2001). Culture, change, and prediction. Psychological Science; Grossmann, I. (2017). Wisdom in context. Perspectives on Psychological Science.
+related: replication-crisis, consider-the-opposite, naive-realism
+
+## act-not-the-fruit
+title: Act, not the fruit
+aka: Process over outcome
+category: philosophy
+evidence: good
+hook: The Gita says your right is to the action, never to its fruits. Students who pictured studying did better than students who pictured their top grade.
+what: In the Bhagavad Gita (2.47), Krishna tells Arjuna on the battlefield of Kurukshetra that his right is to his actions alone, never to their fruits, and that the fruits should not be his motive. Psychology finds a practical echo. Dwelling on the result you want can feel motivating while sapping effort, while rehearsing the steps that lead there plans the work and calms nerves.
+study: In 1999 Lien Pham and Shelley Taylor asked university students in the week before a midterm exam to spend a few minutes a day picturing either themselves studying, where, when and how, or themselves receiving a high grade. Students who pictured the process studied more and got better grades, through better planning and less anxiety. Students who pictured the outcome did no better than those who simply kept track of their studying.
+case: Gabriele Oettingen and Doris Mayer followed people facing real goals in 2002. Among graduates looking for work, those who had the most positive fantasies about an easy move into a job sent out fewer applications, got fewer offers, and earned less two years later. Among patients recovering from hip-replacement surgery, those who fantasised most about an easy recovery were rated by their physiotherapists as recovering less well, with less movement in the joint. Positive expectations, judging success likely, predicted the opposite: more effort and better results. The nuance: the trouble is not hope but a vivid, effortless picture of success, which the mind partly treats as already achieved. Expecting to succeed and planning the steps helps; dreaming of the fruit while skipping the action doesn't.
+proof: Experiments support picturing the process, and longitudinal studies find outcome fantasies predict less effort; the Gita's spiritual claim, freedom from attachment, is beyond what these studies test.
+spot: Notice when you daydream about the result, the selection list, the medal, the salary, instead of the next step.
+use: Before your next study or work session, spend two minutes picturing exactly where, when and how you'll do the work, step by step. Then start.
+guard: Don't stop caring about results. Use the goal to choose the work, then put your attention on the work.
+predict: Students pictured something for a few minutes a day before a midterm. Who got better grades?
+* Those who pictured themselves studying
+- Those who pictured themselves getting a top grade
+- Both groups did equally well
+scenario: Two weeks before the prelims, Aditya stops imagining his name on the results list and starts each morning by picturing the three chapters he'll cover, the desk and the hour. His mock scores begin to climb.
+source: Bhagavad Gita 2.47; Pham, L. B., & Taylor, S. E. (1999). From thought to action: Effects of process- versus outcome-based mental simulations on performance. Personality and Social Psychology Bulletin; Oettingen, G., & Mayer, D. (2002). The motivating function of thinking about the future: Expectations versus fantasies. Journal of Personality and Social Psychology.
+related: mental-contrasting, implementation-intentions, flow
+
+## learning-pyramid-myth
+title: The learning pyramid
+aka: Hear, see, do
+category: philosophy
+evidence: busted
+hook: "I hear and I forget, I see and I remember, I do and I understand" isn't Confucius, and the pyramid saying we remember 10% of what we read is made up.
+what: Two pieces of folk wisdom travel together through training courses. One is a saying attributed to Confucius: "I hear and I forget; I see and I remember; I do and I understand." The other is the "learning pyramid", which claims we remember 10% of what we read, 20% of what we hear, 30% of what we see, and up to 90% of what we teach others. The saying is a loose modern rendering of a line by Xunzi, a later Confucian, and the pyramid's numbers have no source at all.
+study: The pyramid is usually credited to the National Training Laboratories in the United States in the 1960s, or to Edgar Dale's "cone of experience" of 1946. Dale's cone had no percentages, and he cautioned against taking it literally. Researchers who went looking, including Kåre Letrud in 2012, found no study that produced the figures, and the original research is said to have been lost. Retention depends on the material, the test and the delay, so neat round numbers for each channel couldn't be real anyway.
+case: What does work is close to what Xunzi actually wrote: hearing is not as good as seeing, and knowing is not as good as putting into practice. In 2018 Aloysius Koh, Sze Chi Lee and Stephen Lim tested why teaching helps. Students studied a lesson, then either taught it without notes, taught it reading from notes, practised recalling it without teaching anyone, or did unrelated arithmetic. A week later, teaching without notes and plain recall practice worked about equally well, and both beat teaching from notes and the arithmetic. The nuance: the pyramid gets the direction roughly right, that doing beats passive reading, but for the wrong reason and with invented numbers. The active ingredient is effortful recall, which you can do alone with a blank page, no audience needed.
+proof: No source exists for the pyramid's percentages, and the quotation is misattributed; active recall, the kernel of truth, is well supported.
+spot: Notice training slides or posters showing the pyramid, or "we remember 10% of what we read". Check whether they cite a study.
+use: After reading something today, close it and write down the three main points from memory before checking. That's the part of doing that works.
+guard: Don't trust a statistic because it's on a hundred slides. Round numbers with no source are a warning sign, not a finding.
+predict: Where do the learning pyramid's figures, like "we remember 10% of what we read", come from?
+* No study has been found that produced them
+- A 1960s experiment at the National Training Laboratories
+- Edgar Dale's 1946 research on teaching with films
+scenario: At a coaching centre's orientation, a poster says students forget 90% of lectures but remember 90% of what they teach, so all classes will now be group presentations.
+source: Xunzi, chapter 8; Dale, E. (1946). Audio-Visual Methods in Teaching; Letrud, K. (2012). A rebuttal of NTL Institute's learning pyramid. Education; Masters, K. (2013). Edgar Dale's pyramid of learning in medical education: A literature review. Medical Teacher; Koh, A. W. L., Lee, S. C., & Lim, S. W. H. (2018). The learning benefits of teaching: A retrieval practice hypothesis. Applied Cognitive Psychology.
+related: learning-styles, testing-effect, illusory-truth-effect
+
+## vipassana-in-prison
+title: Meditation behind bars
+aka: Vipassana in prisons
+category: philosophy
+evidence: debated
+hook: In 1994 Kiran Bedi brought a ten-day Vipassana course to over a thousand Tihar inmates. A US jail tested it: drug use fell, but the evidence is thin.
+what: Vipassana, "insight" meditation, comes from the Buddha's teaching on watching sensations and thoughts arise and pass without reacting to them. In its popular ten-day form, taught by S. N. Goenka, students meditate for about ten hours a day in silence. The claim is that by watching cravings and anger without acting on them, people loosen their grip, which, if true, matters most for people whose impulses have landed them in prison.
+study: In 2006 Sarah Bowen, Katie Witkiewitz and colleagues studied a ten-day Vipassana course in a minimum-security jail in Seattle. Inmates chose whether to take the course, as 63 did, or to receive the usual treatment. Three months after release, the meditators reported less use of alcohol, marijuana and crack cocaine, fewer alcohol-related problems and fewer psychiatric symptoms than the comparison group. A follow-up analysis suggested the course worked partly by reducing efforts to push unwanted thoughts away.
+case: In 1993 Kiran Bedi, India's first woman IPS officer and then Inspector General of Prisons in Delhi, brought Goenka's teachers into Tihar Jail for a ten-day course for inmates and staff. In April 1994 a course for more than a thousand prisoners was held inside the jail, and Tihar went on to set up a permanent meditation centre. Prison courses spread across India and abroad, and the 1997 documentary Doing Time, Doing Vipassana made the Tihar story famous. The nuance: the reports from Tihar were testimonials, not a controlled study, and even the Seattle study let inmates choose whether to meditate, so those who signed up may have been more motivated to change anyway. It is promising, cheap and humane, but it is not yet shown to reduce reoffending.
+proof: One non-randomised study and many testimonials; reviews of meditation and yoga in prisons find small benefits for wellbeing, from mostly weak designs.
+spot: Notice the gap between an urge and an action today, a craving or a flash of anger, and whether you can watch it for a few seconds before acting.
+use: Sit for five minutes today and simply watch your breath and any sensations, noticing each urge to move or check something without acting on it.
+guard: Don't treat a meditation course as a substitute for treatment, support and work after release. At best it's one tool among several.
+predict: Inmates in a Seattle jail who took a ten-day meditation course were followed after release. What did they report?
+* Less use of alcohol and drugs than the comparison group
+- No difference from the comparison group
+- More use, as the course stirred up painful memories
+scenario: A district jail superintendent offers a ten-day silent course to inmates convicted of violent offences. Months later, the warders report fewer fights in the block where most of the participants live.
+source: Bowen, S., Witkiewitz, K., Dillworth, T. M., Chawla, N., Simpson, T. L., Ostafin, B. D., Larimer, M. E., Blume, A. W., Parks, G. A., & Marlatt, G. A. (2006). Mindfulness meditation and substance use in an incarcerated population. Psychology of Addictive Behaviors; Bowen, S., Witkiewitz, K., Dillworth, T. M., & Marlatt, G. A. (2007). The role of thought suppression in the relationship between mindfulness meditation and alcohol use. Addictive Behaviors; Auty, K. M., Cope, A., & Liebling, A. (2017). A systematic review and meta-analysis of yoga and mindfulness meditation in prison. International Journal of Offender Therapy and Comparative Criminology; Ariel, E., & Menahemi, A. (1997). Doing Time, Doing Vipassana.
+related: second-arrow, affect-labeling, commitment-devices
+
+## believe-then-doubt
+title: Believe first, doubt later
+aka: Spinoza versus Descartes
+category: philosophy
+evidence: debated
+hook: Descartes thought we weigh an idea before believing it; Spinoza said understanding is believing, and doubt comes after. Distract people, and false claims stick.
+what: René Descartes held that the mind first understands an idea, then decides whether to accept it. Baruch Spinoza disagreed: to understand a claim is to believe it, at least for a moment, and rejecting it is a second, effortful step. If Spinoza is right, anything that interrupts us, tiredness, distraction, haste, leaves false claims standing as beliefs. In 1991 psychologist Daniel Gilbert argued that the evidence favoured Spinoza.
+study: In 1993 Daniel Gilbert, Romin Tafarodi and Patrick Malone had people read two crime reports in which some statements, shown in a different colour, were marked false; in one report the false statements made the crime sound worse, in the other milder. Some readers were distracted by a number-search task as they read. Distracted readers later misremembered false statements as true more often, and when the false statements made the crime worse, they recommended much longer prison terms.
+case: In 2018, false rumours about child kidnappers spread on WhatsApp across India, often with unrelated videos as "proof", and mobs killed more than 20 people in two months. Forwarded in a hurry, between other messages, a vivid claim was acted on long before anyone checked it. In July 2018 WhatsApp limited forwarding in India to five chats at a time, adding friction where doubt had no time to work, and police in many districts ran awareness drives telling people not to trust forwards. The nuance: the Spinozan view is contested. In 2005 Uri Hasson, Joseph Simmons and Alexander Todorov found that when knowing a statement was false told readers something useful, interrupting them no longer made them remember it as true. We may not believe everything automatically, but in haste and distraction false claims stick far more often than we'd like, and the remedy is time to doubt.
+proof: Gilbert's experiments are well known, but later studies show automatic belief depends on the kind of statement; the practical warning about distraction stands.
+spot: Notice when you accept a claim while busy, a forwarded message, a headline seen in passing, and later find you "know" it without remembering where from.
+use: Today, when a surprising claim reaches you while you're busy, label it "unchecked" in your head, and check it before you repeat it.
+guard: Don't make judgements about guilt or blame from material read in a rush. Re-read the key facts when you can give them your full attention.
+predict: People read crime reports with some statements marked false. What happened when they were distracted while reading?
+* They more often remembered false statements as true
+- They were better at ignoring the false statements
+- Distraction made no difference
+scenario: Between two calls, Inspector Rathore skims a forwarded message saying the suspect has a previous conviction. By evening he is treating it as fact, though no record shows it.
+source: Spinoza, B. (1677). Ethics, Part II; Gilbert, D. T. (1991). How mental systems believe. American Psychologist; Gilbert, D. T., Tafarodi, R. W., & Malone, P. S. (1993). You can't not believe everything you read. Journal of Personality and Social Psychology; Hasson, U., Simmons, J. P., & Todorov, A. (2005). Believe it or not: On the possibility of suspending belief. Psychological Science.
+related: truth-default, illusory-truth-effect, misinformation-effect

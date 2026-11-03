@@ -18,13 +18,14 @@ are in [`docs/screenshots`](docs/screenshots).
 | Sunday | **Weekly review**, five minutes, one sentence to write: your blind spot, one moment turned into an if-then plan for next week, and an old note judged again | Reflecting on your own experience beats more practice once there's experience to reflect on (Di Stefano et al., HBS 14-093); see "The weekly review" below |
 | Later | **Review**: "Name it" (an everyday story: which concept is this?) or "Remember the study", and your own lessons, each back the day after, then when the FSRS scheduler predicts recall has fallen to 90% (about 3, 11, 35, 100 days while you keep remembering) | Retrieval practice + spacing, the two "high-utility" study techniques (Dunlosky et al. 2013) |
 
-## The library: 222 concepts, honestly labelled
+## The library: 250 concepts, honestly labelled
 
 Nine everyday areas, dealt round-robin so neighbouring days differ (interleaving): memory &
 perception, the self, thinking traps, influence & persuasion, emotions & wellbeing,
-relationships, choices & money, motivation & habits, groups & society. Plus one specialist area,
-**Investigation & policing**, dealt after the everyday library, or two days in three from the
-start for anyone who picks it as a focus area (Settings, Focus areas, "Policing").
+relationships, choices & money, motivation & habits, groups & society. Plus two specialist areas,
+**Investigation & policing** and **Philosophy, tested**, dealt after the everyday library, or two
+days in three from the start for anyone who picks one as a focus area (Settings, Focus areas,
+"Policing" or "Philosophy").
 
 Every concept has: a hook, what's going on, **the key study with its numbers**, an **evidence
 label**, **"In the real world"**, how to spot it, a mission, a "watch out", a predict-first
@@ -161,6 +162,45 @@ separate from the everyday areas, so adding them renumbered nothing; they're lab
   default, criminal profiling, the polygraph, microexpressions, the misinformation effect.
 - Left out: numbers that couldn't be verified (some effect sizes, case details), and techniques
   without good evidence. Procedure and statutes (BNSS, BSA, BNS) belong in flashcards, not here.
+
+### Philosophy, tested (November 2026)
+
+28 ideas from philosophers, each set against the research that tested it, including where it
+failed. Not a reading list or quotes of the day: every card still has a study, a real case and its
+nuance, so the nuance cards work. Labelled Idea No. 01 to 28 and dealt after investigation, so
+nothing earlier moved. Sepia, with an ensō-and-column emblem.
+
+- **Greek and Roman:** Socratic questioning (therapy sessions; Project MATCH), the golden mean
+  (assertiveness; the ambivert study, flagged as one study), happiness versus meaning (Gallup, 132
+  countries), Plato versus Hume on reason (moral dumbfounding; the 2012 reflection study that
+  failed two 2022 replications), the ring of Gyges (90 cheating studies; 17,303 lost wallets),
+  Stoic negative visualisation (mental subtraction; Olympic bronze medallists), memento mori
+  (terror management and the failed Many Labs 4 replication), akrasia (the intention-behaviour
+  gap; paying not to go to the gym), and "know thyself" (who knows what about you).
+- **Chinese:** wu wei and choking (penalty shootouts), Mencius versus Xunzi on human nature (two
+  failed replications on babies and adults), Sun Tzu on knowing your opponent (perspective-taking;
+  Camp David), Confucius on virtue versus punishment (the Haifa day-care fine), on worthy models
+  (village councils reserved for women in West Bengal), and dialectical thinking (labelled
+  *debated* after failed replications).
+- **Indian and Buddhist:** the Gita on action, not its fruits (process versus outcome
+  simulation), the second arrow (accepting emotions), and Vipassana in prisons (Tihar 1994; a
+  Seattle jail study, labelled *debated*).
+- **For police work:** warrior or guardian (Plato's guardians; officer surveys), winning without
+  fighting (Louisville's de-escalation training), Beccaria's certainty over severity (and Hawaii's
+  HOPE, which a four-state replication didn't match), and Spinoza's believe-first, doubt-later
+  (the 2018 WhatsApp rumours).
+- **Modern philosophers:** the trolley problem (hypothetical answers don't predict real choices;
+  the Moral Machine), Rawls's veil of ignorance (groups chose a floor, not his difference
+  principle), Pascal's quiet room (the self-shock study and its rebuttal), Nietzsche's "what
+  doesn't kill you" (self-reported growth versus real change), and Hobbes's Leviathan versus
+  Ostrom's commons.
+- **Busted:** the "learning pyramid" and "I hear and I forget", which isn't Confucius.
+- **Lineage:** eight existing cards now say where their idea started: reappraisal (Epictetus),
+  the premortem (Stoic premeditatio malorum), self-distancing (Marcus Aurelius), habit formation
+  (Aristotle, and the Will Durant misquote), venting (Aristotle's catharsis), worries (Seneca),
+  the Google effect (Plato's Phaedrus) and explanatory depth (Socrates).
+- Left out: claims nobody has tested (Plato's forms, most metaphysics) and numbers that couldn't
+  be verified.
 
 ## Progress, the way the big learning apps do it (October 2026)
 
@@ -369,7 +409,7 @@ signature stable so updates install over each other and Google sign-in keeps wor
 the certificate, publishes the APK to the link above and commits screenshots.
 
 - `core/` is pure Kotlin (library parsing, daily scheduling, spaced review, stats, merge,
-  backup format, account linking) with content checks on all 222 concepts and randomised
+  backup format, account linking) with content checks on all 250 concepts and randomised
   stress tests: years of irregular use never repeat a concept early; merges are commutative,
   idempotent and associative over hundreds of random states; backups round-trip awkward text;
   alarms keep the wall-clock time across daylight-saving changes; three phones and two Google

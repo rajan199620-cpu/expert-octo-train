@@ -207,6 +207,29 @@ object Emblems {
                 canvas.drawLine(ox + lens * d, oy + lens * d, ox + (lens + r * 0.5f) * d, oy + (lens + r * 0.5f) * d, handle)
                 canvas.drawCircle(ox + lens * 0.35f * (rnd.nextFloat() - 0.5f), oy + lens * 0.35f * (rnd.nextFloat() - 0.5f), s * 0.035f, accent)
             }
+            Category.PHILOSOPHY -> {
+                // An ensō, the brushed circle left open, with a column inside: old claims, still standing or not.
+                val gap = 25f + rnd.nextFloat() * 30f
+                val start = rnd.nextFloat() * 360f
+                val sweep = 360f - gap
+                val steps = 18
+                for (i in 0 until steps) {
+                    val brush = Paint(ink).apply {
+                        strokeWidth = s * (0.075f - 0.05f * i / steps)
+                        alpha = 235 - i * 6
+                    }
+                    canvas.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), start + sweep * i / steps, sweep / steps + 1f, false, brush)
+                }
+                ink.alpha = 200
+                val cw = r * 0.34f
+                val top = cy - r * 0.42f
+                val bottom = cy + r * 0.42f
+                canvas.drawLine(cx - cw * 1.25f, top, cx + cw * 1.25f, top, ink)
+                canvas.drawLine(cx - cw * 1.25f, bottom, cx + cw * 1.25f, bottom, ink)
+                for (k in -1..1) canvas.drawLine(cx + k * cw * 0.7f, top + s * 0.03f, cx + k * cw * 0.7f, bottom - s * 0.03f, ink)
+                val a = Math.toRadians((start + sweep + gap / 2).toDouble())
+                canvas.drawCircle(cx + r * cos(a).toFloat(), cy + r * sin(a).toFloat(), s * 0.035f, accent)
+            }
             Category.GROUPS -> {
                 // A ring of people and one standing apart.
                 val n = 7 + rnd.nextInt(4)

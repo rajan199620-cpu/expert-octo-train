@@ -134,6 +134,8 @@ object Palettes {
         Category.GROUPS to Tones(0xFF806408, 0xFFEBCB62, 0xFF463707, 0xFF8A6E12),
         // Slate, like a case file.
         Category.INVESTIGATION to Tones(0xFF4F5D6E, 0xFFAFC0D3, 0xFF222B36, 0xFF46566A),
+        // Sepia, like old ink on a scroll.
+        Category.PHILOSOPHY to Tones(0xFF7D5A45, 0xFFD9B8A0, 0xFF33241B, 0xFF6E4E3B),
     )
 
     fun accent(c: Category, dark: Boolean): Color = Color(sets.getValue(c).let { if (dark) it.dark else it.light })
