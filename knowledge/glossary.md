@@ -1,0 +1,52 @@
+# Glossary
+
+- **Accumulation / distribution** — Informed buying (selling) absorbing supply (demand), usually inside a range.
+- **ADX** — Average Directional Index; trend *strength* from 0 to 100.
+- **Anchored VWAP** — VWAP calculated from a chosen event bar.
+- **ATR** — Average True Range; typical bar range including gaps.
+- **Base** — A sideways consolidation, often before a breakout.
+- **Bear trap / bull trap** — A false breakdown (breakout) that reverses sharply.
+- **Breakout** — A close beyond a defined level (resistance, pattern boundary, N-day high).
+- **BoS (break of structure)** — Price breaks the last swing that defined the trend.
+- **Candlestick** — A bar showing open, high, low and close as a body and wicks.
+- **Capitulation** — High-volume, wide-range selling that exhausts sellers.
+- **Chandelier exit** — Trailing stop at the highest high minus k × ATR.
+- **CMF** — Chaikin Money Flow; volume-weighted close-location over N bars.
+- **Confluence** — Several independent tools pointing to the same level.
+- **Consolidation** — A pause in a trend; range-bound trading.
+- **Death / golden cross** — 50-day MA crossing below / above the 200-day MA.
+- **Divergence** — Price and an oscillator disagreeing at swing points.
+- **Donchian channel** — Highest high and lowest low over N bars.
+- **Dow Theory** — The foundational trend framework (chapter 01).
+- **Expectancy** — Average R per trade = win% × avg win − loss% × avg loss.
+- **Extension** — Distance from a mean (e.g. MA), often in ATRs.
+- **Failure swing** — An RSI reversal signal independent of price (Wilder).
+- **Gap** — A price range with no trading between two bars.
+- **Higher high / higher low (HH/HL)** — The definition of an uptrend.
+- **Ichimoku** — A Japanese equilibrium-chart system (chapter 09).
+- **Invalidation** — The price at which the trade idea is objectively wrong.
+- **Measured move** — A target projected from a pattern's height.
+- **MACD** — The difference of 12 and 26 EMAs, with a 9-EMA signal line.
+- **Mean reversion** — The tendency of extended prices to return toward an average.
+- **Momentum** — Rate of change of price; also the 3–12 month persistence anomaly.
+- **Neckline** — The confirmation line of H&S and double-top/bottom patterns.
+- **OBV** — On-Balance Volume.
+- **Overbought / oversold** — Oscillator extremes. Not sell or buy signals by themselves.
+- **Pivot / swing point** — A local high or low that marks structure.
+- **POC** — Point of Control: the price with the most volume in a volume profile.
+- **Pullback / throwback** — A return to the breakout level after a breakout.
+- **R / R-multiple** — The initial risk unit; outcomes measured in multiples of it.
+- **Relative strength (RS)** — Stock ÷ benchmark. Not the same as RSI.
+- **RSI** — Relative Strength Index (Wilder); momentum oscillator from 0 to 100.
+- **RVOL** — Relative volume vs average.
+- **Squeeze** — Low volatility (Bollinger inside Keltner) before expansion.
+- **Stage analysis** — Weinstein's 4-stage cycle around the 30/40-week MA.
+- **Stop-loss** — A pre-defined exit at invalidation.
+- **Support / resistance** — Price zones where demand / supply previously dominated.
+- **Supertrend** — ATR-band trailing trend indicator.
+- **Trendline** — A line through two or more swing lows (uptrend) or highs (downtrend).
+- **VCP** — Volatility Contraction Pattern (Minervini).
+- **VWAP** — Volume-weighted average price.
+- **Whipsaw** — Repeated false signals in a choppy market.
+- **Wyckoff** — Supply/demand method with accumulation/distribution schematics (chapter 10).
+- **Zigzag** — A filter that keeps only swings larger than a threshold.
