@@ -92,6 +92,32 @@ class LearningStepsTest {
     }
 
     @Test
+    fun anEasyLabelWithAnkisFuzzStillMeansSm2() {
+        // AnkiDroid's Easy label on a new card includes Anki's random fuzz: 3d, 4d or 5d for
+        // a 4-day easy interval. (Seen on real AnkiDroid in CI.)
+        for (easy in listOf("3d", "4d", "5d")) {
+            val a = card(1, listOf("1m", "6m", "10m", easy))
+            val q = OfflineQueue(pack(a))
+            q.answer(a.key, 3, 0)
+            assertEquals(easy, listOf("1m", "10m", "1d", "4d"), q.labels(a.key))
+        }
+        // Past the fuzz: FSRS.
+        for (easy in listOf("2d", "6d", "15d")) {
+            val a = card(1, listOf("1m", "6m", "10m", easy))
+            val q = OfflineQueue(pack(a))
+            q.answer(a.key, 3, 0)
+            assertEquals(easy, listOf("1m", "10m", "", ""), q.labels(a.key))
+        }
+        // The fuzz range grows with the interval, as Anki's does.
+        assertTrue(LearningPlan.withinFuzz(day, 1))
+        assertFalse(LearningPlan.withinFuzz(2 * day, 1))
+        assertTrue(LearningPlan.withinFuzz(23 * day, 20))
+        assertFalse(LearningPlan.withinFuzz(25 * day, 20))
+        assertTrue(LearningPlan.withinFuzz(107 * day, 100))
+        assertFalse(LearningPlan.withinFuzz(109 * day, 100))
+    }
+
+    @Test
     fun aLapsedReviewCardFollowsTheRelearningSteps() {
         val steps = defaults.copy(relearnMs = listOf(10 * minute, 30 * minute))
         val review = card(1, listOf("10m", "2d", "5d", "9d"), steps)
@@ -228,15 +254,18 @@ class LearningStepsTest {
             // What AnkiDroid shows on first sight, for a new card on its first step or a
             // review card (whose Again starts relearning).
             val newModel = Model(learn, steps.graduatingDays * day, steps.easyDays * day)
+            val fuzzedEasyFirst = "${steps.easyDays + rnd.nextInt(-1, 2)}d"
             val firstLabels = if (reviewCard) {
                 listOf(label(relearn[0]), "${rnd.nextInt(2, 9)}d", "${rnd.nextInt(10, 20)}d", "${rnd.nextInt(21, 40)}d")
             } else (1..4).map { g ->
                 val ms = newModel.label(g)!!
-                if (g == 4 && !sm2) "${steps.easyDays + 3}d" else label(ms) // FSRS: another easy
+                if (g == 4) (if (sm2) fuzzedEasyFirst else "${steps.easyDays + 3}d") else label(ms) // FSRS: another easy
             }
             val a = card(1, firstLabels, steps)
             // A new card on the deck's settings tells the queue whether they hold (SM-2).
-            val witness = card(2, (1..4).map { g -> if (g == 4 && !sm2) "${steps.easyDays + 3}d" else label(newModel.label(g)!!) }, steps)
+            // Under SM-2, AnkiDroid's Easy label carries Anki's fuzz (a day or more either way).
+            val fuzzedEasy = "${steps.easyDays + rnd.nextInt(-1, 2)}d"
+            val witness = card(2, (1..4).map { g -> if (g == 4) (if (sm2) fuzzedEasy else "${steps.easyDays + 3}d") else label(newModel.label(g)!!) }, steps)
             val q = OfflineQueue(pack(a, witness))
             val ctx = "run $run: learn=${learn.map { it / minute }} relearn=${relearn.map { it / minute }} sm2=$sm2 review=$reviewCard labels=$firstLabels"
             val model = if (reviewCard) Model(relearn, if (sm2) steps.lapseMinDays * day else null, null)

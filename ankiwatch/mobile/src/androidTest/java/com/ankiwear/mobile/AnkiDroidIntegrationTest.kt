@@ -588,8 +588,8 @@ class AnkiDroidIntegrationTest {
         assertEquals(liveCounts, offlineCounts)
 
         // A card that comes back shows the times AnkiDroid shows for it then: Again, Hard
-        // and Good (Easy may carry AnkiDroid's fuzz). A time the watch can't know is blank,
-        // never wrong, and only a graduating one may be.
+        // and Good (Easy may carry AnkiDroid's fuzz), none of them blank: this collection
+        // is on SM-2, whose graduating interval the watch knows.
         Log.i(TAG, "repeat labels live: $liveLabels")
         Log.i(TAG, "repeat labels offline: $offlineLabels")
         assertEquals(liveLabels.keys, offlineLabels.keys)
@@ -599,10 +599,7 @@ class AnkiDroidIntegrationTest {
             val offline = offlineLabels.getValue(at)
             for (i in 0 until 3) {
                 val want = IntervalLabel.millis(live[i])!!
-                if (offline[i].isEmpty()) {
-                    assertTrue("$at button ${i + 1}: blank, AnkiDroid shows ${live[i]}", i == 2 && want >= IntervalLabel.DAY_MS)
-                    continue
-                }
+                assertTrue("$at button ${i + 1}: blank, AnkiDroid shows ${live[i]}", offline[i].isNotEmpty())
                 val got = IntervalLabel.millis(offline[i])!!
                 assertTrue("$at button ${i + 1}: watch ${offline[i]}, AnkiDroid ${live[i]}", LearningPlan.close(got, want))
                 shown++

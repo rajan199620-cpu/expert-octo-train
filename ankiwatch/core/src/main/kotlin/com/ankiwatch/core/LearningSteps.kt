@@ -188,13 +188,30 @@ class LearningPlan(
                 if (kind(labels, steps) != Kind.LEARN) continue
                 val easy = labels[Grade.EASY] ?: continue
                 if (easy < IntervalLabel.DAY_MS) continue
-                if (close(easy, steps.easyDays * IntervalLabel.DAY_MS)) yes++ else no++
+                if (withinFuzz(easy, steps.easyDays)) yes++ else no++
             }
             return when {
                 no > 0 -> false
                 yes > 0 -> true
                 else -> null
             }
+        }
+
+        /**
+         * Whether a label of [ms] can be [days] after Anki's interval fuzz, which AnkiDroid's
+         * labels include: none under 2.5 days, then a day plus 15% of the part up to 7 days,
+         * 10% up to 20 and 5% beyond, either way; labels are rounded to whole days.
+         */
+        fun withinFuzz(ms: Long, days: Int): Boolean {
+            val d = days.toDouble()
+            var delta = 0.0
+            if (d >= 2.5) {
+                delta = 1.0 + 0.15 * (minOf(d, 7.0) - 2.5)
+                if (d > 7) delta += 0.10 * (minOf(d, 20.0) - 7)
+                if (d > 20) delta += 0.05 * (d - 20)
+            }
+            val label = ms / IntervalLabel.DAY_MS.toDouble()
+            return kotlin.math.abs(label - d) <= delta + 0.5
         }
 
         /** [ms] the way AnkiDroid writes it on a button: "<1m", "10m", "1.5h", "4d", "1.2mo", "2y". */
