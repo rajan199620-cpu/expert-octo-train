@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Notion",
+      "mcp__Google_Calendar"
+    ],
+    "ask": [
+      "mcp__Notion__notion-delete-pages",
+      "mcp__Notion__notion-delete-databases",
+      "mcp__Google_Calendar__delete_event"
+    ]
+  }
+}
