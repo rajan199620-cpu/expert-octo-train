@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
+import com.ankiwatch.core.DeckSteps
 import com.ankiwatch.core.HtmlSanitizer
 import com.ankiwatch.core.NotePlanner
 
@@ -43,6 +44,8 @@ class AnkiDroidHelper(private val context: Context) {
         private const val DECK_ID = "deck_id"
         private const val DECK_NAME = "deck_name"
         private const val DECK_COUNTS = "deck_count"
+        // The deck's options as JSON (Anki's deck config: learning steps, intervals…).
+        private const val DECK_OPTIONS = "options"
 
         // ReviewInfo (schedule) URIs & columns
         private val REVIEW_INFO_URI: Uri = Uri.parse("content://$AUTHORITY/schedule")
@@ -62,6 +65,7 @@ class AnkiDroidHelper(private val context: Context) {
         private const val CARD_URI_TEMPLATE = "content://$AUTHORITY/notes/%d/cards/%d"
         private const val CARD_QUESTION = "question"
         private const val CARD_ANSWER = "answer"
+        private const val CARD_DECK_ID = "deck_id"
 
         // Note and note-type URIs — raw fields, used to lay out cloze notes on the watch.
         private const val NOTE_URI_TEMPLATE = "content://$AUTHORITY/notes/%d"
@@ -292,6 +296,39 @@ class AnkiDroidHelper(private val context: Context) {
             Log.e(TAG, "Error fetching card content noteId=$noteId cardOrd=$cardOrd", e)
         }
         return Pair(CONTENT_UNAVAILABLE, CONTENT_UNAVAILABLE)
+    }
+
+    /**
+     * Each deck's learning settings, by deck id, from AnkiDroid's deck options; decks whose
+     * options can't be read are left out.
+     */
+    fun getDeckSteps(): Map<Long, DeckSteps> {
+        val out = HashMap<Long, DeckSteps>()
+        try {
+            contentResolver.query(DECK_CONTENT_ALL_URI, arrayOf(DECK_ID, DECK_OPTIONS), null, null, null)?.use {
+                val idIdx = it.getColumnIndex(DECK_ID)
+                val optionsIdx = it.getColumnIndex(DECK_OPTIONS)
+                if (idIdx < 0 || optionsIdx < 0) return out
+                while (it.moveToNext()) {
+                    deckStepsFromOptions(it.getString(optionsIdx))?.let { steps -> out[it.getLong(idIdx)] = steps }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't read deck options", e)
+        }
+        return out
+    }
+
+    /** The deck a card is in, or null if AnkiDroid doesn't say. */
+    fun getCardDeckId(noteId: Long, cardOrd: Int): Long? = try {
+        val cardUri = Uri.parse(String.format(CARD_URI_TEMPLATE, noteId, cardOrd))
+        contentResolver.query(cardUri, arrayOf(CARD_DECK_ID), null, null, null)?.use {
+            val idx = it.getColumnIndex(CARD_DECK_ID)
+            if (idx >= 0 && it.moveToFirst() && !it.isNull(idx)) it.getLong(idx) else null
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Couldn't read the deck of card $noteId/$cardOrd", e)
+        null
     }
 
     /**

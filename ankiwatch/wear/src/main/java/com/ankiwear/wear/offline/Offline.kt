@@ -39,15 +39,15 @@ class AnswerSequence(context: Context) {
 }
 
 /**
- * The card as the review screen shows it. A card coming back for another go has no
- * labels: AnkiDroid's ones were for its first answer.
+ * The card as the review screen shows it, with [labels] on its answer buttons: AnkiDroid's
+ * own for a first answer, the offline queue's for a card coming back (see OfflineQueue.labels).
  */
-fun PackCard.toCardData(withLabels: Boolean = true): CardData = CardData(
+fun PackCard.toCardData(labels: List<String> = nextReviewTimes): CardData = CardData(
     noteId = noteId,
     cardOrd = cardOrd,
     question = question,
     answer = answer,
     buttonCount = buttonCount,
-    nextReviewTimes = if (withLabels) nextReviewTimes else emptyList(),
+    nextReviewTimes = labels,
     cloze = if (clozeNumber > 0) ClozeCard(clozeContent, clozeNumber, extras, modelName) else null
 )

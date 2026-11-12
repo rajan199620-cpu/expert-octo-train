@@ -120,6 +120,8 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    // The real org.json for unit tests (android.jar's is a stub that throws).
+    testImplementation("org.json:json:20240303")
 
     // Instrumented tests run against the real AnkiDroid app on an emulator in CI.
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

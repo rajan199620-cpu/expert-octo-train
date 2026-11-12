@@ -1,5 +1,6 @@
 package com.ankiwatch.core
 
+import com.ankiwatch.core.LearningPlan.Grade
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -18,11 +19,12 @@ import java.io.IOException
  * - When only such cards are left, one due within the learn-ahead limit (20 minutes, as in
  *   AnkiDroid) is shown early; otherwise the queue says when the next one is due.
  *
- * Only a card's first answer has an exact label. After that the card follows the steps the
- * labels reveal: Again starts over, Good moves to the second step once (when the first Good
- * label was under a day), then graduates. This only decides what the watch shows next: the
- * phone replays the real grades through AnkiDroid's scheduler when it is back, so what
- * AnkiDroid records never depends on these guesses.
+ * Only a card's first answer has AnkiDroid's label. After that the card follows its deck's
+ * learning or relearning steps ([LearningPlan]), which the download carries, and its buttons
+ * show the delay each would give ([labels]). An older download without them follows the
+ * steps the labels reveal. This only decides what the watch shows next: the phone replays
+ * the real grades through AnkiDroid's scheduler when it is back, so what AnkiDroid records
+ * never depends on it.
  */
 class OfflineQueue(val pack: OfflinePack, state: State = State()) {
 
@@ -90,27 +92,19 @@ class OfflineQueue(val pack: OfflinePack, state: State = State()) {
             null
         } else {
             val grade = Grade.of(ease, card.buttonCount)
-            val againMs = labelMs(card, Grade.AGAIN)?.takeIf { it < IntervalLabel.DAY_MS } ?: DEFAULT_AGAIN_MS
-            val step = previous?.step ?: 0
+            val plan = plan(card)
             val firstAnswer = previous == null && key !in state.seen
-            when {
-                firstAnswer -> {
-                    val delay = labelMs(card, grade) ?: if (grade == Grade.AGAIN) DEFAULT_AGAIN_MS else null
-                    if (delay != null && delay < IntervalLabel.DAY_MS) {
-                        Waiting(key, now + delay, delay, if (grade == Grade.GOOD || grade == Grade.EASY) 1 else 0)
-                    } else null
-                }
-                grade == Grade.AGAIN -> Waiting(key, now + againMs, againMs, 0)
-                grade == Grade.HARD -> {
-                    val delay = previous?.delayMs ?: againMs
-                    Waiting(key, now + delay, delay, step)
-                }
-                grade == Grade.GOOD && step == 0 -> {
-                    val delay = labelMs(card, Grade.GOOD)?.takeIf { it < IntervalLabel.DAY_MS }
-                    delay?.let { Waiting(key, now + it, it, 1) }
-                }
-                else -> null // Good from the second step, or Easy: graduated
+            val landed: Pair<Long, Int>? = if (firstAnswer) {
+                // AnkiDroid's own label says where the first answer goes.
+                val label = labelMs(card, grade) ?: if (grade == Grade.AGAIN) LearningPlan.DEFAULT_AGAIN_MS else null
+                label?.takeIf { it < IntervalLabel.DAY_MS }?.let { plan.first(grade, it) }
+            } else {
+                // A card answered here before (or brought back from an earlier session's
+                // state) follows its steps from the one it is on.
+                plan.after(grade, previous?.step ?: 0)
             }
+            landed?.takeIf { (delay, _) -> delay < IntervalLabel.DAY_MS }
+                ?.let { (delay, step) -> Waiting(key, now + delay, delay, step) }
         }
         state = State(
             seen = seen,
@@ -131,8 +125,43 @@ class OfflineQueue(val pack: OfflinePack, state: State = State()) {
         state = state.copy(done = state.done + key, waiting = state.waiting.filterNot { it.key == key })
     }
 
+    /**
+     * The labels for [key]'s answer buttons, in ease order, as the card stands now: AnkiDroid's
+     * own for a card not yet answered here, and for one coming back, the delay each button
+     * would give it from the step it is on. A button whose outcome isn't known (a graduating
+     * interval FSRS decides) gets an empty label.
+     */
+    fun labels(key: CardKey): List<String> {
+        val card = byKey[key] ?: return emptyList()
+        val waiting = state.waiting.firstOrNull { it.key == key }
+        if (waiting == null && key !in state.seen) return card.nextReviewTimes
+        val plan = plan(card)
+        val step = waiting?.step ?: 0
+        val own = card.nextReviewTimes.mapNotNull { label -> IntervalLabel.millis(label)?.let { it to label } }
+        val count = when (card.buttonCount) { 2 -> 2; 3 -> 3; else -> 4 }
+        return (1..count).map { ease ->
+            val ms = plan.labelMs(Grade.of(ease, card.buttonCount), step) ?: return@map ""
+            // AnkiDroid's wording for the same time, where it has one (it may be translated).
+            own.firstOrNull { (m, _) -> m == ms }?.second ?: LearningPlan.format(ms)
+        }
+    }
+
     private fun labelMs(card: PackCard, grade: Grade): Long? =
         grade.ease(card.buttonCount)?.let { card.nextReviewTimes.getOrNull(it - 1) }?.let(IntervalLabel::millis)
+
+    private fun labelsByGrade(card: PackCard): Map<Grade, Long?> = Grade.entries.associateWith { labelMs(card, it) }
+
+    /** Whether each deck setting in the pack follows SM-2's fixed intervals (see [LearningPlan.sm2]). */
+    private val sm2: Map<DeckSteps, Boolean?> by lazy {
+        cards.filter { it.steps != null }.groupBy { it.steps!! }
+            .mapValues { (steps, group) -> LearningPlan.sm2(group.map { labelsByGrade(it) to steps }) }
+    }
+
+    private val plans = HashMap<CardKey, LearningPlan>()
+
+    private fun plan(card: PackCard): LearningPlan = plans.getOrPut(card.key) {
+        LearningPlan.of(labelsByGrade(card), card.steps, card.steps?.let { sm2[it] })
+    }
 
     /** Drops whatever in a stored state no longer matches the pack, or itself. */
     private fun sanitize(s: State): State {
@@ -144,28 +173,12 @@ class OfflineQueue(val pack: OfflinePack, state: State = State()) {
         return State(seen, done, waiting, s.answers.coerceAtLeast(0))
     }
 
-    /** The four grades, whichever button numbers a card uses for them. */
-    private enum class Grade {
-        AGAIN, HARD, GOOD, EASY;
-
-        fun ease(buttonCount: Int): Int? = when (buttonCount) {
-            2 -> when (this) { AGAIN -> 1; GOOD -> 2; else -> null }
-            3 -> when (this) { AGAIN -> 1; GOOD -> 2; EASY -> 3; else -> null }
-            else -> ordinal + 1
-        }
-
-        companion object {
-            fun of(ease: Int, buttonCount: Int): Grade =
-                entries.firstOrNull { it.ease(buttonCount) == ease } ?: GOOD
-        }
-    }
-
     companion object {
         /** AnkiDroid's default learn-ahead limit. */
         const val LEARN_AHEAD_MS = 20 * IntervalLabel.MINUTE_MS
 
         /** Again on a card whose labels don't say: AnkiDroid's default first step. */
-        const val DEFAULT_AGAIN_MS = IntervalLabel.MINUTE_MS
+        const val DEFAULT_AGAIN_MS = LearningPlan.DEFAULT_AGAIN_MS
 
         private const val MAGIC = 0x41575131 // "AWQ1"
         private const val VERSION = 1

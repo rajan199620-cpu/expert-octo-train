@@ -29,7 +29,9 @@ data class PackCard(
     /** The tested cloze; 0 for template cards. */
     val clozeNumber: Int = 0,
     val extras: List<Pair<String, String>> = emptyList(),
-    val modelName: String = ""
+    val modelName: String = "",
+    /** The learning settings of the card's deck; null when the phone couldn't read them. */
+    val steps: DeckSteps? = null
 ) {
     val key: CardKey get() = CardKey(noteId, cardOrd)
 }
@@ -56,7 +58,9 @@ data class OfflinePack(
 object OfflinePackCodec {
 
     private const val MAGIC = 0x41575031 // "AWP1"
-    private const val VERSION = 1
+    /** 2 adds each card's deck learning settings; 1 is still read. */
+    private const val VERSION = 2
+    private const val VERSION_WITHOUT_STEPS = 1
 
     /** Limits on what a pack may claim, checked before anything is allocated. */
     const val MAX_CARDS = 20_000
@@ -65,6 +69,7 @@ object OfflinePackCodec {
     const val MAX_UNPACKED_BYTES = 32_000_000L
     private const val MAX_LABELS = 16
     private const val MAX_EXTRAS = 64
+    private const val MAX_SETTINGS = 4_096
 
     fun encode(pack: OfflinePack): ByteArray {
         val strings = LinkedHashMap<String, Int>()
@@ -78,6 +83,10 @@ object OfflinePackCodec {
         }
         require(pack.cards.size <= MAX_CARDS) { "too many cards (${pack.cards.size})" }
         require(strings.size <= MAX_STRINGS) { "too many distinct strings (${strings.size})" }
+        // Each deck's settings once; cards refer to them by number, -1 for none.
+        val settings = LinkedHashMap<DeckSteps, Int>()
+        for (card in pack.cards) card.steps?.let { settings.getOrPut(it) { settings.size } }
+        require(settings.size <= MAX_SETTINGS) { "too many deck settings (${settings.size})" }
 
         val bytes = ByteArrayOutputStream()
         DataOutputStream(GZIPOutputStream(bytes)).use { out ->
@@ -94,6 +103,18 @@ object OfflinePackCodec {
                 out.write(utf8)
             }
             out.writeInt(ref(pack.deckName))
+            out.writeInt(settings.size)
+            for (steps in settings.keys) {
+                require(steps.learnMs.size <= DeckSteps.MAX_STEPS && steps.relearnMs.size <= DeckSteps.MAX_STEPS) { "too many steps" }
+                out.writeByte(steps.learnMs.size)
+                steps.learnMs.forEach { out.writeLong(it) }
+                out.writeInt(steps.graduatingDays)
+                out.writeInt(steps.easyDays)
+                out.writeByte(steps.relearnMs.size)
+                steps.relearnMs.forEach { out.writeLong(it) }
+                out.writeInt(steps.lapseMinDays)
+                out.writeDouble(steps.lapseMult)
+            }
             out.writeInt(pack.cards.size)
             for (card in pack.cards) {
                 require(card.nextReviewTimes.size <= MAX_LABELS) { "too many labels" }
@@ -110,6 +131,7 @@ object OfflinePackCodec {
                 out.writeByte(card.extras.size)
                 card.extras.forEach { (label, value) -> out.writeInt(ref(label)); out.writeInt(ref(value)) }
                 out.writeInt(ref(card.modelName))
+                out.writeInt(card.steps?.let { settings.getValue(it) } ?: -1)
             }
         }
         return bytes.toByteArray()
@@ -119,7 +141,8 @@ object OfflinePackCodec {
         DataInputStream(Capped(GZIPInputStream(ByteArrayInputStream(bytes)), MAX_UNPACKED_BYTES)).use { input ->
             if (input.readInt() != MAGIC) throw corrupt("not an offline pack")
             val version = input.readUnsignedByte()
-            if (version != VERSION) throw corrupt("unknown version $version")
+            if (version != VERSION && version != VERSION_WITHOUT_STEPS) throw corrupt("unknown version $version")
+            val withSteps = version == VERSION
             val id = input.readLong()
             val deckId = input.readLong()
             val createdAt = input.readLong()
@@ -137,6 +160,22 @@ object OfflinePackCodec {
                 return strings[index]
             }
             val deckName = str()
+            val settings: List<DeckSteps> = if (!withSteps) emptyList() else {
+                List(count(input.readInt(), MAX_SETTINGS, "deck settings")) {
+                    val learn = List(count(input.readUnsignedByte(), DeckSteps.MAX_STEPS, "steps")) { input.readLong() }
+                    val graduating = input.readInt()
+                    val easy = input.readInt()
+                    val relearn = List(count(input.readUnsignedByte(), DeckSteps.MAX_STEPS, "steps")) { input.readLong() }
+                    val minDays = input.readInt()
+                    val mult = input.readDouble()
+                    val steps = DeckSteps(learn, graduating, easy, relearn, minDays, mult)
+                    // Only what DeckSteps.of would make: the same checks, on the same numbers.
+                    if (DeckSteps.of(learn.map { it / IntervalLabel.MINUTE_MS.toDouble() }, graduating, easy,
+                            relearn.map { it / IntervalLabel.MINUTE_MS.toDouble() }, minDays, mult) == null
+                    ) throw corrupt("deck settings out of range")
+                    steps
+                }
+            }
             val cardCount = count(input.readInt(), MAX_CARDS, "cards")
             val cards = ArrayList<PackCard>(minOf(cardCount, 4_096))
             repeat(cardCount) {
@@ -150,8 +189,13 @@ object OfflinePackCodec {
                 val clozeNumber = input.readInt()
                 val extras = List(count(input.readUnsignedByte(), MAX_EXTRAS, "extras")) { str() to str() }
                 val modelName = str()
+                val steps = if (!withSteps) null else when (val index = input.readInt()) {
+                    -1 -> null
+                    in settings.indices -> settings[index]
+                    else -> throw corrupt("deck settings $index of ${settings.size}")
+                }
                 cards.add(
-                    PackCard(noteId, cardOrd, buttonCount, labels, question, answer, clozeContent, clozeNumber, extras, modelName)
+                    PackCard(noteId, cardOrd, buttonCount, labels, question, answer, clozeContent, clozeNumber, extras, modelName, steps)
                 )
             }
             if (input.read() != -1) throw corrupt("data after the last card")

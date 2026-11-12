@@ -89,6 +89,12 @@ class OfflineTest {
 
     private fun randomPack(rnd: Random, maxCards: Int = 60): OfflinePack {
         val notes = (0 until rnd.nextInt(1, 20)).map { rnd.nextLong(1, Long.MAX_VALUE) to randomString(rnd) }
+        val settings = listOf(null) + List(rnd.nextInt(0, 4)) {
+            DeckSteps.of(
+                List(rnd.nextInt(0, 6)) { rnd.nextInt(1, 2_000) / 4.0 }, rnd.nextInt(1, 30), rnd.nextInt(1, 60),
+                List(rnd.nextInt(0, 4)) { rnd.nextInt(1, 2_000) / 4.0 }, rnd.nextInt(1, 9), rnd.nextInt(0, 30) / 10.0
+            )
+        }
         val cards = List(rnd.nextInt(0, maxCards)) {
             val (note, text) = notes[rnd.nextInt(notes.size)]
             PackCard(
@@ -98,7 +104,8 @@ class OfflineTest {
                 answer = if (rnd.nextBoolean()) "" else randomString(rnd),
                 clozeContent = text, clozeNumber = rnd.nextInt(0, 30),
                 extras = List(rnd.nextInt(0, 4)) { randomString(rnd) to randomString(rnd) },
-                modelName = randomString(rnd)
+                modelName = randomString(rnd),
+                steps = settings[rnd.nextInt(settings.size)]
             )
         }
         return OfflinePack(rnd.nextLong(), rnd.nextLong(), randomString(rnd), rnd.nextLong(), cards)
@@ -292,14 +299,15 @@ class OfflineTest {
     fun hardRepeatsTheStepItIsOn() {
         val a = card(1, labels = newLabels)
         val q = OfflineQueue(pack(listOf(a)))
-        q.answer(a.key, 2, 0) // Hard on a new card: 6 minutes, still the first step
-        assertEquals(OfflineQueue.Next.Wait(6 * minute, 1), q.next(0, learnAheadMs = 0))
-        q.answer(a.key, 2, 6 * minute) // Hard again: the same 6 minutes
-        assertEquals(OfflineQueue.Next.Wait(12 * minute, 1), q.next(6 * minute, learnAheadMs = 0))
-        q.answer(a.key, 3, 12 * minute) // Good: second step, 10 minutes
-        assertEquals(OfflineQueue.Next.Wait(22 * minute, 1), q.next(12 * minute, learnAheadMs = 0))
-        q.answer(a.key, 1, 22 * minute) // Again: back to the start, 1 minute
-        assertEquals(OfflineQueue.Next.Wait(23 * minute, 1), q.next(22 * minute, learnAheadMs = 0))
+        val hard = 330_000L // halfway between the 1m and 10m steps; AnkiDroid writes it "6m"
+        q.answer(a.key, 2, 0) // Hard on a new card: still the first step
+        assertEquals(OfflineQueue.Next.Wait(hard, 1), q.next(0, learnAheadMs = 0))
+        q.answer(a.key, 2, hard) // Hard again: the same wait
+        assertEquals(OfflineQueue.Next.Wait(2 * hard, 1), q.next(hard, learnAheadMs = 0))
+        q.answer(a.key, 3, 2 * hard) // Good: second step, 10 minutes
+        assertEquals(OfflineQueue.Next.Wait(2 * hard + 10 * minute, 1), q.next(2 * hard, learnAheadMs = 0))
+        q.answer(a.key, 1, 2 * hard + 10 * minute) // Again: back to the start, 1 minute
+        assertEquals(OfflineQueue.Next.Wait(2 * hard + 11 * minute, 1), q.next(2 * hard + 10 * minute, learnAheadMs = 0))
     }
 
     @Test

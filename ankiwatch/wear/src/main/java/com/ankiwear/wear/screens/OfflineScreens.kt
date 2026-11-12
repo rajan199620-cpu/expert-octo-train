@@ -281,7 +281,7 @@ fun OfflineReviewScreen(
         is OfflineQueue.Next.Show -> {
             val card = next.card
             ReviewScreen(
-                card = remember(card, next.repeat) { card.toCardData(withLabels = !next.repeat) },
+                card = remember(card, answers) { card.toCardData(queue.labels(card.key)) },
                 header = "Offline · ${queue.remaining} left",
                 revisionKey = "offline:$answers",
                 focusMode = focusMode,

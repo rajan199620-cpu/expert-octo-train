@@ -15,6 +15,7 @@ import com.google.android.gms.wearable.DataMap
 import kotlinx.coroutines.runBlocking
 import com.ankiwatch.core.CardRenderer
 import com.ankiwatch.core.IntervalLabel
+import com.ankiwatch.core.LearningPlan
 import com.ankiwatch.core.OfflinePackCodec
 import com.ankiwatch.core.OfflineQueue
 import com.ankiwatch.core.PayloadBudget
@@ -466,7 +467,12 @@ class AnkiDroidIntegrationTest {
             assertEquals(4, card.nextReviewTimes.size)
             // The watch times learning cards from these: every one must be readable.
             for (label in card.nextReviewTimes) assertNotNull("unreadable label '$label'", IntervalLabel.millis(label))
+            // The deck's learning steps came along, and they are the ones its labels show.
+            val steps = card.steps
+            assertNotNull("no deck settings", steps)
+            assertTrue("steps $steps vs labels ${card.nextReviewTimes}", LearningPlan.close(steps!!.learnMs[0], IntervalLabel.millis(card.nextReviewTimes[0])!!))
         }
+        Log.i(TAG, "offline pack deck settings: ${pack.cards.first().steps}")
         val bytes = OfflinePackCodec.encode(pack)
         assertEquals(pack, OfflinePackCodec.decode(bytes))
         Log.i(TAG, "offline pack: ${pack.cards.size} cards in ${ms}ms, ${bytes.size} bytes, labels ${pack.cards.first().nextReviewTimes}")
@@ -536,6 +542,8 @@ class AnkiDroidIntegrationTest {
         val position = helper.getScheduledCards(live.id, limit = 100)
             .mapIndexed { i, c -> (live.textOf.getValue(c.noteId) to c.cardOrd) to i }.toMap()
         val liveCounts = HashMap<Pair<String, Int>, Int>()
+        // AnkiDroid's labels each time a card came back: what the watch must show offline.
+        val liveLabels = HashMap<Pair<Pair<String, Int>, Int>, List<String>>()
         runBlocking {
             var guard = 0
             while (true) {
@@ -543,6 +551,7 @@ class AnkiDroidIntegrationTest {
                 val key = live.textOf.getValue(top.noteId) to top.cardOrd
                 val n = liveCounts[key] ?: 0
                 val ease = if (n == 0) grades[position.getValue(key) % grades.size] else 3
+                if (n > 0) liveLabels[key to n] = top.nextReviewTimes
                 applier.apply(WatchAnswer(UUID.randomUUID().toString(), top.noteId, top.cardOrd, ease, 3_000, live.id))
                 liveCounts[key] = n + 1
                 assertTrue("live session doesn't end", ++guard < 200)
@@ -552,6 +561,7 @@ class AnkiDroidIntegrationTest {
         val pack = buildOfflinePack(helper, offline.id, "Offline")
         val queue = OfflineQueue(pack)
         val offlineCounts = HashMap<Pair<String, Int>, Int>()
+        val offlineLabels = HashMap<Pair<Pair<String, Int>, Int>, List<String>>()
         val recorded = ArrayList<QueuedAnswer>()
         var now = 0L
         var seq = 0L
@@ -562,6 +572,7 @@ class AnkiDroidIntegrationTest {
                     val key = offline.textOf.getValue(card.noteId) to card.cardOrd
                     val n = offlineCounts[key] ?: 0
                     val ease = if (n == 0) grades[pack.cards.indexOf(card) % grades.size] else 3
+                    if (n > 0) offlineLabels[key to n] = queue.labels(card.key)
                     queue.answer(card.key, ease, now)
                     recorded += queued(card.noteId, card.cardOrd, ease, offline.id, ++seq)
                     offlineCounts[key] = n + 1
@@ -575,6 +586,29 @@ class AnkiDroidIntegrationTest {
         Log.i(TAG, "live answers per card: $liveCounts")
         Log.i(TAG, "offline answers per card: $offlineCounts")
         assertEquals(liveCounts, offlineCounts)
+
+        // A card that comes back shows the times AnkiDroid shows for it then: Again, Hard
+        // and Good (Easy may carry AnkiDroid's fuzz). A time the watch can't know is blank,
+        // never wrong, and only a graduating one may be.
+        Log.i(TAG, "repeat labels live: $liveLabels")
+        Log.i(TAG, "repeat labels offline: $offlineLabels")
+        assertEquals(liveLabels.keys, offlineLabels.keys)
+        assertTrue("no card came back", liveLabels.isNotEmpty())
+        var shown = 0
+        for ((at, live) in liveLabels) {
+            val offline = offlineLabels.getValue(at)
+            for (i in 0 until 3) {
+                val want = IntervalLabel.millis(live[i])!!
+                if (offline[i].isEmpty()) {
+                    assertTrue("$at button ${i + 1}: blank, AnkiDroid shows ${live[i]}", i == 2 && want >= IntervalLabel.DAY_MS)
+                    continue
+                }
+                val got = IntervalLabel.millis(offline[i])!!
+                assertTrue("$at button ${i + 1}: watch ${offline[i]}, AnkiDroid ${live[i]}", LearningPlan.close(got, want))
+                shown++
+            }
+        }
+        Log.i(TAG, "repeat labels: $shown matched AnkiDroid's")
 
         val report = sync(FakeQueue(recorded.shuffled(Random(2))))
         assertEquals(recorded.size, report.applied)

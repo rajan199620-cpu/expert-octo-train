@@ -55,8 +55,12 @@ the watch for as long as you like, with the phone at home or switched off.
 How it behaves:
 
 - Cards you press Again on, and new cards in their learning steps, come back after
-  AnkiDroid's own delays (shown on the buttons the first time). When only those are left,
-  the watch says when the next one is due; **Show it now** brings it early.
+  AnkiDroid's own delays, following your deck's learning and relearning steps (the download
+  carries its options). Each time a card comes back its buttons show what they would give
+  it: the next step, or the graduating interval on the last one. Under FSRS, where AnkiDroid
+  works the graduating interval out from the card's history, that one button is left blank
+  rather than guessed. When only learning cards are left, the watch says when the next one is
+  due; **Show it now** brings it early.
 - The download is what AnkiDroid had due at that moment, within its daily limits (at most
   1,000 cards). Learning cards that fall due later aren't in it; download again to refresh.
 - AnkiDroid schedules each card from your grades when they arrive, exactly as if you had
@@ -213,8 +217,12 @@ Never commit the keystore; this repository is public.
   always does), mutation fuzzing of real card layouts, a sanitizer that must not change what
   is shown, truncation that must never uncover an answer, 1 MB and 50,000-deep inputs.
   Offline review: the download format (exact round trips, damaged, oversized and unpacking
-  bombs refused), AnkiDroid's interval labels, and the offline queue (AnkiDroid's default
-  learning steps, learn-ahead, waiting, random sessions with restarts that must end).
+  bombs refused, older downloads still read), AnkiDroid's interval labels, and the offline
+  queue (learn-ahead, waiting, random sessions with restarts that must end). Learning steps:
+  random decks of one to four steps and random runs of grades checked against a separate
+  model of Anki's rules, step by step and label by label, SM-2 and FSRS, new and lapsed
+  cards, cards downloaded part way through their steps, steps of a day or more, saved and
+  restored mid-run; AnkiDroid's deck options JSON read exactly and junk refused.
   Saying a deck: dozens of real phrasings, same-named decks told apart by their parents,
   several decks in one phrase, names with "and" in them, every deck of random collections
   found by its spoken name, random garbage, and 4,000 decks answered in milliseconds.
@@ -229,7 +237,8 @@ Never commit the keystore; this repository is public.
   mode, a 40-section note, malformed input. Every control on 192, 204 and 227 dp round
   screens at font sizes from 0.85× to 2×: labels whole and inside the circle up to 1.3×
   (the largest watch setting), the chips under the card wrapping instead of overlapping at
-  any size. Offline review with no phone and a fake clock (learning cards coming back,
+  any size. Offline review with no phone and a fake clock (learning cards coming back with
+  their times on the buttons,
   waiting, *Show it now*, side button, Bury, a restart mid-session), a 100-card random
   offline session, the Offline screen's states, and the watch's download store (restarts,
   damaged files, overlapping decks, 300 random operations). Saying a deck: the pick list's
@@ -244,7 +253,8 @@ Never commit the keystore; this repository is public.
   answer loop with buries mixed in. Offline review: a download is the deck in AnkiDroid's
   own order with labels the watch can read; the same grades given live on one deck and
   offline on its twin (applied later, delivered shuffled) leave identical schedules; a whole
-  offline session asks for as many answers per card as AnkiDroid does live; duplicated,
+  offline session asks for as many answers per card as AnkiDroid does live, and each card
+  that comes back shows the times AnkiDroid shows for it then; duplicated,
   out-of-order and unreadable grades; 200 offline grades from ten decks in one go; every
   grade the phone is done with acknowledged to the watch before it is deleted, and none it
   isn't; grades kept queued, and not applied twice, while the watch can't be told.

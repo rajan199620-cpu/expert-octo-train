@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
@@ -17,7 +16,6 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -25,6 +23,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.ankiwatch.core.DeckSteps
 import com.ankiwatch.core.OfflinePack
 import com.ankiwatch.core.OfflineQueue
 import com.ankiwatch.core.PackCard
@@ -127,12 +126,13 @@ class OfflineReviewTest {
         reveal()
         grade(3)
         // Only c5 is left, due within the learn-ahead limit: it comes back straight away,
-        // without AnkiDroid's labels (they were for its first answer).
+        // with the times its single 1-minute step gives (no graduating time: this pack
+        // has no deck settings to say it).
         header().assertTextEquals("Offline · 1 left")
         reveal()
-        rule.onAllNodesWithText("<1m").assertCountEquals(0)
-        rule.scrollContentTo(hasText("hold: Hard · Easy"))
-        rule.assertOnScreen("hold: Hard · Easy")
+        rule.onNodeWithText("<1m").assertExists()
+        rule.scrollContentTo(hasText("hold: Hard 2m · Easy"))
+        rule.assertOnScreen("hold: Hard 2m · Easy")
         grade(3)
         rule.onNodeWithTag(OfflineTags.DONE).assertExists()
         rule.screenshot("offline-done")
@@ -140,6 +140,32 @@ class OfflineReviewTest {
             listOf(Triple(c3.noteId, c3.cardOrd, 3), Triple(c5.noteId, c5.cardOrd, 1), Triple(c1.noteId, c1.cardOrd, 3), Triple(c5.noteId, c5.cardOrd, 3)),
             answers
         )
+    }
+
+    /** A new card on AnkiDroid's default steps (1m 10m, graduating 1d, easy 4d) shows its times each time it comes back. */
+    @Test
+    fun aCardComingBackShowsItsTimes() {
+        val steps = DeckSteps(listOf(60_000L, 600_000L), 1, 4, listOf(600_000L), 1, 0.0)
+        val card = lawCards[0].copy(nextReviewTimes = listOf("1m", "6m", "10m", "4d"), steps = steps)
+        show(OfflinePack(4, 1, "law", 0, listOf(card)))
+        reveal()
+        rule.onNodeWithText("10m").assertExists()
+        grade(1) // Again: back in a minute, shown now (learn-ahead)
+        header().assertTextEquals("Offline · 1 left")
+        reveal()
+        rule.onNodeWithText("1m").assertExists()
+        rule.onNodeWithText("10m").assertExists()
+        rule.scrollContentTo(hasText("hold: Hard 6m · Easy 4d"))
+        rule.assertOnScreen("hold: Hard 6m · Easy 4d")
+        rule.screenshot("offline-repeat-labels")
+        grade(3) // Good: the second step, 10 minutes
+        reveal()
+        rule.onNodeWithText("1d").assertExists() // Good now graduates
+        rule.scrollContentTo(hasText("hold: Hard 10m · Easy 4d"))
+        rule.assertOnScreen("hold: Hard 10m · Easy 4d")
+        grade(3) // Good: graduated
+        rule.onNodeWithTag(OfflineTags.DONE).assertExists()
+        assertEquals(listOf(1, 3, 3), answers.map { it.third })
     }
 
     @Test
