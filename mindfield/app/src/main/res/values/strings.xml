@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Mindfield</string>
+    <string name="widget_description">Today\'s concept, always in sight</string>
+    <string name="shortcut_log">Log a sighting</string>
+    <string name="shortcut_review">Review</string>
+</resources>

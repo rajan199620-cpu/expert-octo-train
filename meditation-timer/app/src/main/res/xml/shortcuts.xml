@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon: start your usual sit with one tap, no screens in between. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="quick_sit"
+        android:shortcutLongLabel="@string/shortcut_sit_long"
+        android:shortcutShortLabel="@string/shortcut_sit_short">
+        <intent
+            android:action="com.rajan.meditationtimer.QUICK_SIT"
+            android:targetClass="com.rajan.meditationtimer.MainActivity"
+            android:targetPackage="com.rajan.meditationtimer" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="breathe"
+        android:shortcutShortLabel="@string/shortcut_breathe_short">
+        <intent
+            android:action="com.rajan.meditationtimer.OPEN_BREATHE"
+            android:targetClass="com.rajan.meditationtimer.MainActivity"
+            android:targetPackage="com.rajan.meditationtimer" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="mala"
+        android:shortcutShortLabel="@string/shortcut_mala_short">
+        <intent
+            android:action="com.rajan.meditationtimer.OPEN_MALA"
+            android:targetClass="com.rajan.meditationtimer.MainActivity"
+            android:targetPackage="com.rajan.meditationtimer" />
+    </shortcut>
+</shortcuts>
