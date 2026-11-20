@@ -428,9 +428,18 @@ class ServiceStressTest {
             assertEquals(before + 1, records.size)
         }
         // Every sound thread fades out and ends on its own after the sit (real time, a few seconds).
-        val deadline = System.currentTimeMillis() + 20_000
-        while (AmbientPlayer.live.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(100)
-        assertEquals(0, AmbientPlayer.live.get())
+        assertNoSoundThreadsLeft(20_000)
+    }
+
+    /** Waits for every background-sound thread to end; if one doesn't, says where it is stuck. */
+    private fun assertNoSoundThreadsLeft(withinMs: Long) {
+        val deadline = System.currentTimeMillis() + withinMs
+        while (AmbientPlayer.live.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        if (AmbientPlayer.live.get() == 0) return
+        val where = Thread.getAllStackTraces().filterKeys { it.name == "ambience" }.entries.joinToString("\n\n") { (t, stack) ->
+            "${t.name} ${t.state} interrupted=${t.isInterrupted}\n" + stack.take(15).joinToString("\n") { "    at $it" }
+        }
+        assertEquals("sound threads left running:\n$where", 0, AmbientPlayer.live.get())
     }
 
     @Test
@@ -515,9 +524,7 @@ class ServiceStressTest {
         }
         player.stopNow()
         assertEquals(AmbientPlayer.State.STOPPED, player.state)
-        val deadline = System.currentTimeMillis() + 10_000
-        while (AmbientPlayer.live.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(50)
-        assertEquals("sound threads left running", 0, AmbientPlayer.live.get())
+        assertNoSoundThreadsLeft(10_000)
     }
 
     /** What a new process sees after Android closed the app mid-sit: no sit in memory, only what's on disk. */
@@ -557,7 +564,7 @@ class ServiceStressTest {
     }
 
     @Test
-    fun `a sit that ends as it should leaves nothing to recover, and one cut in its first minute logs nothing`() {
+    fun `a sit that ends as it should leaves nothing to recover`() {
         begin(minutes = 3)
         idle(200)
         assertTrue(SessionRepository.state.value is SessionState.Finished)
@@ -565,14 +572,15 @@ class ServiceStressTest {
         SitCheckpoint(app).recover(SessionLog.get(app))
         assertEquals(1, records.size)
         assertNull(SitCheckpoint(app).cutShort)
+    }
 
-        SessionRepository.reset()
+    @Test
+    fun `a sit cut in its first minute logs nothing, but still says why the bells stopped`() {
         begin(minutes = 10)
         idle(40)
         processDies()
         SitCheckpoint(app).recover(SessionLog.get(app))
-        assertEquals(1, records.size)
-        // Still said, so you know why the bells stopped.
+        assertTrue(records.isEmpty())
         assertEquals(false, SitCheckpoint(app).cutShort?.logged)
     }
 

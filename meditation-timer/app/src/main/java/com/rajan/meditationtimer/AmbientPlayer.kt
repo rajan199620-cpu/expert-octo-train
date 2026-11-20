@@ -41,6 +41,11 @@ class AmbientPlayer(private val context: Context) {
     @Volatile private var stopping = false
 
     @Volatile private var thread: Thread? = null
+    /**
+     * Moves on with every start and every stop: a synth thread plays only while its own number is
+     * current, so an old one can never carry on beside a new sound, whatever happened to its interrupt.
+     */
+    private val generation = AtomicInteger()
     private var media: MediaPlayer? = null
     private val main = Handler(Looper.getMainLooper())
 
@@ -126,7 +131,9 @@ class AmbientPlayer(private val context: Context) {
     }
 
     private fun resumeNow() {
-        if (state != State.PAUSED) return
+        // Already stopping (another app took the speaker while paused, or the sit ended): fading
+        // back in now would leave a sound that stop() could no longer stop.
+        if (state != State.PAUSED || stopping) return
         state = State.PLAYING
         synchronized(lock) { lock.notifyAll() }
         media?.let { runCatching { if (!it.isPlaying) it.start() } }
@@ -156,6 +163,7 @@ class AmbientPlayer(private val context: Context) {
 
     /** Immediately, no fade: for tearing down before a new start. */
     fun stopNow() {
+        generation.incrementAndGet()
         stopping = true
         releaseFocus()
         synchronized(lock) { lock.notifyAll() }
@@ -181,13 +189,15 @@ class AmbientPlayer(private val context: Context) {
     // --- Generated sound ---
 
     private fun startSynth(kind: Ambience) {
-        val t = Thread({ runSynth(kind) }, "ambience").apply { isDaemon = true; priority = Thread.NORM_PRIORITY + 1 }
+        val gen = generation.incrementAndGet()
+        val t = Thread({ runSynth(kind, gen) }, "ambience").apply { isDaemon = true; priority = Thread.NORM_PRIORITY + 1 }
         thread = t
         t.start()
     }
 
-    private fun runSynth(kind: Ambience) {
+    private fun runSynth(kind: Ambience, gen: Int) {
         live.incrementAndGet()
+        fun current() = generation.get() == gen
         var track: AudioTrack? = null
         try {
             val scape = Soundscape.create(kind, RATE) ?: return
@@ -214,7 +224,7 @@ class AmbientPlayer(private val context: Context) {
             val pcm = ShortArray(BLOCK * 2)
             val began = System.nanoTime()
             var framesOut = 0L
-            while (!Thread.currentThread().isInterrupted) {
+            while (!Thread.currentThread().isInterrupted && current()) {
                 if (seenFade != fadeVersion) { seenFade = fadeVersion; fadeGain.to(fadeTarget, fadeMs) }
                 val duckNow = SystemClock.elapsedRealtime() < duckUntil
                 if (duckNow != ducked) { ducked = duckNow; duckGain.to(if (duckNow) DUCK_LEVEL else 1f, if (duckNow) 400 else 2500) }
@@ -224,8 +234,8 @@ class AmbientPlayer(private val context: Context) {
                     if (stopping) break
                     if (state == State.PAUSED) {
                         runCatching { track.pause() }
-                        synchronized(lock) { while (state == State.PAUSED && !stopping) lock.wait(1000) }
-                        if (stopping) break
+                        synchronized(lock) { while (state == State.PAUSED && !stopping && current()) lock.wait(1000) }
+                        if (stopping || !current()) break
                         runCatching { track.play() }
                         continue
                     }

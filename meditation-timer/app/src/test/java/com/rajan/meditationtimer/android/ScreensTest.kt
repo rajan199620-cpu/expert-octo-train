@@ -646,12 +646,12 @@ class ScreensTest {
     @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
     @Test
     fun `a sit Android cut short is logged on the next open and mentioned once`() {
-        // What the service had written down when the app was closed: 14 minutes into a 20-minute sit.
+        // What the service had written down when the app was closed: 14 min 20 s into a 20-minute sit.
         val start = LocalDate.now(zone).atTime(6, 50).atZone(zone).toInstant().toEpochMilli()
         SitCheckpoint(app).save(SitProgress(start, plannedSec = 1200, satMs = 14 * 60_000L + 20_000, before = 3))
         launch()
         val sit = SessionLog.get(app).records.value.single()
-        assertEquals(840, sit.actualSec)
+        assertEquals(860, sit.actualSec)
         assertEquals(3, sit.before)
         compose.onNodeWithText("Your last sit was cut short").assertExists()
         compose.onNodeWithText("It stopped after 14 of its 20 minutes", substring = true).assertExists()
