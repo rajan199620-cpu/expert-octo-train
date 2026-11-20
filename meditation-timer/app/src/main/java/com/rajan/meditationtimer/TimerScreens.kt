@@ -5,7 +5,10 @@ import android.app.Activity
 import android.app.TimePickerDialog
 import android.view.HapticFeedbackConstants
 import android.view.WindowManager
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import android.os.Build
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
@@ -27,6 +30,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -274,8 +278,20 @@ private fun SetupScreen(
             }
         }
 
+        // Android closed the app in the middle of the last sit: said once, with what was logged and
+        // how to keep it from happening again.
+        var cutShort by remember { mutableStateOf(SitCheckpoint(context).cutShort) }
+        cutShort?.let { cut ->
+            CutShortCard(
+                cut,
+                onSettings = { openAppSettings(context) },
+                onHide = { SitCheckpoint(context).cutShort = null; cutShort = null },
+            )
+        }
+
         DurationDial(minutes, onMinus = { minutes = (minutes - 1).coerceAtLeast(1) }, onPlus = { minutes = (minutes + 1).coerceAtMost(180) })
-        ChipRow(listOf(5, 10, 15, 20, 30, 45, 60), minutes, { "$it" }, center = true) { minutes = it }
+        // Seven lengths in two even rows (4 + 3), rather than six and a lone 60 below.
+        ChipRow(listOf(5, 10, 15, 20, 30, 45, 60), minutes, { "$it" }, center = true, perRow = 4) { minutes = it }
 
         // The sit comes first; today's lesson and anything from the past follow below it.
         PrincipleCard(lesson, onOpenAll = onPrinciples)
@@ -507,13 +523,23 @@ private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChang
     }
 }
 
-/** Big glowing ring showing the chosen length; a full ring is one hour. */
+/**
+ * Big glowing ring showing the chosen length; a full ring is one hour. The ring takes what width the
+ * − and + buttons leave, up to 200 dp, so on a narrow phone it shrinks instead of squeezing +.
+ */
 @Composable
 private fun DurationDial(minutes: Int, onMinus: () -> Unit, onPlus: () -> Unit) {
     val accent = LocalAccent.current
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+    ) {
         RoundButton("−", "One minute shorter", onMinus)
-        Box(Modifier.size(200.dp).glow(accent.main), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.weight(1f, fill = false).widthIn(max = 200.dp).aspectRatio(1f).glow(accent.main),
+            contentAlignment = Alignment.Center,
+        ) {
             Canvas(Modifier.fillMaxSize().padding(10.dp)) {
                 val stroke = 8.dp.toPx()
                 drawCircle(Color.White.copy(alpha = 0.08f), style = Stroke(stroke))
@@ -538,10 +564,18 @@ private fun DurationDial(minutes: Int, onMinus: () -> Unit, onPlus: () -> Unit) 
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun <T> ChipRow(options: List<T>, selected: T, label: (T) -> String, center: Boolean = false, onSelect: (T) -> Unit) {
+fun <T> ChipRow(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    center: Boolean = false,
+    perRow: Int = Int.MAX_VALUE,
+    onSelect: (T) -> Unit,
+) {
     FlowRow(
         Modifier.fillMaxWidth(),
         horizontalArrangement = if (center) Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally) else Arrangement.spacedBy(8.dp),
+        maxItemsInEachRow = perRow,
     ) {
         for (option in options) {
             FilterChip(selected = option == selected, onClick = { onSelect(option) }, label = { Text(label(option)) })
@@ -683,8 +717,9 @@ private fun RunningScreen(session: SessionState.Running) {
                     )
                 }
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(formatClock(remaining), style = MaterialTheme.typography.displayLarge)
+            // Kept inside the ring: with large text the hint wraps rather than running over it.
+            Column(Modifier.padding(horizontal = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(formatClock(remaining), style = MaterialTheme.typography.displayLarge, maxLines = 1)
                 val hint = when {
                     still -> "Paused · bells on hold"
                     settling != null -> "${settling.phase.label} · ${(settling.msLeftInPhase + 999) / 1000}"
@@ -692,7 +727,12 @@ private fun RunningScreen(session: SessionState.Running) {
                     else -> null
                 }
                 if (hint != null) {
-                    Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        hint,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
         }
@@ -942,6 +982,16 @@ private fun toolsSummary(prefs: Prefs): String = buildList {
     val reminder = prefs.reminder
     if (reminder.enabled) add("reminder ${reminder.timeLabel}")
 }.joinToString(" · ").ifEmpty { "All off" }
+
+/** The app's own page in system settings, where its battery use is set on every make of phone. */
+private fun openAppSettings(context: android.content.Context) {
+    runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
+}
 
 private fun secondsLabel(sec: Int) = if (sec % 60 == 0) "${sec / 60} min" else "${sec}s"
 

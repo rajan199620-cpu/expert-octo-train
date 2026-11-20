@@ -29,6 +29,7 @@ class MeditationService : Service() {
     private lateinit var dnd: Dnd
     private lateinit var ambient: AmbientPlayer
     private lateinit var breathSound: BreathSoundPlayer
+    private lateinit var checkpoint: SitCheckpoint
     private var breathCue = BreathCue.SOUND
     private var wakeLock: PowerManager.WakeLock? = null
     private var startedAtWallMs = 0L
@@ -47,6 +48,7 @@ class MeditationService : Service() {
         dnd = Dnd(this)
         ambient = AmbientPlayer(this)
         breathSound = BreathSoundPlayer(this)
+        checkpoint = SitCheckpoint(this)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -99,6 +101,14 @@ class MeditationService : Service() {
     /** Posts the bells still to come and the finish, measured from where the clock stands now. */
     private fun schedule(session: SessionState.Running) {
         handler.removeCallbacksAndMessages(null)
+        // How far the sit has got, written down now and every minute: if Android closes the app
+        // mid-sit, the next open logs it (see [SitCheckpoint]). Pausing stops this with the bells.
+        handler.post(object : Runnable {
+            override fun run() {
+                running?.let { saveProgress(it) }
+                handler.postDelayed(this, CHECKPOINT_MS)
+            }
+        })
         val now = SystemClock.elapsedRealtime()
         val elapsed = session.clock.elapsedAt(now)
         val config = session.config
@@ -137,6 +147,7 @@ class MeditationService : Service() {
         ambient.pause()
         val paused = session.copy(clock = session.clock.pause(SystemClock.elapsedRealtime()))
         publish(paused)
+        saveProgress(paused)
         return paused
     }
 
@@ -167,6 +178,7 @@ class MeditationService : Service() {
 
     private fun complete(config: SessionConfig) {
         SessionLog.get(this).add(record(config, config.durationSec))
+        checkpoint.clear()
         SessionRepository.finished(config, startedAtWallMs, config.durationSec, before, noticedCount())
         // The sound eases away under the final bell rather than stopping with it.
         ambient.stop(AmbientPlayer.END_FADE_MS)
@@ -184,6 +196,7 @@ class MeditationService : Service() {
             .coerceAtMost(session.config.durationSec.toLong()).toInt()
         if (satSec >= MIN_LOGGED_SEC) {
             SessionLog.get(this).add(record(session.config, satSec))
+            checkpoint.clear()
             // Early sits get the same reflection screen: the rough ones are the most worth noting.
             SessionRepository.finished(session.config, startedAtWallMs, satSec, before, noticedCount())
         } else {
@@ -198,8 +211,15 @@ class MeditationService : Service() {
     private fun record(config: SessionConfig, satSec: Int) =
         SessionRecord(startedAtWallMs, config.durationSec, satSec, before = before, noticed = noticedCount())
 
+    private fun saveProgress(session: SessionState.Running) {
+        val satMs = session.clock.elapsedAt(SystemClock.elapsedRealtime()).coerceIn(0, session.config.durationMs)
+        checkpoint.save(SitProgress(startedAtWallMs, session.config.durationSec, satMs, before, noticedCount()))
+    }
+
     private fun shutdown() {
         handler.removeCallbacksAndMessages(null)
+        // Every way here has logged the sit, or found it too short to log.
+        checkpoint.clear()
         ambient.stop(1_500)
         breathSound.stop()
         chime.release()
@@ -216,7 +236,12 @@ class MeditationService : Service() {
         chime.release()
         dnd.restore()
         releaseWakeLock()
-        if (SessionRepository.state.value is SessionState.Running) SessionRepository.reset()
+        // Stopped by Android with a sit still running: log what was sat, as the next open would.
+        running?.let { session ->
+            saveProgress(session)
+            checkpoint.recover(SessionLog.get(this))
+            SessionRepository.reset()
+        }
         super.onDestroy()
     }
 
@@ -314,6 +339,7 @@ class MeditationService : Service() {
         private const val WAKE_LOCK_SLACK_MS = 60_000L
         private const val TICK_GRACE_MS = 250L
         private const val SETTLE_SOUND_TAIL_MS = 300L
+        private const val CHECKPOINT_MS = 60_000L
 
         fun start(context: Context, config: SessionConfig, volume: Float, alertMode: AlertMode, autoDnd: Boolean) {
             val intent = Intent(context, MeditationService::class.java)

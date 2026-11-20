@@ -76,8 +76,9 @@ object Progress {
         TRIAL,
         DoseMark(
             27.0,
-            "27 min a day: what people on an 8-week MBSR course practised on average (22.6 hours in all); " +
-                "their brain scans showed grey-matter changes.",
+            "27 min a day: what people on an 8-week MBSR course practised on average (22.6 hours in all). " +
+                "The grey-matter change this small study reported didn't show up in a trial of 218 people " +
+                "(Kral et al., Science Advances, 2022).",
             "Hölzel et al. · Psychiatry Research: Neuroimaging · 2011",
         ),
         DoseMark(

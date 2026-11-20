@@ -289,7 +289,8 @@ private fun LevelChart(curve: List<Double>) {
             val bottom = size.height - inset
             fun x(i: Int) = inset + (w - 2 * inset) * i / (curve.size - 1).coerceAtLeast(1)
             fun y(v: Double) = bottom - (bottom - inset) * (v / top).toFloat()
-            // The threshold, dashed, with its label sitting just above it at the left.
+            // The threshold, dashed, with its label at the left: just above it, or just below where
+            // your own line runs above it there (a level near 13 a day would otherwise cross the words).
             val ty = y(trial)
             drawLine(
                 muted.copy(alpha = 0.6f), Offset(0f, ty), Offset(w, ty),
@@ -297,7 +298,12 @@ private fun LevelChart(curve: List<Double>) {
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
             )
             val label = measurer.measure("13 min a day · trial", labelStyle)
-            drawText(label, topLeft = Offset(0f, (ty - label.size.height - 2.dp.toPx()).coerceAtLeast(0f)))
+            val gap = 2.dp.toPx()
+            val under = curve.indices.filter { x(it) <= label.size.width + 2 * gap }
+            fun crossings(labelTop: Float) = under.count { y(curve[it]) in (labelTop - 2 * gap)..(labelTop + label.size.height + 2 * gap) }
+            val above = (ty - label.size.height - gap).coerceAtLeast(0f)
+            val below = (ty + gap).coerceAtMost(size.height - label.size.height)
+            drawText(label, topLeft = Offset(0f, if (crossings(above) <= crossings(below)) above else below))
             val path = Path().apply {
                 moveTo(x(0), y(curve[0]))
                 for (i in 1..curve.lastIndex) lineTo(x(i), y(curve[i]))
@@ -337,7 +343,10 @@ private fun CompareLine(text: String, source: String) {
     }
 }
 
-/** Two headline numbers from Trends; tapping opens the full charts. */
+/**
+ * Two headline numbers from Trends; tapping opens the full charts. Each says which sits it covers,
+ * since the month card above it covers one month and the two can differ.
+ */
 @Composable
 private fun Highlights(checkIns: CheckInSummary?, noticing: List<NoticingPoint>, onOpen: () -> Unit) {
     // Equal heights, whichever label wraps.
@@ -346,17 +355,28 @@ private fun Highlights(checkIns: CheckInSummary?, noticing: List<NoticingPoint>,
             val shift = it.averageShift
             HighlightTile(
                 (if (shift > 0) "+" else if (shift < 0) "−" else "") + String.format(Locale.ROOT, "%.1f", kotlin.math.abs(shift)),
-                if (shift >= 0) "calmer after a sit" else "less settled after a sit",
+                (if (shift >= 0) "calmer after a sit" else "less settled after a sit") + ", last ${sitsLabel(it.sits)}",
                 Modifier.weight(1f),
                 onOpen,
             )
         }
         if (noticing.isNotEmpty()) {
-            val avg = noticing.takeLast(20).map { it.perTenMin }.average()
-            HighlightTile(String.format(Locale.ROOT, "%.1f", avg), "wanderings caught per 10 min", Modifier.weight(1f), onOpen)
+            // All the catches over all the minutes, as the month card counts them: a short sit with
+            // a few catches doesn't outweigh a long one.
+            val recent = noticing.takeLast(20)
+            val seconds = recent.sumOf { it.sec }
+            val rate = if (seconds > 0) recent.sumOf { it.count } * 600.0 / seconds else recent.map { it.perTenMin }.average()
+            HighlightTile(
+                String.format(Locale.ROOT, "%.1f", rate),
+                "wanderings caught per 10 min, last ${sitsLabel(recent.size)}",
+                Modifier.weight(1f),
+                onOpen,
+            )
         }
     }
 }
+
+private fun sitsLabel(n: Int) = if (n == 1) "sit" else "$n sits"
 
 @Composable
 private fun HighlightTile(value: String, label: String, modifier: Modifier, onOpen: () -> Unit) {

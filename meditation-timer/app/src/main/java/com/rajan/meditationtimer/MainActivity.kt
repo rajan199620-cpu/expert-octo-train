@@ -88,8 +88,12 @@ class MainActivity : ComponentActivity() {
         mala = prefs.mala
         tab = savedInstanceState?.getString(KEY_TAB)?.let { name -> Tab.entries.firstOrNull { it.name == name } } ?: Tab.SIT
 
-        // If the app was killed mid-session, make sure we don't leave the phone stuck in Do Not Disturb.
-        if (SessionRepository.state.value !is SessionState.Running) Dnd(this).restore()
+        // If the app was killed mid-session, make sure we don't leave the phone stuck in Do Not Disturb,
+        // and log the minutes that sit got to (the Sit screen then says what happened).
+        if (SessionRepository.state.value !is SessionState.Running) {
+            Dnd(this).restore()
+            SitCheckpoint(this).recover(SessionLog.get(this))
+        }
         if (savedInstanceState == null) handleShortcut(intent)
 
         setContent {

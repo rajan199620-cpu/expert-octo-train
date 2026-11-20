@@ -67,7 +67,7 @@ val CHECK_IN_LABELS = listOf("Tense", "Restless", "Okay", "Settled", "Calm")
 data class CheckInSummary(val sits: Int, val averageShift: Double, val better: Int, val same: Int, val worse: Int)
 
 /** One counted sit: how often you caught the mind wandering, per 10 minutes so sits compare. */
-data class NoticingPoint(val startedAtMs: Long, val count: Int, val perTenMin: Double)
+data class NoticingPoint(val startedAtMs: Long, val count: Int, val perTenMin: Double, val sec: Int = 0)
 
 data class MoodPoint(val startedAtMs: Long, val date: LocalDate, val rating: Int, val rollingAverage: Double)
 
@@ -211,7 +211,7 @@ object History {
         return records
             .filter { it.noticed >= 0 && it.actualSec >= MIN_LOGGED_SEC && !it.day(zone).isBefore(from) && !it.day(zone).isAfter(today) }
             .sortedBy { it.startedAtMs }
-            .map { NoticingPoint(it.startedAtMs, it.noticed, it.noticed * 600.0 / it.actualSec) }
+            .map { NoticingPoint(it.startedAtMs, it.noticed, it.noticed * 600.0 / it.actualSec, it.actualSec) }
     }
 
     /** The feeling rated most often; ties go to the more recent one. Null with no ratings. */

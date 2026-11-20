@@ -19,6 +19,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,6 +73,20 @@ fun MemoryCard(memory: Memory, zone: ZoneId, onHide: () -> Unit) {
     }
 }
 
+/** On the Sit screen after Android closed the app mid-sit: what happened, and how to stop it happening. */
+@Composable
+fun CutShortCard(cut: CutShort, onSettings: () -> Unit, onHide: () -> Unit) {
+    GlassCard(Modifier.fillMaxWidth()) {
+        Text("Your last sit was cut short", style = MaterialTheme.typography.titleMedium)
+        Text(cut.message(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(CutShort.ADVICE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row {
+            TextButton(onClick = onSettings) { Text("Battery settings") }
+            TextButton(onClick = onHide) { Text("OK", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+    }
+}
+
 /** On the Sit screen in the first days of a month: last month's review is ready. */
 @Composable
 fun RecapReadyCard(month: YearMonth, today: LocalDate, onOpen: () -> Unit, onHide: () -> Unit) {
@@ -117,13 +133,13 @@ fun MonthRecapCard(records: List<SessionRecord>, zone: ZoneId, today: LocalDate)
                 onClick = { shownText = months[index + 1].toString() },
                 enabled = index < months.lastIndex,
                 contentPadding = PaddingValues(0.dp),
-                modifier = Modifier.widthIn(min = 40.dp),
+                modifier = Modifier.widthIn(min = 48.dp).semantics { contentDescription = "Earlier month" },
             ) { Text("‹", style = MaterialTheme.typography.headlineSmall) }
             TextButton(
                 onClick = { shownText = months[index - 1].toString() },
                 enabled = index > 0,
                 contentPadding = PaddingValues(0.dp),
-                modifier = Modifier.widthIn(min = 40.dp),
+                modifier = Modifier.widthIn(min = 48.dp).semantics { contentDescription = "Later month" },
             ) { Text("›", style = MaterialTheme.typography.headlineSmall) }
         }
         Row(verticalAlignment = Alignment.Bottom) {

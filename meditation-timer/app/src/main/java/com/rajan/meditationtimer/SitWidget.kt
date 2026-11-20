@@ -1,5 +1,6 @@
 package com.rajan.meditationtimer
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -16,20 +17,50 @@ import java.time.ZoneId
  */
 class SitWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        for (id in ids) manager.updateAppWidget(id, views(context))
+        val views = views(context)
+        for (id in ids) manager.updateAppWidget(id, views)
+        scheduleMidnight(context)
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_MIDNIGHT) refresh(context) else super.onReceive(context, intent)
+    }
+
+    /** The last widget was removed: nothing to redraw at midnight. */
+    override fun onDisabled(context: Context) {
+        context.getSystemService(AlarmManager::class.java).cancel(midnightIntent(context))
     }
 
     companion object {
         private val DOTS = intArrayOf(R.id.dot0, R.id.dot1, R.id.dot2, R.id.dot3, R.id.dot4, R.id.dot5, R.id.dot6)
+        private const val ACTION_MIDNIGHT = "com.rajan.meditationtimer.WIDGET_MIDNIGHT"
 
-        /** Redraws every placed widget; called after each sit and settings change. */
+        /** Redraws every placed widget; called after each sit and settings change, and just after midnight. */
         fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, SitWidget::class.java))
             if (ids.isEmpty()) return
             val views = views(context)
             for (id in ids) manager.updateAppWidget(id, views)
+            scheduleMidnight(context)
         }
+
+        /**
+         * Today's dot moves on at midnight, and Monday starts a fresh row, without waiting hours for
+         * the launcher's next update. A plain alarm: it never wakes the phone, and is delivered the
+         * next time the screen comes on, which is when the widget can be seen.
+         */
+        private fun scheduleMidnight(context: Context) {
+            val zone = ZoneId.systemDefault()
+            val at = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).plusMinutes(1).toInstant().toEpochMilli()
+            runCatching { context.getSystemService(AlarmManager::class.java).set(AlarmManager.RTC, at, midnightIntent(context)) }
+        }
+
+        private fun midnightIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
+            context, 21,
+            Intent(context, SitWidget::class.java).setAction(ACTION_MIDNIGHT),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 
         private fun views(context: Context): RemoteViews {
             val zone = ZoneId.systemDefault()

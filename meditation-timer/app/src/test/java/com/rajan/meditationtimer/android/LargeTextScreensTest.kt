@@ -3,7 +3,10 @@ package com.rajan.meditationtimer
 import android.Manifest
 import android.app.Application
 import android.os.SystemClock
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -58,6 +61,7 @@ class LargeTextScreensTest {
         SessionLog.resetForTests()
         File(app.filesDir, "sessions.csv").delete()
         app.getSharedPreferences("settings", 0).edit().clear().commit()
+        app.getSharedPreferences("sit_in_progress", 0).edit().clear().commit()
         Prefs(app).readingSeenOn = LocalDate.now().toString()
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         SessionRepository.reset()
@@ -88,6 +92,9 @@ class LargeTextScreensTest {
     @Test
     fun `sit screen, its settings and Begin all reachable`() {
         shot("01-sit")
+        // On a 360 dp phone the ring makes room, so − and + both keep their full round size.
+        compose.onNodeWithContentDescription("One minute shorter").assertWidthIsEqualTo(52.dp)
+        compose.onNodeWithContentDescription("One minute longer").assertWidthIsEqualTo(52.dp)
         compose.onNodeWithText("Practice tools").performScrollTo().performClick()
         compose.onNodeWithText("Weekly goal").assertExists()
         captureScreenRoboImage("build/outputs/roborazzi/large-02-settings.png")

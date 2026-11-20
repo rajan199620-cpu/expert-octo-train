@@ -87,6 +87,7 @@ class ScreensTest {
         SessionLog.resetForTests()
         File(app.filesDir, "sessions.csv").delete()
         app.getSharedPreferences("settings", 0).edit().clear().commit()
+        app.getSharedPreferences("sit_in_progress", 0).edit().clear().commit()
         // Most tests start on the Sit screen; the welcome's and the reading's own tests undo these.
         Prefs(app).welcomeDone = true
         Prefs(app).readingSeenOn = LocalDate.now().toString()
@@ -640,6 +641,30 @@ class ScreensTest {
         compose.onNodeWithText("Save").performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(5, SessionLog.get(app).records.value.single().after)
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun `a sit Android cut short is logged on the next open and mentioned once`() {
+        // What the service had written down when the app was closed: 14 minutes into a 20-minute sit.
+        val start = LocalDate.now(zone).atTime(6, 50).atZone(zone).toInstant().toEpochMilli()
+        SitCheckpoint(app).save(SitProgress(start, plannedSec = 1200, satMs = 14 * 60_000L + 20_000, before = 3))
+        launch()
+        val sit = SessionLog.get(app).records.value.single()
+        assertEquals(840, sit.actualSec)
+        assertEquals(3, sit.before)
+        compose.onNodeWithText("Your last sit was cut short").assertExists()
+        compose.onNodeWithText("It stopped after 14 of its 20 minutes", substring = true).assertExists()
+        compose.onNodeWithText("Battery settings").assertExists()
+        shot("30-cut-short")
+        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithText("Your last sit was cut short").assertDoesNotExist()
+        assertNull(SitCheckpoint(app).cutShort)
+        // Opened again: nothing more to say, and nothing logged twice.
+        scenario?.close()
+        launch()
+        compose.onNodeWithText("Your last sit was cut short").assertDoesNotExist()
+        assertEquals(1, SessionLog.get(app).records.value.size)
     }
 
     @Test

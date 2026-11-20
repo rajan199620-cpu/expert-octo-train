@@ -57,6 +57,7 @@ class ServiceStressTest {
         SessionRepository.reset()
         SessionRepository.startCounting(false)
         SessionRepository.pendingBefore = 0
+        app.getSharedPreferences("sit_in_progress", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
     @After
@@ -517,6 +518,73 @@ class ServiceStressTest {
         val deadline = System.currentTimeMillis() + 10_000
         while (AmbientPlayer.live.get() > 0 && System.currentTimeMillis() < deadline) Thread.sleep(50)
         assertEquals("sound threads left running", 0, AmbientPlayer.live.get())
+    }
+
+    /** What a new process sees after Android closed the app mid-sit: no sit in memory, only what's on disk. */
+    private fun processDies() = SessionRepository.reset()
+
+    @Test
+    fun `a sit Android cuts short is logged up to its last minute when the app next opens, once`() {
+        SessionRepository.pendingBefore = 2
+        SessionRepository.startCounting(true)
+        begin(minutes = 20)
+        repeat(4) { SessionRepository.noticedOnce() }
+        idle(5 * 60 + 30)
+        processDies()
+        val checkpoint = SitCheckpoint(app)
+        checkpoint.recover(SessionLog.get(app))
+        val sit = records.single()
+        // Written down every minute: the five minutes sat, not the twenty planned or the half minute after.
+        assertEquals(300, sit.actualSec)
+        assertEquals(1200, sit.plannedSec)
+        assertEquals(2, sit.before)
+        assertEquals(4, sit.noticed)
+        assertEquals(CutShort(300, 1200), checkpoint.cutShort)
+        // Opening again changes nothing: it was logged once and forgotten.
+        checkpoint.recover(SessionLog.get(app))
+        assertEquals(1, records.size)
+    }
+
+    @Test
+    fun `a paused sit cut short keeps the time sat before the pause`() {
+        val s = begin(minutes = 20)
+        idle(150)
+        s.deliver(MeditationService::pause)
+        idle(15 * 60)
+        processDies()
+        SitCheckpoint(app).recover(SessionLog.get(app))
+        assertEquals(150, records.single().actualSec)
+    }
+
+    @Test
+    fun `a sit that ends as it should leaves nothing to recover, and one cut in its first minute logs nothing`() {
+        begin(minutes = 3)
+        idle(200)
+        assertTrue(SessionRepository.state.value is SessionState.Finished)
+        assertNull(SitCheckpoint(app).read())
+        SitCheckpoint(app).recover(SessionLog.get(app))
+        assertEquals(1, records.size)
+        assertNull(SitCheckpoint(app).cutShort)
+
+        SessionRepository.reset()
+        begin(minutes = 10)
+        idle(40)
+        processDies()
+        SitCheckpoint(app).recover(SessionLog.get(app))
+        assertEquals(1, records.size)
+        // Still said, so you know why the bells stopped.
+        assertEquals(false, SitCheckpoint(app).cutShort?.logged)
+    }
+
+    @Test
+    fun `a sit stopped by Android while the process lives is logged at once`() {
+        val s = begin(minutes = 20)
+        idle(7 * 60)
+        s.destroy()
+        assertTrue(SessionRepository.state.value is SessionState.Idle)
+        assertEquals(420, records.single().actualSec)
+        assertEquals(CutShort(420, 1200), SitCheckpoint(app).cutShort)
+        assertNull(SitCheckpoint(app).read())
     }
 
     @Test

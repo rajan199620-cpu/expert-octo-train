@@ -225,7 +225,8 @@ broken streaks discourage, repairable ones much less (Silverman & Barasch, 2023)
   History shows "What a sit changes": the average shift and how often you came out calmer.
 - **Daily reminder**: a time plus a habit cue ("After morning tea"), an if-then plan. Skipped on
   days you've already sat; the notification's button starts your usual sit.
-- **Home-screen widget**: this week as seven dots and a "Sit · N min" button.
+- **Home-screen widget**: this week as seven dots and a "Sit · N min" button. It redraws after
+  every sit and just after midnight, so a new day (and a new week on Monday) shows straight away.
 
 **Shortcuts**: long-press the app icon for *Start my usual sit* (starts your last settings
 with no screens in between), *Breathe* or *Mala*.
@@ -286,6 +287,11 @@ since 31 August 2026. Build locally with the Android SDK installed: `./gradlew a
   wake lock, so bells stay on time for long sits. A notification shows a live countdown with
   *Pause* and *End* actions. Breathe-tab exercises get the same treatment, so their breath sound
   and taps keep time with the screen off.
+- **If Android closes the app mid-sit anyway** (some phones do, to save battery, even with the
+  timer in the foreground): the sit isn't lost. The service writes down how far it has got at the
+  start, every minute and on pause; the next time the app opens, those minutes are logged like an
+  early end, and the Sit screen says what happened once, with a button to the app's battery
+  settings (set it to Unrestricted).
 - **Breath sound in step:** `BreathVoice` (pure Kotlin) draws each breath in filtered noise from
   the exercise clock, and `BreathSoundPlayer` streams it, checking the speaker's own timestamp
   every half second so the sound stays with the breath on screen, Bluetooth delay included.
